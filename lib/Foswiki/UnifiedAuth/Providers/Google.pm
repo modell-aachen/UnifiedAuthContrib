@@ -8,6 +8,7 @@ use Net::OAuth2::Profile::WebServer;
 use strict;
 use warnings;
 
+use Foswiki::Func;
 use Foswiki::Plugins::UnifiedAuthPlugin;
 use Foswiki::UnifiedAuth;
 use Foswiki::UnifiedAuth::Provider;
@@ -105,7 +106,12 @@ sub processLogin {
     unless ($acc_info->is_success) {
         die with Error::Simple("Failed to get user information from Google: ". $acc_info->as_string ."\n");
     }
+
     $acc_info = decode_json($acc_info->decoded_content);
+    my $enforceDomain = $Foswiki::cfg{UnifiedAuth}{EnforceHostedDomainMembership} || 0;
+    if ($this->{config}{domain} && $enforceDomain) {
+        die with Error::Simple("\%BR\%You're *not allowed* to access this site.") unless ($acc_info->{hd} && $acc_info->{hd} eq $this->{config}{domain});
+    }
 
     # email, name, family_name, given_name
 
