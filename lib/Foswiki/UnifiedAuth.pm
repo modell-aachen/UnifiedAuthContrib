@@ -223,7 +223,7 @@ sub _uni {
 
 sub update_user {
     my ($this, $charset, $loginid, $display_name, $email) = @_;
-    _uni($loginid, $display_name, $email);
+    _uni($charset, $loginid, $display_name, $email);
     return $this->db->do("UPDATE users SET display_name=?, email=? WHERE user_id=?", {}, _uni($display_name), $email, $loginid);
 }
 
