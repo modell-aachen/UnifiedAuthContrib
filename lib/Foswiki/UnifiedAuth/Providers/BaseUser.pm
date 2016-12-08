@@ -60,24 +60,6 @@ sub new {
 }
 
 sub initiateLogin {
-    my ($this, $origin) = @_;
-
-    my $state = $this->SUPER::initiateLogin($origin);
-
-    # my $auth = $this->_makeOAuth;
-    # my $uri = $auth->authorize(
-    #     redirect_uri => $this->processUrl(),
-    #     scope => 'openid email profile',
-    #     state => $state,
-    #     hd => $this->{config}{domain},
-    # );
-
-    # my $session = $this->{session};
-    # $this->{session}{response}->redirect(
-    #     -url     => $uri,
-    #     -cookies => $session->{response}->cookies(),
-    #     -status  => '302',
-    # );
     return 1;
 }
 

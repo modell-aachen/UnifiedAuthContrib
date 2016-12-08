@@ -1,0 +1,45 @@
+.uauth .foswikiFormSteps {
+  background-color: white;
+}
+
+.uauth .foswikiFormStep {
+  border: none
+}
+
+.uauth .foswikiInputField {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px 4px;
+  width: calc(100% - 20px);
+}
+
+.uauth .foswikiSubmit {
+  background-color: #4ac9e5;
+  background-image: none;
+  border: 0;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  padding: 10px 0;
+  width: 125px;
+}
+
+.uauth .foswikiSubmit:hover {
+  background-color: #3facc3;
+}
+
+.uauth button {
+  background-color: none;
+  border: none;
+  cursor: pointer;
+  height: 60px;
+  width: 220px;
+}
+
+.uauth button[name="facebook"] {
+  background-image: url('../facebook.png');
+}
+
+.uauth button[name="google"] {
+  background-image: url('../google.png');
+}

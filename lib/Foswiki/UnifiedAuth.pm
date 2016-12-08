@@ -40,28 +40,21 @@ my @schema_updates = (
         )",
         "CREATE UNIQUE INDEX idx_primary_cuid ON merged_users (primary_cuid)",
         "CREATE UNIQUE INDEX idx_mapped_cuid ON merged_users (mapped_cuid)",
-        # "CREATE TABLE groups (
-        #     group_id TEXT NOT NULL PRIMARY KEY,
-        #     description TEXT
-        # )",
-        # "CREATE TABLE group_members (
-        #     group_id TEXT NOT NULL,
-        #     user_id TEXT NOT NULL,
-        #     PRIMARY KEY (group_id, user_id)
-        # )",
-        # "CREATE INDEX group_members_user_id ON group_members (user_id)",
-    ],
-    # [
-    #     "ALTER TABLE groups ADD COLUMN mapper_id TEXT",
-    #     "ALTER TABLE group_members ADD COLUMN mapper_id TEXT",
-    #     "CREATE TABLE group_mappings (
-    #         group_id TEXT NOT NULL,
-    #         mapper_id TEXT NOT NULL,
-    #         mapped_id TEXT NOT NULL,
-    #         PRIMARY KEY (group_id, mapper_id, mapped_id),
-    #         UNIQUE (mapper_id, mapped_id)
-    #     )",
-    # ],
+        "CREATE TABLE groups (
+            cuid UUID NOT NULL PRIMARY KEY,
+            name TEXT NOT NULL
+        )",
+        "CREATE TABLE group_members (
+            g_cuid UUID NOT NULL,
+            u_cuid UUID NOT NULL,
+            PRIMARY KEY (g_cuid, u_cuid)
+        )",
+        "CREATE TABLE nested_groups (
+            parent UUID NOT NULL,
+            child UUID NOT NULL,
+            PRIMARY KEY (parent, child)
+        )"
+    ]
 );
 
 my $singleton;

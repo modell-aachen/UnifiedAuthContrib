@@ -11,4 +11,8 @@ lib/Foswiki/UnifiedAuth/Providers/Google.pm 0644 OAuth for Google
 lib/Foswiki/Users/UnifiedAuthUser.pm 0644 Password manager
 lib/Foswiki/Users/UnifiedUserMapping.pm 0644 User mapping
 lib/Foswiki/Contrib/UnifiedAuthContrib/Config.spec 0644 Config options
+pub/System/UnifiedAuthContrib/facebook.png 0444
+pub/System/UnifiedAuthContrib/google.png 0444
+pub/System/UnifiedAuthContrib/css/uauth.css 0444
+pub/System/UnifiedAuthContrib/js/uauth.js 0444
 templates/uauth.tmpl 0644 Template file

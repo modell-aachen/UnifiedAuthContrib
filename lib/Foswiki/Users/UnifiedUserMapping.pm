@@ -8,13 +8,16 @@ This is an alternative user mapping that can unify existing user mappings and,
 in addition, provide mappings of its own. Similarly, it supports using several
 existing group mappings and provides its own.
 
-=cut 
+=cut
 
 package Foswiki::Users::UnifiedUserMapping;
 use strict;
 use warnings;
 
-use base 'Foswiki::Users::BaseUserMapping';
+# use base 'Foswiki::Users::BaseUserMapping';
+use Foswiki::UserMapping ();
+our @ISA = ('Foswiki::UserMapping');
+
 
 use Foswiki::UnifiedAuth;
 
@@ -35,7 +38,7 @@ for any required Foswiki services.
 sub new {
     my ($class, $session) = @_;
 
-    my $this = $class->SUPER::new($session, '');
+    my $this = $class->SUPER::new($session, 'unified_auth_mapper');
     $this->{uac} = Foswiki::UnifiedAuth->new();
 
     return $this;

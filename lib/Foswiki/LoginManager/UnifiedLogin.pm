@@ -13,6 +13,7 @@ use warnings;
 use Assert;
 
 use JSON;
+use Unicode::Normalize;
 
 use Foswiki::LoginManager ();
 our @ISA = ('Foswiki::LoginManager');
@@ -37,6 +38,7 @@ sub _packRequest {
     if ( ref($uri) ) {    # first parameter is a $session
         my $r = $uri->{request};
         $uri    = $r->uri();
+        $uri    = Foswiki::urlDecode($uri);
         $method = $r->method() || 'UNDEFINED';
         $action = $r->action();
     }
@@ -44,7 +46,6 @@ sub _packRequest {
 }
 
 # Unpack single value to key request parameters
-# Copied from TemplateLogin
 sub _unpackRequest {
     my $packed = shift || '';
     my ( $method, $action, $uri ) = split( ',', $packed, 3 );
@@ -98,7 +99,9 @@ sub forceAuthentication {
 
         # Throw back the login page with the 401
         $this->login( $query, $session );
+        return 1;
     }
+
     return 0;
 }
 
@@ -158,6 +161,7 @@ sub login {
     my $cgis = $session->getCGISession();
     my $provider;
     $provider = $cgis->param('uauth_provider') if $cgis;
+    $provider = $query->param('uauth_provider') unless $provider;
 
     my $topic  = $session->{topicName};
     my $web    = $session->{webName};
@@ -170,6 +174,9 @@ sub login {
     $session->{request}->delete('validation_key');
     if ($provider) {
         $provider = $this->_authProvider($provider);
+        my $initial = $query->param('uauth_initial') || 0;
+        return $provider->initiateLogin($query->param('foswiki_origin')) if $initial;
+
         if ($provider->isMyLogin) {
             my $loginResult;
             my $error = '';
@@ -255,7 +262,34 @@ sub login {
         return $auth->initiateLogin(_packRequest($session));
     }
 
-    die("Login selection page not supported yet");
+    my $path_info = $query->path_info();
+    if ( $path_info =~ m/['"]/g ) {
+        $path_info = substr( $path_info, 0, ( ( pos $path_info ) - 1 ) );
+    }
+
+    my $origin = $query->param('foswiki_origin');
+    my ( $origurl, $origmethod, $origaction ) = _unpackRequest($origin);
+    $origurl ||= '';
+
+    $session->{prefs}->setSessionPreferences(
+        FOSWIKI_ORIGIN => Foswiki::entityEncode(
+            _packRequest( $origurl, $origmethod, $origaction )
+        ),
+
+        PATH_INFO =>
+          Foswiki::urlEncode( NFC( Foswiki::decode_utf8($path_info) ) )
+    );
+
+    my $tmpl = $session->templates->readTemplate('uauth');
+    my $topicObject = Foswiki::Meta->new( $session, $web, $topic );
+    $context->{uauth_login_default} = 1;
+
+    $tmpl = $topicObject->expandMacros($tmpl);
+    $tmpl = $topicObject->renderTML($tmpl);
+    $tmpl =~ s/<nop>//g;
+    $session->writeCompletePage($tmpl);
+
+    # die("Login selection page not supported yet");
 }
 
 1;

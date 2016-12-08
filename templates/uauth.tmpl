@@ -9,7 +9,7 @@
 %{ TODO custom auth realm info? l10n? }%
 %TMPL:DEF{"authrealm"}%%MAKETEXT{"This is your name written as !WikiWord, for example: !JohnSmith. [[[_1]][Register]] if you do not have an account yet." args="%SYSTEMWEB%.UserRegistration"}%%TMPL:END%
 
-%TMPL:DEF{"formstart"}%<form action='%SCRIPTURLPATH{"uauth"}%%PATH_INFO%' name='loginform' method='post'>%TMPL:END%
+%TMPL:DEF{"formstart"}%<form action='%SCRIPTURLPATH{"login"}%%PATH_INFO%' name='loginform' method='post'>%TMPL:END%
 
 %TMPL:DEF{"usernamestep"}%<div class="foswikiFormStep">
 <h3>%MAKETEXT{"Username"}%</h3>
@@ -18,18 +18,43 @@
 
 %TMPL:DEF{"passwordnote"}%<span class="foswikiUnvisited">[[%SCRIPTURLPATH{view}%/%SYSTEMWEB%/ResetPassword?username=%URLPARAM{usernamestep}%][%MAKETEXT{"I forgot my password"}%]]</span>%TMPL:END%
 
-%TMPL:DEF{"form"}%<div id="foswikiLogin">
-<div class="foswikiFormSteps">%TMPL:P{"errorstep"}%%TMPL:P{"formstart"}%%TMPL:P{"titlestep"}%
-%TMPL:P{"usernamestep"}%%TMPL:P{"passwordstep"}%%TMPL:P{"submitstep"}%
-%TMPL:P{"formend"}%
-%TMPL:P{"seealsostep"}%
-</div>
+%TMPL:DEF{"form"}%%{
+}%<div class="uauth">
+  <div id="foswikiLogin">
+    <div class="foswikiFormSteps">%{
+}%%{
+}%%TMPL:P{"errorstep"}%%{
+}%%TMPL:P{"formstart"}%%{
+}%%TMPL:P{"titlestep"}%%{
+}%%TMPL:P{"usernamestep"}%%{
+}%%TMPL:P{"passwordstep"}%%{
+}%%TMPL:P{"submitstep"}%%{
+}%<hr>%{
+}%%TMPL:P{context="uauth_choose" then="auth_providers"}%%{
+}%%TMPL:P{"formend"}%%{
+}%<hr>%{
+}%%TMPL:P{"seealsostep"}%%{
+  }%</div>
+  </div>
 </div>%TMPL:END%
 
-%TMPL:DEF{"auth_providers"}%
-%TMPL:P{"errorstep"}%
-%RED%In a future version you will get a list of available login providers here.%ENDCOLOR%
-%TMPL:END%
+%TMPL:DEF{"passwordfieldnoteremember_orig"}%%TMPL:P{"passwordfield"}% %TMPL:P{"passwordnote"}%
+%TMPL:P{context="can_remember_login" then="rememberbox"}%%TMPL:END%
+
+%TMPL:DEF{"passwordfieldnoteremember"}%%TMPL:P{"passwordfield"}%%TMPL:END%
+
+%TMPL:DEF{"auth_providers"}%%{
+}%<div class="foswikiFormStep">
+<h3>%MAKETEXT{"Log on with a social network"}%</h3>
+<p>
+<button style="float: left;" type="subbmit" name="facebook"></button>
+<button style="float: right;" type="subbmit" name="google"></button>
+<input type="hidden" name="uauth_provider" value="" />
+<input type="hidden" name="uauth_initial" value="" />
+<div style="clear: both;"></div>
+</p>
+</div>%{
+}%%TMPL:END%
 
 %TMPL:DEF{"link_retry"}%<div id="foswikiLogin">
 <div class="foswikiFormSteps">
@@ -42,7 +67,7 @@
   </div>
 </div></div>%TMPL:END%
 
-%TMPL:DEF{"content"}%%TMPL:P{context="uauth_login_default" then="form"
-}%%TMPL:P{context="uauth_failed_nochoose" then="link_retry"
-}%%TMPL:P{context="uauth_choose" then="auth_providers"
-}%%TMPL:END%
+%TMPL:DEF{"content"}%%JQREQUIRE{"blockui"}%%{
+}%%ADDTOZONE{"head" id="uauth:css" text="<link rel='stylesheet' type='text/css' media='all' href='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/css/uauth.css' />"}%%{
+}%%ADDTOZONE{"script" requires="JQUERYPLUGIN::FOSWIKI::PREFERENCES" id="uauth:js" text="<script type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/uauth.js'></script>"}%%{
+}%%TMPL:P{context="uauth_failed_nochoose" then="link_retry" else="form"}%%TMPL:END%
