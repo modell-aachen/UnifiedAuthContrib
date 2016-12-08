@@ -94,7 +94,13 @@ sub getLoginName {
     ASSERT($cUID) if DEBUG;
 
     my $login = $cUID;
-    return unless _userReallyExists( $this, $login );
+    return unless _userReallyExists($this, $login);
+
+    $cUID = _isCUID($login);
+    if ($cUID) {
+        return $this->{uac}->db->selectrow_array(
+        "SELECT login_name FROM users WHERE cuid=?", {}, $cUID);
+    }
 
     # Validated
     return Foswiki::Sandbox::untaintUnchecked($login);
