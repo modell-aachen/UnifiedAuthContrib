@@ -16,12 +16,13 @@ our @ISA = qw(Foswiki::UnifiedAuth::Provider);
 
 my @schema_updates = (
     [
-        "CREATE TABLE providers_google (
-            provider_id TEXT NOT NULL,
-            email TEXT NOT NULL,
-            PRIMARY KEY (provider_id, email)
+        "CREATE TABLE users_google (
+            cuid UUID NOT NULL,
+            info JSONB NOT NULL,
+            PRIMARY KEY (cuid)
         )",
-        "INSERT INTO meta (type, version) VALUES('providers_google', 0)",
+        "INSERT INTO meta (type, version) VALUES('users_google', 0)",
+        "INSERT INTO providers (name) VALUES('google')",
     ]
 );
 
@@ -31,10 +32,6 @@ sub new {
     my $this = $class->SUPER::new($session, $id, $config);
 
     return $this;
-}
-
-sub useDefaultLogin {
-    0;
 }
 
 sub _makeOAuth {
@@ -84,6 +81,7 @@ sub isMyLogin {
 
 sub processLogin {
     my $this = shift;
+Foswiki::Func::writeWarning("processing login");
     my $req = $this->{session}{request};
     my $state = $req->param('state');
     $req->delete('state');
@@ -114,24 +112,25 @@ sub processLogin {
     }
 
     # email, name, family_name, given_name
-
     my $uauth = Foswiki::UnifiedAuth->new();
     my $db = $uauth->db;
-    $uauth->apply_schema('providers_google', @schema_updates);
-    my $exist = $db->selectrow_array("SELECT COUNT(email) FROM providers_google WHERE provider_id=? AND email=?", {}, $this->{id}, $acc_info->{email});
+    $uauth->apply_schema('users_google', @schema_updates);
+    my $provider = $db->selectrow_hashref("SELECT * FROM providers WHERE name=?", {}, $this->{id});
+    my $exist = $db->selectrow_array("SELECT COUNT(login_name) FROM users WHERE login_name=? AND pid=?", {}, $acc_info->{email}, $provider->{pid});
     if ($exist == 0) {
         my $user_id;
+        my $user_uuid = $this->guid;
+        my $user_email = $acc_info->{email};
         eval {
             $db->begin_work;
-            $db->do("INSERT INTO providers_google (provider_id, email) VALUES(?,?)", {}, $this->{id}, $acc_info->{email});
-            $user_id = $uauth->add_user('UTF-8', $this->{id}, $acc_info->{email}, $this->_formatWikiName($acc_info), $this->_formatDisplayName($acc_info), $acc_info->{email});
-            $db->do("INSERT INTO user_mappings (user_id, mapper_id, mapped_id) VALUES(?,?,?)", {}, $user_id, $this->{id}, $acc_info->{email});
+            $db->do("INSERT INTO users_google (cuid, info) VALUES(?,?)", {}, $user_uuid, ,JSON::encode_json($acc_info));
+            $user_id = $uauth->add_user('UTF-8', $provider->{pid}, $user_uuid, $user_email, $user_email, $this->_formatWikiName($acc_info), $this->_formatDisplayName($acc_info));
             $db->commit;
         };
         if ($@) {
             my $err = $@;
             eval { $db->rollback; };
-            die with Error::Simple("Failed to initialize Google account '$acc_info->{email}' ($err)\n");
+            die with Error::Simple("Failed to initialize Google account '$user_email' ($err)\n");
         }
         return {
             user_id => $user_id,
@@ -140,15 +139,15 @@ sub processLogin {
     }
 
     # Check if values need updating
-    my $userdata = $db->selectrow_hashref("SELECT * FROM users NATURAL JOIN user_mappings WHERE mapped_id=?", {}, $acc_info->{email});
+    my $userdata = $db->selectrow_hashref("SELECT * FROM users AS u NATURAL JOIN users_google WHERE u.login_name=? AND u.pid=?", {}, $acc_info->{email}, $provider->{pid});
     my $cur_dn = $this->_formatDisplayName($acc_info);
     if ($cur_dn ne $userdata->{display_name}) {
-        $uauth->update_user('UTF-8', $userdata->{user_id}, $cur_dn, $acc_info->{email})
+        $uauth->update_user('UTF-8', $userdata->{cuid}, $acc_info->{email}, $cur_dn);
     }
     return {
         user_id => $userdata->{user_id},
         data => $acc_info,
-    }
+    };
 }
 
 sub _formatWikiName {

@@ -8,7 +8,7 @@ This is an alternative user mapping that can unify existing user mappings and,
 in addition, provide mappings of its own. Similarly, it supports using several
 existing group mappings and provides its own.
 
-=cut
+=cut 
 
 package Foswiki::Users::UnifiedUserMapping;
 use strict;
@@ -76,7 +76,7 @@ sub login2cUID {
     unless ($dontcheck) {
         return unless ( _userReallyExists( $this, $login ) );
     }
-
+# TODO
     return $login;
 }
 
@@ -104,9 +104,9 @@ sub getLoginName {
 # check for user being present in the mapping DB
 sub _userReallyExists {
     my ( $this, $login ) = @_;
-
+Foswiki::Func::writeWarning("_userReallyExists: login_name -> $login");
     return $this->{uac}->db->selectrow_array(
-        "SELECT COUNT(user_id) FROM users WHERE user_id=?", {},
+        "SELECT COUNT(login_name) FROM users WHERE login_name=?", {},
         $login
     );
 }
@@ -128,9 +128,9 @@ sub removeUser {
 sub getWikiName {
     my ( $this, $cUID ) = @_;
     ASSERT($cUID) if DEBUG;
-
+Foswiki::Func::writeWarning("getWikiName: cuid -> $cUID");
     return $this->{uac}->db->selectrow_array(
-        "SELECT wiki_name FROM users WHERE user_id=?", {},
+        "SELECT wiki_name FROM users WHERE cuid=?", {},
         $cUID
     );
 }
@@ -169,7 +169,7 @@ sub eachUser {
     my ($this) = @_;
 
     my $list = $this->{uac}->db->selectcol_arrayref(
-        "SELECT user_id u FROM users"
+        "SELECT cuid u FROM users"
     );
     return new Foswiki::ListIterator($list);
 }
@@ -191,7 +191,7 @@ sub findUserByEmail {
     ASSERT($email) if DEBUG;
 
     return $this->{uac}->db->selectcol_arrayref(
-        "SELECT user_id FROM users WHERE email=?", {}, $email
+        "SELECT cuid FROM users WHERE email=?", {}, $email
     ) || [];
 }
 
@@ -229,10 +229,11 @@ sub getEmails {
 
 sub mapper_getEmails {
     my ( $session, $user ) = @_;
+    $user =~ s/_2d/-/g; # ToDo.
 
     my $uac = Foswiki::UnifiedAuth->new();
     my $addr = $uac->db->selectrow_array(
-        "SELECT email FROM users WHERE user_id=?", {}, $user
+        "SELECT email FROM users WHERE cuid=?", {}, $user
     );
     return () if $addr eq '';
     return split(';', $addr);
@@ -247,16 +248,26 @@ sub mapper_setEmails {
     my $mails = join( ';', @_ );
 
     my $uac = Foswiki::UnifiedAuth->new();
-    $uac->db->do("UPDATE users SET emails=? WHERE user_id=?", {},
+    $uac->db->do("UPDATE users SET emails=? WHERE cuid=?", {},
         $mails, $cUID);
 }
 
 sub findUserByWikiName {
     my ( $this, $wn, $skipExistanceCheck ) = @_;
 
+    # ToDo.
+    if ($wn =~ /^[a-z0-9]{8}_2d[a-z0-9]{4}_2d[a-z0-9]{4}_2d[a-z0-9]{4}_2d[a-z0-9]{12}$/) {
+        $wn =~ s/_2d/-/g;
+        return $this->{uac}->db->selectrow_arrayref(
+            "SELECT cuid FROM users WHERE cuid=?", {}, $wn) || [];
+    }
+
+    # ToDo
     return [$wn] if $this->isGroup($wn);
+
+
     return $this->{uac}->db->selectrow_arrayref(
-        "SELECT user_id FROM users WHERE wiki_name=?", {}, $wn) || [];
+        "SELECT cuid FROM users WHERE login_name=? OR wiki_name=?", {}, $wn, $wn) || [];
 }
 
 

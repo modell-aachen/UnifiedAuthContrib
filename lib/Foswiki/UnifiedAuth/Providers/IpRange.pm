@@ -31,10 +31,6 @@ sub new {
     return $this;
 }
 
-sub useDefaultLogin {
-    0;
-}
-
 sub initiateLogin {
     my ($this, $origin) = @_;
 

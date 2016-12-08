@@ -1,5 +1,6 @@
 package Foswiki::UnifiedAuth::Provider;
 
+use Data::GUID;
 use Digest::SHA qw(sha1_base64);
 use Error;
 
@@ -16,6 +17,11 @@ sub new {
         config => $config,
         session => $session,
     }, $class;
+}
+
+sub useDefaultLogin {
+    my $this = shift;
+    0;
 }
 
 sub initiateLogin {
@@ -57,6 +63,11 @@ sub origin {
     my $state = $cgis->param('uauth_state');
     return unless $state && $state =~ /^(.+?),(.+?),(.*)$/;
     return $3;
+}
+
+sub guid {
+    my $this = shift;
+    Data::GUID->guid;
 }
 
 1;

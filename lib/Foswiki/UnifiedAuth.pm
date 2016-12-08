@@ -7,6 +7,7 @@ use utf8;
 use DBI;
 use Encode;
 
+use Foswiki::Contrib::PostgreContrib;
 use Foswiki::Users::BaseUserMapping;
 Foswiki::Users::BaseUserMapping->new($Foswiki::Plugins::SESSION) if $Foswiki::Plugins::SESSION;
 my $bu = \%Foswiki::Users::BaseUserMapping::BASE_USERS;
@@ -15,55 +16,52 @@ my @schema_updates = (
     [
         "CREATE TABLE meta (type TEXT NOT NULL UNIQUE, version INT NOT NULL)",
         "INSERT INTO meta (type, version) VALUES('core', 0)",
+        "CREATE TABLE providers (
+            pid SERIAL,
+            name TEXT NOT NULL
+        )",
         "CREATE TABLE users (
-            user_id TEXT NOT NULL PRIMARY KEY,
+            cuid UUID NOT NULL PRIMARY KEY,
+            pid INTEGER NOT NULL,
+            login_name TEXT NOT NULL,
             wiki_name TEXT NOT NULL,
             display_name TEXT NOT NULL,
             email TEXT NOT NULL
         )",
-        "INSERT INTO users (user_id, wiki_name, display_name, email)
-            VALUES('BaseUserMapping_111', 'ProjectContributor', 'Project Contributor', ''),
-            ('BaseUserMapping_222', '$bu->{BaseUserMapping_222}{wikiname}', 'Registration Agent', ''),
-            ('BaseUserMapping_333', '$bu->{BaseUserMapping_333}{wikiname}', 'Internal Admin User', '$bu->{BaseUserMapping_333}{email}'),
-            ('BaseUserMapping_666', '$bu->{BaseUserMapping_666}{wikiname}', 'Guest User', ''),
-            ('BaseUserMapping_999', 'UnknownUser', 'Unknown User', '')",
-        "CREATE UNIQUE INDEX users_wiki_name ON users (wiki_name)",
-        "CREATE INDEX users_email ON users (email)",
-        "CREATE TABLE user_mappings (
-            user_id TEXT NOT NULL,
-            mapper_id TEXT NOT NULL,
-            mapped_id TEXT NOT NULL,
-            PRIMARY KEY (user_id, mapper_id, mapped_id),
-            UNIQUE (mapper_id, mapped_id)
+        "CREATE UNIQUE INDEX idx_wiki_name ON users (wiki_name)",
+        "CREATE UNIQUE INDEX idx_cuid ON users (cuid)",
+        "CREATE INDEX idx_login_name ON users (login_name)",
+        "CREATE INDEX idx_email ON users (email)",
+        "CREATE TABLE merged_users (
+            primary_cuid UUID NOT NULL,
+            mapped_cuid UUID NOT NULL,
+            primary_provider INTEGER NOT NULL,
+            mapped_provider INTEGER NOT NULL
         )",
-        "INSERT INTO user_mappings (user_id, mapper_id, mapped_id)
-            VALUES('BaseUserMapping_111', 'Foswiki::Users::BaseUserMapping', 'ProjectContributor'),
-            ('BaseUserMapping_222', 'Foswiki::Users::BaseUserMapping', '$bu->{BaseUserMapping_222}{login}'),
-            ('BaseUserMapping_333', 'Foswiki::Users::BaseUserMapping', '$bu->{BaseUserMapping_333}{login}'),
-            ('BaseUserMapping_666', 'Foswiki::Users::BaseUserMapping', '$bu->{BaseUserMapping_666}{login}'),
-            ('BaseUserMapping_999', 'Foswiki::Users::BaseUserMapping', 'unknown')",
-        "CREATE TABLE groups (
-            group_id TEXT NOT NULL PRIMARY KEY,
-            description TEXT
-        )",
-        "CREATE TABLE group_members (
-            group_id TEXT NOT NULL,
-            user_id TEXT NOT NULL,
-            PRIMARY KEY (group_id, user_id)
-        )",
-        "CREATE INDEX group_members_user_id ON group_members (user_id)",
+        "CREATE UNIQUE INDEX idx_primary_cuid ON merged_users (primary_cuid)",
+        "CREATE UNIQUE INDEX idx_mapped_cuid ON merged_users (mapped_cuid)",
+        # "CREATE TABLE groups (
+        #     group_id TEXT NOT NULL PRIMARY KEY,
+        #     description TEXT
+        # )",
+        # "CREATE TABLE group_members (
+        #     group_id TEXT NOT NULL,
+        #     user_id TEXT NOT NULL,
+        #     PRIMARY KEY (group_id, user_id)
+        # )",
+        # "CREATE INDEX group_members_user_id ON group_members (user_id)",
     ],
-    [
-        "ALTER TABLE groups ADD COLUMN mapper_id TEXT",
-        "ALTER TABLE group_members ADD COLUMN mapper_id TEXT",
-        "CREATE TABLE group_mappings (
-            group_id TEXT NOT NULL,
-            mapper_id TEXT NOT NULL,
-            mapped_id TEXT NOT NULL,
-            PRIMARY KEY (group_id, mapper_id, mapped_id),
-            UNIQUE (mapper_id, mapped_id)
-        )",
-    ],
+    # [
+    #     "ALTER TABLE groups ADD COLUMN mapper_id TEXT",
+    #     "ALTER TABLE group_members ADD COLUMN mapper_id TEXT",
+    #     "CREATE TABLE group_mappings (
+    #         group_id TEXT NOT NULL,
+    #         mapper_id TEXT NOT NULL,
+    #         mapped_id TEXT NOT NULL,
+    #         PRIMARY KEY (group_id, mapper_id, mapped_id),
+    #         UNIQUE (mapper_id, mapped_id)
+    #     )",
+    # ],
 );
 
 my $singleton;
@@ -77,6 +75,7 @@ sub new {
 }
 
 sub finish {
+    $singleton->{connection}->finish if $singleton->{connection};
     undef $singleton->{db} if $singleton;
     undef $singleton;
 }
@@ -90,19 +89,12 @@ sub db {
 sub connect {
     my $this = shift;
     return $this->{db} if defined $this->{db};
-    my $db = DBI->connect($Foswiki::cfg{UnifiedAuth}{MappingDSN} || "DBI:SQLite:dbname=$Foswiki::cfg{DataDir}/UnifiedAuth.db",
-        $Foswiki::cfg{UnifiedAuth}{MappingDBUsername} || '',
-        $Foswiki::cfg{UnifiedAuth}{MappingDBPassword} || '',
-        {
-            RaiseError => 1,
-            PrintError => 0,
-            AutoCommit => 1,
-        }
-    );
-    $this->{db} = $db;
+    my $connection = Foswiki::Contrib::PostgreContrib::getConnection('foswiki_users');
+    $this->{connection} = $connection;
+    $this->{db} = $connection->{db};
     $this->{schema_versions} = {};
     eval {
-        $this->{schema_versions} = $db->selectall_hashref("SELECT * FROM meta", 'type', {});
+        $this->{schema_versions} = $this->db->selectall_hashref("SELECT * FROM meta", 'type', {});
     };
     $this->apply_schema('core', @schema_updates);
 }
@@ -146,71 +138,39 @@ my %normalizers = (
 
 sub add_user {
     my $this = shift;
-    my ($charset, $authdomainid, $loginid, $wikiname, $display_name, $email) = @_;
-    my $orig_loginid = $loginid;
+    my ($charset, $authdomainid, $cuid, $email, $login_name, $wiki_name, $display_name) = @_;
 
-    _uni($charset, $loginid, $wikiname, $display_name, $email);
+    _uni($charset, $cuid, $wiki_name, $display_name, $email);
 
-    my $existing;
-    my $db = $this->db;
-
-    my (%ids, %wikinames);
-    my ($rewrite_id, $rewrite_wn);
-
-    $loginid =~ s/([^a-z0-9])/'_'.sprintf('%02x', ord($1))/egi;
     my @normalizers = split(/\s*,\s*/, $Foswiki::cfg{UnifiedAuth}{WikiNameNormalizers} || '');
     foreach my $n (@normalizers) {
         next if $n =~ /^\s*$/;
-        $wikiname = $normalizers{$n}->($wikiname);
+        $wiki_name = $normalizers{$n}->($wiki_name);
     }
     eval {
         require Text::Unidecode;
-        $wikiname = Text::Unidecode::unidecode($wikiname);
+        $wiki_name = Text::Unidecode::unidecode($wiki_name);
     };
-    $wikiname =~ s/([^a-z0-9])//gi;
-    $wikiname =~ s/^([a-z])/uc($1)/e;
+    $wiki_name =~ s/([^a-z0-9])//gi;
+    $wiki_name =~ s/^([a-z])/uc($1)/e;
 
-    my $rewrite_short = $Foswiki::cfg{UnifiedAuth}{ShortIDs} || 0;
-    my $id_from_wn = $Foswiki::cfg{UnifiedAuth}{WikiNameIDs} || 0;
-    my $id_serial = $Foswiki::cfg{UnifiedAuth}{ShortIDIncrement} || 0;
-
-    $loginid = $wikiname if $id_from_wn;
-
+    my $db = $this->db;
     my $has = sub {
-        my $id = shift;
-        return $db->selectrow_array("SELECT COUNT(user_id) FROM users WHERE user_id=?", {}, $id);
+        my $name = shift;
+        return $db->selectrow_array("SELECT COUNT(wiki_name) FROM users WHERE wiki_name=?", {}, $name);
     };
-    if (!$rewrite_short || !$id_serial && $has->($loginid)) {
-        $loginid = "${authdomainid}_$loginid";
-    } else {
-        $loginid =~ s/^([^a-z])/x_xx$1/i;
-    }
-    my $fixedid = $loginid;
+
+    my $wn = $wiki_name;
     my $serial = 1;
-    while ($has->($fixedid)) {
-        $fixedid = $loginid . $serial++;
+    while ($has->($wn)) {
+        $wn = $wiki_name . $serial++;
     }
-    $loginid = $fixedid;
+    $wiki_name = $wn;
 
-    $has = sub {
-        my $wn = shift;
-        return $db->selectrow_array("SELECT COUNT(wiki_name) FROM users WHERE wiki_name=?", {}, $wn);
-    };
-    $fixedid = $wikiname;
-    $serial = 1;
-    while ($has->($fixedid)) {
-        $fixedid = $wikiname . $serial++;
-    }
-    $wikiname = $fixedid;
-
-    if (!$loginid || !$wikiname) {
-        die "Could not determine a unique login ID and/or internal name for the $authdomainid account '$loginid'";
-    }
-
-    $this->{db}->do("INSERT INTO users (user_id, wiki_name, display_name, email) VALUES(?,?,?,?)", {},
-        $loginid, $wikiname, $display_name, $email
+    $this->{db}->do("INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email) VALUES(?,?,?,?,?,?)", {},
+        $cuid, $authdomainid, $login_name, $wiki_name, $display_name, $email
     );
-    return $loginid;
+    return $cuid;
 }
 
 sub _uni {
@@ -222,9 +182,9 @@ sub _uni {
 }
 
 sub update_user {
-    my ($this, $charset, $loginid, $display_name, $email) = @_;
-    _uni($charset, $loginid, $display_name, $email);
-    return $this->db->do("UPDATE users SET display_name=?, email=? WHERE user_id=?", {}, _uni($display_name), $email, $loginid);
+    my ($this, $charset, $cuid, $email, $display_name) = @_;
+    _uni($charset, $cuid, $display_name, $email);
+    return $this->db->do("UPDATE users SET display_name=?, email=? WHERE cuid=?", {}, $display_name, $email, $cuid);
 }
 
 sub handleScript {
