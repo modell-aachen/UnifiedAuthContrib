@@ -94,7 +94,6 @@ sub getLoginName {
     ASSERT($cUID) if DEBUG;
 
     my $login = $cUID;
-
     return unless _userReallyExists( $this, $login );
 
     # Validated
@@ -104,7 +103,13 @@ sub getLoginName {
 # check for user being present in the mapping DB
 sub _userReallyExists {
     my ( $this, $login ) = @_;
-Foswiki::Func::writeWarning("_userReallyExists: login_name -> $login");
+
+    my $cuid = _isCUID($login);
+    if ($cuid) {
+        return $this->{uac}->db->selectrow_array(
+            "SELECT COUNT(login_name) FROM users WHERE cuid=?", {}, $cuid);
+    }
+
     return $this->{uac}->db->selectrow_array(
         "SELECT COUNT(login_name) FROM users WHERE login_name=?", {},
         $login
@@ -128,11 +133,15 @@ sub removeUser {
 sub getWikiName {
     my ( $this, $cUID ) = @_;
     ASSERT($cUID) if DEBUG;
-Foswiki::Func::writeWarning("getWikiName: cuid -> $cUID");
+
+    my $login = _isCUID($cUID);
+    if ($login) {
+        return $this->{uac}->db->selectrow_array(
+            "SELECT wiki_name FROM users WHERE cuid=?", {}, $login);
+    }
+
     return $this->{uac}->db->selectrow_array(
-        "SELECT wiki_name FROM users WHERE cuid=?", {},
-        $cUID
-    );
+        "SELECT wiki_name FROM users WHERE login_name=?", {}, $cUID);
 }
 
 =begin TML
@@ -256,10 +265,10 @@ sub findUserByWikiName {
     my ( $this, $wn, $skipExistanceCheck ) = @_;
 
     # ToDo.
-    if ($wn =~ /^[a-z0-9]{8}_2d[a-z0-9]{4}_2d[a-z0-9]{4}_2d[a-z0-9]{4}_2d[a-z0-9]{12}$/) {
-        $wn =~ s/_2d/-/g;
+    my $cuid = _isCUID($wn);
+    if ($cuid) {
         return $this->{uac}->db->selectrow_arrayref(
-            "SELECT cuid FROM users WHERE cuid=?", {}, $wn) || [];
+            "SELECT cuid FROM users WHERE cuid=?", {}, $cuid) || [];
     }
 
     # ToDo
@@ -288,6 +297,18 @@ sub setPassword {
 # required so that sudo=sudo login works
 sub passwordError {
     return;
+}
+
+sub _isCUID {
+    my $login = shift;
+
+    my $name = $login;
+    if ($name =~ /^[a-z0-9]{8}(_2d|-)[a-z0-9]{4}(_2d|-)[a-z0-9]{4}(_2d|-)[a-z0-9]{4}(_2d|-)[a-z0-9]{12}$/) {
+        $name =~ s/_2d/-/g;
+        return $name;
+    }
+
+    0;
 }
 
 # functions copied from TopicUserMapping that need to be rewritten later {{{
