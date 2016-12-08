@@ -81,7 +81,6 @@ sub isMyLogin {
 
 sub processLogin {
     my $this = shift;
-Foswiki::Func::writeWarning("processing login");
     my $req = $this->{session}{request};
     my $state = $req->param('state');
     $req->delete('state');
@@ -133,7 +132,7 @@ Foswiki::Func::writeWarning("processing login");
             die with Error::Simple("Failed to initialize Google account '$user_email' ($err)\n");
         }
         return {
-            user_id => $user_id,
+            cuid => $user_id,
             data => $acc_info,
         };
     }
@@ -145,7 +144,7 @@ Foswiki::Func::writeWarning("processing login");
         $uauth->update_user('UTF-8', $userdata->{cuid}, $acc_info->{email}, $cur_dn);
     }
     return {
-        user_id => $userdata->{user_id},
+        cuid => $userdata->{cuid},
         data => $acc_info,
     };
 }

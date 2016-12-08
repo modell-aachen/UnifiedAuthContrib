@@ -180,15 +180,15 @@ sub login {
                 $error = $@;
                 $error = $@->text if ref($@) && $@->isa("Error");
             }
-            if (ref($loginResult) eq 'HASH' && $loginResult->{user_id}) {
-                $this->userLoggedIn($loginResult->{user_id});
+            if (ref($loginResult) eq 'HASH' && $loginResult->{cuid}) {
+                $this->userLoggedIn($loginResult->{cuid});
 
                 $session->logger->log(
                     {
                         level    => 'info',
                         action   => 'login',
                         webTopic => $web . '.' . $topic,
-                        extra    => "AUTHENTICATION SUCCESS - $loginResult->{user_id} - "
+                        extra    => "AUTHENTICATION SUCCESS - $loginResult->{cuid} - "
                     }
                 );
                 $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
