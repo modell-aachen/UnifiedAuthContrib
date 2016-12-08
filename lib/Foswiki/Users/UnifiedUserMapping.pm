@@ -201,6 +201,19 @@ If it doesn't, then the user mapping manager is asked instead.
 
 =cut
 
+sub getDisplayName {
+    my ($this, $login) = @_;
+
+    my $cuid = _isCUID($login);
+    if ($cuid) {
+        return $this->{uac}->db->selectrow_array(
+            "SELECT display_name FROM users WHERE cuid=?", {}, $cuid);
+    }
+
+    return $this->{uac}->db->selectrow_array(
+        "SELECT display_name FROM users WHERE login_name=?", {}, $login);
+}
+
 sub findUserByEmail {
     my ( $this, $email ) = @_;
     ASSERT($email) if DEBUG;
