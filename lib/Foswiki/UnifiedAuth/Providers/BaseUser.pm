@@ -60,28 +60,70 @@ sub new {
 }
 
 sub initiateLogin {
-    return 1;
+    my ($this, $origin) = @_;
+    my $state = $this->SUPER::initiateLogin($origin);
+    return $state;
 }
 
 sub isMyLogin {
     my $this = shift;
     my $req = $this->{session}{request};
-    return $req->param('state') && $req->param('code');
+
+    my $user = $req->param('username') || '';
+    my $admin = $Foswiki::cfg{AdminUserLogin};
+    return $user eq $admin;
 }
 
 sub processLogin {
     my $this = shift;
     my $req = $this->{session}{request};
-    my $state = $req->param('state');
-    $req->delete('state');
+    my $cgis = $this->{session}->getCGISession();
+    my $state = $cgis->param("uauth_state");
+    $req->delete("uauth_state");
     die with Error::Simple("You seem to be using an outdated URL. Please try again.\n") unless $this->SUPER::processLogin($state);
+    my $user = $req->param('username') || '';
+    my $pass = $req->param('password') || '';
+    my $result = $this->checkPassword($user, $pass);
+    return {} unless $result;
 
     my $uauth = Foswiki::UnifiedAuth->new();
     my $db = $uauth->db;
     $uauth->apply_schema('users_baseuser', @schema_updates);
-    my $provider = $db->selectrow_hashref("SELECT * FROM providers WHERE name=?", {}, $this->{id});
+    my $provider = $db->selectrow_hashref("SELECT * FROM providers WHERE name=?", {}, 'baseuser');
+    my $userdata = $db->selectrow_hashref("SELECT * FROM users AS u NATURAL JOIN users_baseuser WHERE u.login_name=? AND u.pid=?", {}, $user, $provider->{pid});
+    return {
+        cuid => $userdata->{cuid},
+        data => JSON::from_json($userdata->{info})
+    };
+}
 
-    return {};
+sub checkPassword {
+    my ( $this, $login, $pass ) = @_;
+    return 0 unless $login eq $Foswiki::cfg{AdminUserLogin};
+
+    # All of the digest / hash routines require bytes
+    $pass = Encode::encode_utf8($pass);
+    my $hash = $Foswiki::cfg{Password};
+
+    if ($hash) {
+        if (length($hash) == 13) {
+            return 1 if (crypt($pass, $hash) eq $hash);
+        } elsif (length($hash) == 42) {
+            my $salt = substr($hash, 0, 10);
+            return 1 if ($salt . Digest::MD5::md5_hex($salt . $pass) eq $hash);
+        } else {
+            my $salt = substr($hash, 0, 14);
+            return 1 if (Crypt::PasswdMD5::apache_md5_crypt( $pass, $salt ) eq $hash);
+        }
+    }
+
+    # be a little more helpful to the admin
+    if ( $login eq $Foswiki::cfg{AdminUserLogin} && !$hash ) {
+     $this->{error} =
+       'To login as ' . $login . ', you must set {Password} in configure.';
+    }
+
+    return 0;
 }
 
 1;

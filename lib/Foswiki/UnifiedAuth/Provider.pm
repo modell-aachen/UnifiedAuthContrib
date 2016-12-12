@@ -31,8 +31,8 @@ sub initiateLogin {
     die with Error::Simple("Login requires a valid session; do you have cookies disabled?") if !$cgis;
 
     my $csrf = sha1_base64(rand(). "$$ $0");
-    my $state = "$csrf,$this->{id},$origin";
-    $cgis->param('uauth_state', $state);
+    my $state = "$csrf,uauth,$origin";
+    $cgis->param('uauth_state', $state) unless $cgis->param('uauth_state');
     $cgis->param('uauth_provider', $this->{id});
     $cgis->flush;
     die $cgis->errstr if $cgis->errstr;
@@ -41,7 +41,6 @@ sub initiateLogin {
 
 sub processLogin {
     my ($this, $state) = @_;
-
     my $cgis = $this->{session}->getCGISession();
     die with Error::Simple("Login requires a valid session; do you have cookies disabled?") if !$cgis;
     my $saved = $cgis->param('uauth_state');

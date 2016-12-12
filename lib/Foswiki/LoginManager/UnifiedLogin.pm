@@ -160,8 +160,8 @@ sub login {
 
     my $cgis = $session->getCGISession();
     my $provider;
-    $provider = $cgis->param('uauth_provider') if $cgis;
-    $provider = $query->param('uauth_provider') unless $provider;
+    $provider = $query->param('uauth_provider') || '';
+    $provider = $cgis->param('uauth_provider') if $cgis && !$provider;
 
     my $topic  = $session->{topicName};
     my $web    = $session->{webName};
@@ -171,84 +171,21 @@ sub login {
         $context->{uauth_choose} = 1;
     }
 
-    $session->{request}->delete('validation_key');
-    if ($provider) {
-        $provider = $this->_authProvider($provider);
-        my $initial = $query->param('uauth_initial') || 0;
-        return $provider->initiateLogin($query->param('foswiki_origin')) if $initial;
+    my @providers;
+    push @providers, $provider if $provider;
+    push @providers, keys $Foswiki::cfg{UnifiedAuth}{Providers} unless $provider;
+    my $external = $query->param('uauth_external') || 0;
 
-        if ($provider->isMyLogin) {
-            my $loginResult;
-            my $error = '';
-            eval {
-                $loginResult = $provider->processLogin();
-            };
-            if ($@) {
-                $error = $@;
-                $error = $@->text if ref($@) && $@->isa("Error");
-            }
-            if (ref($loginResult) eq 'HASH' && $loginResult->{cuid}) {
-                $this->userLoggedIn($loginResult->{cuid});
+    foreach my $name (@providers) {
+        $provider = $this->_authProvider($name);
+        $provider->initiateLogin($query->param('foswiki_origin'));
 
-                $session->logger->log(
-                    {
-                        level    => 'info',
-                        action   => 'login',
-                        webTopic => $web . '.' . $topic,
-                        extra    => "AUTHENTICATION SUCCESS - $loginResult->{cuid} - "
-                    }
-                );
-                $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
-                  if $this->{_cgisession};
-                my ( $origurl, $origmethod, $origaction ) = _unpackRequest($provider->origin);
-                my $current_uri = $query->uri;
-                $current_uri =~ s/\?.*$//;
-                my ($origurl_noquery) = ($origurl =~ /^(.*?)(?:\?.*)?$/);
-                if (!$origurl || $origurl_noquery eq $current_uri) {
-                    $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
-                    $session->{request}->delete_all;
-                } else {
-                    # Unpack params encoded in the origurl and restore them
-                    # to the query. If they were left in the query string they
-                    # would be lost if we redirect with passthrough.
-                    # First extract the params, ignoring any trailing fragment.
-                    if ( $origurl =~ s/\?([^#]*)// ) {
-                        foreach my $pair ( split( /[&;]/, $1 ) ) {
-                            if ( $pair =~ /(.*?)=(.*)/ ) {
-                                $session->{request}->param( $1, TAINT($2) );
-                            }
-                        }
-                    }
-
-                    # Restore the action too
-                    $session->{request}->action($origaction) if $origaction;
-                }
-                $session->{request}->method($origmethod);
-                $session->redirect($origurl, 1);
-                return;
-            }
-
-            if ($Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
-                $context->{uauth_failed_nochoose} = 1;
-            }
-            $session->{response}->status(200);
-            $session->logger->log(
-                {
-                    level    => 'info',
-                    action   => 'login',
-                    webTopic => $web . '.' . $topic,
-                    extra    => "AUTHENTICATION FAILURE",
-                }
-            );
-            my $tmpl = $this->_loadTemplate;
-            my $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE');
-            return $this->_renderTemplate($tmpl,
-                UAUTH_AUTH_FAILURE_MESSAGE => $error,
-                BANNER => $banner,
-            );
-        }
+        # ToDo. currently set by JS when the user clicks the facebook/google button
+        return $provider->initiateExternalLogin if $external && $provider->can('initiateExternalLogin');
+        return $this->processProviderLogin($query, $session, $provider) if $provider->isMyLogin;
     }
 
+    $session->{request}->delete('validation_key');
     if (my $forceauthid = $session->{request}->param('uauth_force_provider')) {
         if (!exists $Foswiki::cfg{UnifiedAuth}{Providers}{$forceauthid}) {
             die "Invalid authentication source requested";
@@ -288,8 +225,102 @@ sub login {
     $tmpl = $topicObject->renderTML($tmpl);
     $tmpl =~ s/<nop>//g;
     $session->writeCompletePage($tmpl);
+}
 
-    # die("Login selection page not supported yet");
+sub loadSession {
+    my $this = shift;
+
+    my $session = $this->{session};
+    my $logout = $session && $session->{request} && $session->{request}->param('logout');
+    my $user = $this->SUPER::loadSession(@_);
+
+    if ($logout) {
+        my $cgis = $session->getCGISession();
+        if ($cgis) {
+            $cgis->clear(['uauth_provider']);
+            $cgis->clear(['uauth_state']);
+        }
+    }
+
+    return $user;
+}
+
+sub processProviderLogin {
+    my ($this, $query, $session, $provider) = @_;
+
+    my $context = Foswiki::Func::getContext();
+    my $topic  = $session->{topicName};
+    my $web    = $session->{webName};
+
+    my $loginResult;
+    my $error = '';
+    eval {
+        $loginResult = $provider->processLogin();
+    };
+    if ($@) {
+        $error = $@;
+        $error = $@->text if ref($@) && $@->isa("Error");
+    }
+    if (ref($loginResult) eq 'HASH' && $loginResult->{cuid}) {
+        $this->userLoggedIn($loginResult->{cuid});
+        $session->logger->log(
+            {
+                level    => 'info',
+                action   => 'login',
+                webTopic => $web . '.' . $topic,
+                extra    => "AUTHENTICATION SUCCESS - $loginResult->{cuid} - "
+            }
+        );
+        $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
+          if $this->{_cgisession};
+        my ( $origurl, $origmethod, $origaction ) = _unpackRequest($provider->origin);
+        my $current_uri = $query->uri;
+        $current_uri =~ s/\?.*$//;
+        my ($origurl_noquery) = ($origurl =~ /^(.*?)(?:\?.*)?$/);
+        if (!$origurl || $origurl_noquery eq $current_uri) {
+            $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
+            $session->{request}->delete_all;
+        } else {
+            # Unpack params encoded in the origurl and restore them
+            # to the query. If they were left in the query string they
+            # would be lost if we redirect with passthrough.
+            # First extract the params, ignoring any trailing fragment.
+            if ( $origurl =~ s/\?([^#]*)// ) {
+                foreach my $pair ( split( /[&;]/, $1 ) ) {
+                    if ( $pair =~ /(.*?)=(.*)/ ) {
+                        $session->{request}->param( $1, TAINT($2) );
+                    }
+                }
+            }
+
+            # Restore the action too
+            $session->{request}->action($origaction) if $origaction;
+        }
+        $session->{request}->method($origmethod);
+        $session->redirect($origurl, 1);
+        return 1;
+    }
+
+    if ($Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
+        $context->{uauth_failed_nochoose} = 1;
+    }
+    $session->{response}->status(200);
+    $session->logger->log(
+        {
+            level    => 'info',
+            action   => 'login',
+            webTopic => $web . '.' . $topic,
+            extra    => "AUTHENTICATION FAILURE",
+        }
+    );
+    my $tmpl = $this->_loadTemplate;
+    my $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE');
+    $this->_renderTemplate($tmpl,
+        UAUTH_AUTH_FAILURE_MESSAGE => $error,
+        BANNER => $banner,
+    );
+
+    return 0;
 }
 
 1;

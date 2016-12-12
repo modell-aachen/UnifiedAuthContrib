@@ -23,7 +23,6 @@
   <div id="foswikiLogin">
     <div class="foswikiFormSteps">%{
 }%%{
-}%%TMPL:P{"errorstep"}%%{
 }%%TMPL:P{"formstart"}%%{
 }%%TMPL:P{"titlestep"}%%{
 }%%TMPL:P{"usernamestep"}%%{
@@ -47,10 +46,10 @@
 }%<div class="foswikiFormStep">
 <h3>%MAKETEXT{"Log on with a social network"}%</h3>
 <p>
-<button style="float: left;" type="subbmit" name="facebook"></button>
-<button style="float: right;" type="subbmit" name="google"></button>
+<button style="float: left;" class="social_provider" type="subbmit" name="facebook"></button>
+<button style="float: right;" class="social_provider" type="subbmit" name="google"></button>
 <input type="hidden" name="uauth_provider" value="" />
-<input type="hidden" name="uauth_initial" value="" />
+<input type="hidden" name="uauth_external" value="" />
 <div style="clear: both;"></div>
 </p>
 </div>%{

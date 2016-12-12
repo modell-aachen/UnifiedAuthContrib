@@ -51,10 +51,12 @@ sub _makeOAuth {
     );
 }
 
-sub initiateLogin {
-    my ($this, $origin) = @_;
+sub initiateExternalLogin {
+    my $this = shift;
 
-    my $state = $this->SUPER::initiateLogin($origin);
+    my $session = $this->{session};
+    my $cgis = $this->{session}->getCGISession();
+    my $state = $cgis->param('uauth_state');
 
     my $auth = $this->_makeOAuth;
     my $uri = $auth->authorize(
@@ -64,13 +66,19 @@ sub initiateLogin {
         hd => $this->{config}{domain},
     );
 
-    my $session = $this->{session};
     $this->{session}{response}->redirect(
         -url     => $uri,
         -cookies => $session->{response}->cookies(),
         -status  => '302',
     );
     return 1;
+}
+
+sub initiateLogin {
+    my ($this, $origin) = @_;
+    my $req = $this->{session}{request};
+    return if $req->param('state');
+    return $this->SUPER::initiateLogin($origin);
 }
 
 sub isMyLogin {
