@@ -8,9 +8,6 @@ use DBI;
 use Encode;
 
 use Foswiki::Contrib::PostgreContrib;
-use Foswiki::Users::BaseUserMapping;
-Foswiki::Users::BaseUserMapping->new($Foswiki::Plugins::SESSION) if $Foswiki::Plugins::SESSION;
-my $bu = \%Foswiki::Users::BaseUserMapping::BASE_USERS;
 
 my @schema_updates = (
     [
