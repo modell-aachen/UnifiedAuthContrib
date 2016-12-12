@@ -19,13 +19,13 @@ our @ISA = qw(Foswiki::UnifiedAuth::Provider);
 Foswiki::Users::BaseUserMapping->new($Foswiki::Plugins::SESSION) if $Foswiki::Plugins::SESSION;
 my $bu = \%Foswiki::Users::BaseUserMapping::BASE_USERS;
 
-our $cuids = {
+our %CUIDs = (
     BaseUserMapping_111 => 'aafd6652-3181-4845-b615-4bb7b970ca69',
     BaseUserMapping_222 => 'dc9f6b91-3762-4343-89e6-5d0795e85805',
     BaseUserMapping_333 => '3abfa98b-f92b-42ab-986e-872abca52a49',
     BaseUserMapping_666 => '09c180b0-fc8b-4f2c-a378-c09ccf6fb9f9',
     BaseUserMapping_999 => '40dda76a-1207-400f-b234-69da71ac405b'
-};
+);
 
 my @schema_updates = (
     [
@@ -36,20 +36,20 @@ my @schema_updates = (
         )",
         "INSERT INTO users_baseuser (cuid, info)
             VALUES
-                ('$cuids->{BaseUserMapping_111}', '{\"wikiname\": \"$bu->{BaseUserMapping_111}{wikiname}\", \"description\": \"Project Contributor\"}'),
-                ('$cuids->{BaseUserMapping_222}', '{\"wikiname\": \"$bu->{BaseUserMapping_222}{wikiname}\", \"description\": \"Registration Agent\"}'),
-                ('$cuids->{BaseUserMapping_333}', '{\"wikiname\": \"$bu->{BaseUserMapping_333}{wikiname}\", \"description\": \"Internal Admin User\", \"email\": \"$bu->{BaseUserMapping_333}{email}\"}'),
-                ('$cuids->{BaseUserMapping_666}', '{\"wikiname\": \"$bu->{BaseUserMapping_666}{wikiname}\", \"description\": \"Guest User\"}'),
-                ('$cuids->{BaseUserMapping_999}', '{\"wikiname\": \"$bu->{BaseUserMapping_999}{wikiname}\", \"description\": \"Unknown User\"}')",
+                ('$CUIDs{BaseUserMapping_111}', '{\"wikiname\": \"$bu->{BaseUserMapping_111}{wikiname}\", \"description\": \"Project Contributor\"}'),
+                ('$CUIDs{BaseUserMapping_222}', '{\"wikiname\": \"$bu->{BaseUserMapping_222}{wikiname}\", \"description\": \"Registration Agent\"}'),
+                ('$CUIDs{BaseUserMapping_333}', '{\"wikiname\": \"$bu->{BaseUserMapping_333}{wikiname}\", \"description\": \"Internal Admin User\", \"email\": \"$bu->{BaseUserMapping_333}{email}\"}'),
+                ('$CUIDs{BaseUserMapping_666}', '{\"wikiname\": \"$bu->{BaseUserMapping_666}{wikiname}\", \"description\": \"Guest User\"}'),
+                ('$CUIDs{BaseUserMapping_999}', '{\"wikiname\": \"$bu->{BaseUserMapping_999}{wikiname}\", \"description\": \"Unknown User\"}')",
         "INSERT INTO meta (type, version) VALUES('users_baseuser', 0)",
         "INSERT INTO providers (pid, name) VALUES(0, 'baseuser')",
         "INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email)
             VALUES
-                ('$cuids->{BaseUserMapping_111}', 0, '$bu->{BaseUserMapping_111}{login}', '$bu->{BaseUserMapping_111}{wikiname}', 'Project Contributor', ''),
-                ('$cuids->{BaseUserMapping_222}', 0, '$bu->{BaseUserMapping_222}{login}', '$bu->{BaseUserMapping_222}{wikiname}', 'Registration Agent', ''),
-                ('$cuids->{BaseUserMapping_333}', 0, '$bu->{BaseUserMapping_333}{login}', '$bu->{BaseUserMapping_333}{wikiname}', 'Internal Admin User', '$bu->{BaseUserMapping_333}{email}'),
-                ('$cuids->{BaseUserMapping_666}', 0, '$bu->{BaseUserMapping_666}{login}', '$bu->{BaseUserMapping_666}{wikiname}', 'Guest User', ''),
-                ('$cuids->{BaseUserMapping_999}', 0, '$bu->{BaseUserMapping_999}{login}', '$bu->{BaseUserMapping_999}{wikiname}', 'Unknown User', '')"
+                ('$CUIDs{BaseUserMapping_111}', 0, '$bu->{BaseUserMapping_111}{login}', '$bu->{BaseUserMapping_111}{wikiname}', 'Project Contributor', ''),
+                ('$CUIDs{BaseUserMapping_222}', 0, '$bu->{BaseUserMapping_222}{login}', '$bu->{BaseUserMapping_222}{wikiname}', 'Registration Agent', ''),
+                ('$CUIDs{BaseUserMapping_333}', 0, '$bu->{BaseUserMapping_333}{login}', '$bu->{BaseUserMapping_333}{wikiname}', 'Internal Admin User', '$bu->{BaseUserMapping_333}{email}'),
+                ('$CUIDs{BaseUserMapping_666}', 0, '$bu->{BaseUserMapping_666}{login}', '$bu->{BaseUserMapping_666}{wikiname}', 'Guest User', ''),
+                ('$CUIDs{BaseUserMapping_999}', 0, '$bu->{BaseUserMapping_999}{login}', '$bu->{BaseUserMapping_999}{wikiname}', 'Unknown User', '')"
     ]
 );
 

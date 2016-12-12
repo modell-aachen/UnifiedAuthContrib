@@ -14,12 +14,12 @@ package Foswiki::Users::UnifiedUserMapping;
 use strict;
 use warnings;
 
-# use base 'Foswiki::Users::BaseUserMapping';
 use Foswiki::UserMapping ();
 our @ISA = ('Foswiki::UserMapping');
 
 
 use Foswiki::UnifiedAuth;
+use Foswiki::UnifiedAuth::Providers::BaseUser;
 
 use Assert;
 use Error qw( :try );
@@ -515,6 +515,16 @@ sub eachGroupMember {
 
     #    print "Returning iterator for eachGroupMember $group \n";
     return new Foswiki::ListIterator( $this->{eachGroupMember}->{$group} );
+}
+
+sub isAdmin {
+    my ($this, $cuid) = @_;
+    return 0 unless defined $cuid;
+
+    my $base = \%Foswiki::UnifiedAuth::Providers::BaseUser::CUIDs;
+    return 1 if $base->{BaseUserMapping_333} eq $cuid;
+
+    return 0;
 }
 
 sub isGroup {
