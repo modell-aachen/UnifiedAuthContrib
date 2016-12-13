@@ -130,7 +130,7 @@ sub processLogin {
         my $user_email = $acc_info->{email};
         eval {
             $db->begin_work;
-            $db->do("INSERT INTO users_google (cuid, info) VALUES(?,?)", {}, $user_uuid, ,JSON::encode_json($acc_info));
+            $db->do("INSERT INTO users_google (cuid, info) VALUES(?,?)", {}, $user_uuid, JSON::encode_json($acc_info));
             $user_id = $uauth->add_user('UTF-8', $provider->{pid}, $user_uuid, $user_email, $user_email, $this->_formatWikiName($acc_info), $this->_formatDisplayName($acc_info));
             $db->commit;
         };
