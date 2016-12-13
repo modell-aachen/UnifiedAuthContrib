@@ -83,6 +83,8 @@ sub processLogin {
     die with Error::Simple("You seem to be using an outdated URL. Please try again.\n") unless $this->SUPER::processLogin($state);
     my $user = $req->param('username') || '';
     my $pass = $req->param('password') || '';
+    $req->delete("username");
+    $req->delete("password");
     my $result = $this->checkPassword($user, $pass);
     return {} unless $result;
 
