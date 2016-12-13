@@ -41,11 +41,14 @@ my @schema_updates = (
             cuid UUID NOT NULL PRIMARY KEY,
             name TEXT NOT NULL
         )",
+        "CREATE INDEX idx_groups ON groups (name)",
         "CREATE TABLE group_members (
             g_cuid UUID NOT NULL,
             u_cuid UUID NOT NULL,
             PRIMARY KEY (g_cuid, u_cuid)
         )",
+        "CREATE INDEX idx_group_cuid ON group_members (g_cuid)",
+        "CREATE INDEX idx_member_cuid ON group_members (u_cuid)",
         "CREATE TABLE nested_groups (
             parent UUID NOT NULL,
             child UUID NOT NULL,
