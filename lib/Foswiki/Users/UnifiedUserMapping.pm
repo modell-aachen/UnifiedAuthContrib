@@ -612,12 +612,12 @@ Subclasses *must* implement this method.
 sub eachMembership {
     my ($this, $user) = @_;
     my $cuid = $this->_userToCUID($user);
-    my $grps = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $cuid);
-SELECT cuid, name FROM groups AS g
+    my @grps = map {$_->{name}} @{$this->{uac}->db->selectall_arrayref(<<SQL, {Slice => {}}, $cuid)};
+SELECT name FROM groups AS g
 JOIN group_members AS m ON u.cuid=m.g_cuid
 WHERE m.u_cuid=?
 SQL
-    return new Foswiki::ListIterator(\@{$grps});
+    return new Foswiki::ListIterator(\@grps);
 }
 
 =begin TML
