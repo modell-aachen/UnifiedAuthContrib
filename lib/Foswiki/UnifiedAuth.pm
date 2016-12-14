@@ -174,6 +174,12 @@ sub add_user {
     return $cuid;
 }
 
+sub delete_user {
+    my ($this, $cuid) = @_;
+
+    $this->{db}->do("DELETE FROM users WHERE user_id=?", {}, $cuid);
+}
+
 sub _uni {
     my $charset = shift;
     for my $i (@_) {
