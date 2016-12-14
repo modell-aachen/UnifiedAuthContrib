@@ -45,6 +45,10 @@ sub initiateLogin {
     return $state;
 }
 
+sub refresh {
+    # my ( $this ) = @_;
+}
+
 sub supportsRegistration {
     1;
 }
