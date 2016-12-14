@@ -126,12 +126,11 @@ sub processLogin {
     my $exist = $db->selectrow_array("SELECT COUNT(login_name) FROM users WHERE login_name=? AND pid=?", {}, $acc_info->{email}, $pid);
     if ($exist == 0) {
         my $user_id;
-        my $user_uuid = $this->guid;
         my $user_email = $acc_info->{email};
         eval {
             $db->begin_work;
-            $db->do("INSERT INTO users_google (cuid, info) VALUES(?,?)", {}, $user_uuid, JSON::encode_json($acc_info));
-            $user_id = $uauth->add_user('UTF-8', $pid, $user_uuid, $user_email, $user_email, $this->_formatWikiName($acc_info), $this->_formatDisplayName($acc_info));
+            $user_id = $uauth->add_user('UTF-8', $pid, undef, $user_email, $user_email, $this->_formatWikiName($acc_info), $this->_formatDisplayName($acc_info));
+            $db->do("INSERT INTO users_google (cuid, info) VALUES(?,?)", {}, $user_id, ,JSON::encode_json($acc_info));
             $db->commit;
         };
         if ($@) {

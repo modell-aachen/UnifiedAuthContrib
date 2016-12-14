@@ -8,6 +8,7 @@ use DBI;
 use Encode;
 
 use Foswiki::Contrib::PostgreContrib;
+use Data::GUID;
 
 my @schema_updates = (
     [
@@ -129,11 +130,18 @@ my %normalizers = (
     }
 );
 
+sub guid {
+    my $this = shift;
+    Data::GUID->guid;
+}
+
 sub add_user {
     my $this = shift;
     my ($charset, $authdomainid, $cuid, $email, $login_name, $wiki_name, $display_name) = @_;
 
     _uni($charset, $cuid, $wiki_name, $display_name, $email);
+
+    $cuid = $this->guid unless $cuid;
 
     my @normalizers = split(/\s*,\s*/, $Foswiki::cfg{UnifiedAuth}{WikiNameNormalizers} || '');
     foreach my $n (@normalizers) {
