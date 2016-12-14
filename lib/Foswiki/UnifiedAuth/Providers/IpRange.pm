@@ -57,7 +57,6 @@ sub processLogin {
     my $id = $this->{id};
     my $config = $this->{config};
     my $state = $req->param('state');
-    $req->delete('state');
     die with Error::Simple("You seem to be using an outdated URL. Please try again.\n") unless $this->SUPER::processLogin($state);
 
     my $iprange = $config->{ip_range};
@@ -83,6 +82,8 @@ sub processLogin {
         }
         $uauth->add_user('UTF-8', $this->{id}, $config->{user_id}, $config->{wiki_name}, $config->{display_name}, $config->{email} || '');
     }
+
+    $req->delete('state');
 
     return {
         user_id => $config->{user_id},
