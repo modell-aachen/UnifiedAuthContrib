@@ -88,7 +88,7 @@ sub forceAuthentication {
         # that won't be snatched by the browser, but can be used
         # by JS to generate login info.
         $response->header(
-            -status           => 401,
+            -status           => 200,
             -WWW_Authenticate => 'FoswikiBasic realm="'
               . ( $Foswiki::cfg{AuthRealm} || "" ) . '"'
         );
@@ -173,7 +173,10 @@ sub login {
     my @providers;
     push @providers, $provider if $provider;
     push @providers, keys %{$Foswiki::cfg{UnifiedAuth}{Providers}} unless $provider;
+<<<<<<< HEAD
     push @providers, 'default';
+=======
+>>>>>>> Minor fixes to reduce warnings in Apache's log file.
     my $external = $query->param('uauth_external') || 0;
 
     foreach my $name (@providers) {
