@@ -65,28 +65,15 @@ sub initiateLogin {
     return $state;
 }
 
-sub isMyLogin {
-    my $this = shift;
-    my $req = $this->{session}{request};
-
-    my $user = $req->param('username') || '';
-    my $admin = $Foswiki::cfg{AdminUserLogin};
-    return $user eq $admin;
+sub useDefaultLogin {
+    1;
 }
 
-sub processLogin {
-    my $this = shift;
-    my $req = $this->{session}{request};
-    my $cgis = $this->{session}->getCGISession();
-    my $state = $cgis->param("uauth_state");
-    $req->delete("uauth_state");
-    die with Error::Simple("You seem to be using an outdated URL. Please try again.\n") unless $this->SUPER::processLogin($state);
-    my $user = $req->param('username') || '';
-    my $pass = $req->param('password') || '';
-    $req->delete("username");
-    $req->delete("password");
+sub processLoginData {
+    my ($this, $user, $pass) = @_;
+
     my $result = $this->checkPassword($user, $pass);
-    return {} unless $result;
+    return undef unless $result;
 
     my $uauth = Foswiki::UnifiedAuth->new();
     my $db = $uauth->db;

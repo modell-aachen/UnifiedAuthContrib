@@ -161,29 +161,40 @@ sub login {
 
     my $cgis = $session->getCGISession();
     my $provider;
-    $provider = $query->param('uauth_provider') || '';
-    $provider = $cgis->param('uauth_provider') if $cgis && !$provider;
-
-    my $topic  = $session->{topicName};
-    my $web    = $session->{webName};
+    $provider = $query->param('uauth_provider');
+    $provider = $cgis->param('uauth_provider') if $cgis && $provider;
+#    $provider = $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider} unless $provider;
 
     my $context = Foswiki::Func::getContext();
-    unless ($Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
+#    unless ($Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
         $context->{uauth_choose} = 1;
-    }
+#    }
 
     my @providers;
     push @providers, $provider if $provider;
-    push @providers, keys $Foswiki::cfg{UnifiedAuth}{Providers} unless $provider;
+    push @providers, keys %{$Foswiki::cfg{UnifiedAuth}{Providers}} unless $provider;
+    push @providers, 'default';
     my $external = $query->param('uauth_external') || 0;
 
     foreach my $name (@providers) {
         $provider = $this->_authProvider($name);
-        $provider->initiateLogin($query->param('foswiki_origin'));
 
-        # ToDo. currently set by JS when the user clicks the facebook/google button
+        if ($provider->isMyLogin) {
+            my $result = $this->processProviderLogin($query, $session, $provider);
+            return $result if $result;
+        }
+    }
+
+#    return $provider->initiateExternalLogin if $external && $provider->can('initiateExternalLogin');
+#        $provider->initiateLogin($query->param('foswiki_origin'));
+
+    my $uauth_provider = $query->param('uauth_provider');
+    if($external && $uauth_provider) {
+        $provider = $this->_authProvider($uauth_provider);
+
         return $provider->initiateExternalLogin if $external && $provider->can('initiateExternalLogin');
-        return $this->processProviderLogin($query, $session, $provider) if $provider->isMyLogin;
+        return $provider->initiateLogin($query->param('foswiki_origin'));
+
     }
 
     $session->{request}->delete('validation_key');
@@ -197,35 +208,12 @@ sub login {
 
     if (my $authid = $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
         my $auth = $this->_authProvider($authid);
-        return $auth->initiateLogin(_packRequest($session));
+        return $auth->initiateLogin(_packRequest($session)) unless $auth->useDefaultLogin();
     }
 
-    my $path_info = $query->path_info();
-    if ( $path_info =~ m/['"]/g ) {
-        $path_info = substr( $path_info, 0, ( ( pos $path_info ) - 1 ) );
-    }
+    # render default dialog
+    return $this->_authProvider('default')->initiateLogin(_packRequest($session));
 
-    my $origin = $query->param('foswiki_origin');
-    my ( $origurl, $origmethod, $origaction ) = _unpackRequest($origin);
-    $origurl ||= '';
-
-    $session->{prefs}->setSessionPreferences(
-        FOSWIKI_ORIGIN => Foswiki::entityEncode(
-            _packRequest( $origurl, $origmethod, $origaction )
-        ),
-
-        PATH_INFO =>
-          Foswiki::urlEncode( NFC( Foswiki::decode_utf8($path_info) ) )
-    );
-
-    my $tmpl = $session->templates->readTemplate('uauth');
-    my $topicObject = Foswiki::Meta->new( $session, $web, $topic );
-    $context->{uauth_login_default} = 1;
-
-    $tmpl = $topicObject->expandMacros($tmpl);
-    $tmpl = $topicObject->renderTML($tmpl);
-    $tmpl =~ s/<nop>//g;
-    $session->writeCompletePage($tmpl);
 }
 
 sub loadSession {

@@ -47,6 +47,13 @@ sub refresh {
     # my ( $this ) = @_;
 }
 
+# Indicated whether we have to handle this request.
+sub isMyLogin {
+    my $this = shift;
+
+    return 0;
+}
+
 sub supportsRegistration {
     1;
 }

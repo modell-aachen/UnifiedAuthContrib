@@ -18,6 +18,9 @@
 
 %TMPL:DEF{"passwordnote"}%<span class="foswikiUnvisited">[[%SCRIPTURLPATH{view}%/%SYSTEMWEB%/ResetPassword?username=%URLPARAM{usernamestep}%][%MAKETEXT{"I forgot my password"}%]]</span>%TMPL:END%
 
+%TMPL:DEF{"statestep"}%<input type="hidden" name="state" value="%UAUTHSTATE%" />%TMPL:END%
+%TMPL:DEF{"uauthloginstep"}%<input type="hidden" name="uauthlogin" value="default" />%TMPL:END%
+
 %TMPL:DEF{"form"}%%{
 }%<div class="uauth">
   <div id="foswikiLogin">
@@ -27,6 +30,8 @@
 }%%TMPL:P{"titlestep"}%%{
 }%%TMPL:P{"usernamestep"}%%{
 }%%TMPL:P{"passwordstep"}%%{
+}%%TMPL:P{"statestep"}%%{
+}%%TMPL:P{"uauthloginstep"}%%{
 }%%TMPL:P{"submitstep"}%%{
 }%<hr>%{
 }%%TMPL:P{context="uauth_choose" then="auth_providers"}%%{
