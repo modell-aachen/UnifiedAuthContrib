@@ -121,9 +121,9 @@ sub processLogin {
     # email, name, family_name, given_name
     my $uauth = Foswiki::UnifiedAuth->new();
     my $db = $uauth->db;
+    my $pid = $this->getPid();
     $uauth->apply_schema('users_google', @schema_updates);
-    my $provider = $db->selectrow_hashref("SELECT * FROM providers WHERE name=?", {}, $this->{id});
-    my $exist = $db->selectrow_array("SELECT COUNT(login_name) FROM users WHERE login_name=? AND pid=?", {}, $acc_info->{email}, $provider->{pid});
+    my $exist = $db->selectrow_array("SELECT COUNT(login_name) FROM users WHERE login_name=? AND pid=?", {}, $acc_info->{email}, $pid);
     if ($exist == 0) {
         my $user_id;
         my $user_uuid = $this->guid;
@@ -131,7 +131,7 @@ sub processLogin {
         eval {
             $db->begin_work;
             $db->do("INSERT INTO users_google (cuid, info) VALUES(?,?)", {}, $user_uuid, JSON::encode_json($acc_info));
-            $user_id = $uauth->add_user('UTF-8', $provider->{pid}, $user_uuid, $user_email, $user_email, $this->_formatWikiName($acc_info), $this->_formatDisplayName($acc_info));
+            $user_id = $uauth->add_user('UTF-8', $pid, $user_uuid, $user_email, $user_email, $this->_formatWikiName($acc_info), $this->_formatDisplayName($acc_info));
             $db->commit;
         };
         if ($@) {
@@ -146,7 +146,7 @@ sub processLogin {
     }
 
     # Check if values need updating
-    my $userdata = $db->selectrow_hashref("SELECT * FROM users AS u NATURAL JOIN users_google WHERE u.login_name=? AND u.pid=?", {}, $acc_info->{email}, $provider->{pid});
+    my $userdata = $db->selectrow_hashref("SELECT * FROM users AS u NATURAL JOIN users_google WHERE u.login_name=? AND u.pid=?", {}, $acc_info->{email}, $pid);
     my $cur_dn = $this->_formatDisplayName($acc_info);
     if ($cur_dn ne $userdata->{display_name}) {
         $uauth->update_user('UTF-8', $userdata->{cuid}, $acc_info->{email}, $cur_dn);

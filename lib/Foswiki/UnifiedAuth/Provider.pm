@@ -53,6 +53,20 @@ sub supportsRegistration {
     1;
 }
 
+sub getPid {
+    my ( $this ) = @_;
+
+    my $uauth = Foswiki::UnifiedAuth->new();
+    my $db = $uauth->db;
+    my $pid = $db->selectrow_array("SELECT pid FROM providers WHERE name=?", {}, $this->{id});
+
+    return $pid if($pid);
+
+    Foswiki::Func::writeWarning("Could not get pid of $this->{id}; creating a new one...");
+    $db->do("INSERT INTO providers (name) VALUES(?)", {}, $this->{id});
+    return $this->getPid();
+}
+
 sub processLogin {
     my ($this, $state) = @_;
     my $cgis = $this->{session}->getCGISession();
