@@ -25,8 +25,7 @@ sub addUser {
 }
 
 sub useDefaultLogin {
-    my $this = shift;
-    0;
+    return 0;
 }
 
 sub initiateLogin {
@@ -70,8 +69,8 @@ sub processLogin {
     my ($this, $state) = @_;
     my $cgis = $this->{session}->getCGISession();
     die with Error::Simple("Login requires a valid session; do you have cookies disabled?") if !$cgis;
-    my $saved = $cgis->param('uauth_state');
-    return $saved eq $state;
+    my $saved = $cgis->param('uauth_state') || '';
+    return $saved eq ($state || '');
 }
 
 sub processUrl {

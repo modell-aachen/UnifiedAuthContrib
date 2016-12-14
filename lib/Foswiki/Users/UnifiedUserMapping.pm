@@ -367,12 +367,16 @@ sub mapper_getEmails {
     my $uac = Foswiki::UnifiedAuth->new();
     my $cuid = $this->_userToCUID($user);
 
-    # ToDo!
-    my $addr = $uac->db->selectrow_array(
-        "SELECT email FROM users WHERE cuid=?", {}, $cuid
-    );
-
-    return () if $addr eq '';
+    my $addr;
+    eval { # XXX
+        $addr = $uac->db->selectrow_array(
+            "SELECT email FROM users WHERE cuid=?", {}, $cuid
+        );
+    };
+    if($@) {
+        Foswiki::Func::writeWarning($@);
+    }
+    return () unless $addr;
     return split(';', $addr);
 }
 
@@ -669,7 +673,6 @@ sub groupAllowsChange {
     $grpWeb = $Foswiki::cfg{UsersWebName};
 
     $grpName = undef if (not $this->{session}->topicExists($grpWeb, $grpName));
-    my $cuid = $this->_userToCUID($user);
     return Foswiki::Func::checkAccessPermission(
         'CHANGE', $cuid, undef, $grpName, $grpWeb);
 }

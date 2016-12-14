@@ -79,7 +79,7 @@ sub forceAuthentication {
         my $response = $session->{response};
 
         my $authid = $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider};
-        if ($authid ne '') {
+        if ($authid) {
             my $auth = $this->_authProvider($authid);
             return $auth->initiateLogin(_packRequest($session)) unless $auth->useDefaultLogin;
         }
