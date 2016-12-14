@@ -8,6 +8,7 @@ lib/Foswiki/UnifiedAuth.pm 0644 Main mapping module
 lib/Foswiki/UnifiedAuth/Provider.pm 0644 Base module for auth providers
 lib/Foswiki/UnifiedAuth/Providers/BaseUser.pm 0644 BaseUser provider
 lib/Foswiki/UnifiedAuth/Providers/Google.pm 0644 OAuth for Google
+lib/Foswiki/UnifiedAuth/Providers/Topic.pm 0644 TopicUserMapping replacement
 lib/Foswiki/Users/UnifiedAuthUser.pm 0644 Password manager
 lib/Foswiki/Users/UnifiedUserMapping.pm 0644 User mapping
 lib/Foswiki/Contrib/UnifiedAuthContrib/Config.spec 0644 Config options

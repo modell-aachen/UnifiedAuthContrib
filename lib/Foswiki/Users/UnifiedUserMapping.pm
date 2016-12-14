@@ -71,6 +71,7 @@ sub finish {
     $this->{passwords}->finish() if $this->{passwords};
     $this->SUPER::finish();
     Foswiki::UnifiedAuth::finish();
+    #TODO: finish providers
 }
 
 =begin TML
