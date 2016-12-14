@@ -187,4 +187,36 @@ sub handleScript {
     # TODO
 }
 
+sub authProvider {
+    my ($this, $session, $id) = @_;
+
+    return $this->{providers}->{$id} if $this->{providers}->{$id};
+
+    my $cfg = $Foswiki::cfg{UnifiedAuth}{Providers}{$id};
+    unless ($cfg) {
+        if($id eq 'default') {
+            $cfg = { config => {}, module => 'Default' };
+        } else {
+            die "Provider not configured: $id";
+        }
+    }
+
+    if ($cfg->{module} =~ /^Foswiki::Users::/) {
+        die("Auth providers based on Foswiki password managers are not supported yet");
+        #return Foswiki::UnifiedAuth::Providers::Passthrough->new($this->{session}, $id, $cfg);
+    }
+
+    my $package = "Foswiki::UnifiedAuth::Providers::$cfg->{module}";
+    eval "require $package"; ## no critic (ProhibitStringyEval);
+    if ($@ ne '') {
+        use Carp qw(confess); confess("Failed loading auth: $id with $@");
+        die "Failed loading auth provider: $@";
+    }
+    my $authProvider = $package->new($session, $id, $cfg->{config});
+
+    $this->{providers}->{$id} = $authProvider;
+    return $authProvider;
+}
+
+
 1;

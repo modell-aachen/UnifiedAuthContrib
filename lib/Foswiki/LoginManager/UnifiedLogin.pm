@@ -67,20 +67,7 @@ sub _unpackRequest {
 }
 
 sub _authProvider {
-    my ($this, $id) = @_;
-    my $cfg = $Foswiki::cfg{UnifiedAuth}{Providers}{$id};
-
-    if ($cfg->{module} =~ /^Foswiki::Users::/) {
-        die("Auth providers based on Foswiki password managers are not supported yet");
-        #return Foswiki::UnifiedAuth::Providers::Passthrough->new($this->{session}, $id, $cfg);
-    }
-
-    my $package = "Foswiki::UnifiedAuth::Providers::$cfg->{module}";
-    eval "require $package"; ## no critic (ProhibitStringyEval);
-    if ($@ ne '') {
-        die "Failed loading auth provider: $@";
-    }
-    my $authProvider = $package->new($this->{session}, $id, $cfg->{config});
+    Foswiki::UnifiedAuth->new()->authProvider($_[0]->{session}, $_[1]);
 }
 
 sub forceAuthentication {
