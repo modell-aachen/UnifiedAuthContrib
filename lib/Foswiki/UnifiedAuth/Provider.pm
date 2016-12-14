@@ -19,6 +19,12 @@ sub new {
     }, $class;
 }
 
+# Add user to provider.
+# Return cuid if successful, perl-false otherwise.
+sub addUser {
+    return undef;
+}
+
 sub useDefaultLogin {
     my $this = shift;
     0;
@@ -37,6 +43,10 @@ sub initiateLogin {
     $cgis->flush;
     die $cgis->errstr if $cgis->errstr;
     return $state;
+}
+
+sub supportsRegistration {
+    1;
 }
 
 sub processLogin {

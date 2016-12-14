@@ -23,6 +23,8 @@ $Foswiki::cfg{UnifiedAuth}{DefaultPasswordManager} = 'none';
 # Leave this blank to present a list of options to the user.
 $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider} = '';
 
+$Foswiki::cfg{UnifiedAuth}{AddUsersToProvider} = '';
+
 # ---+++ ID/name mapping
 # UnifiedAuthPlugin assigns a unique ID (cUID) to each user. These IDs are
 # used to associate entries in revision histories with users, among other

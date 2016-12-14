@@ -84,8 +84,14 @@ Default is *false*
 =cut
 
 sub supportsRegistration {
-    # TODO determine dynamically
-    return 0;
+    my $this = shift;
+
+
+    my $providerId = $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider};
+    return 0 unless $providerId;
+    my $provider = $this->{uac}->authProvider($this->{session}, $providerId);
+    return 0 unless $provider;
+    return $provider->supportsRegistration();
 }
 
 =begin TML
@@ -189,8 +195,15 @@ Throws an Error::Simple if user adding is not supported (the default).
 sub addUser {
     my ( $this, $login, $wikiname, $password, $emails ) = @_;
 
-    # to be implemented later
-    return '';
+    my $addTo = $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider};
+    unless($addTo) {
+        throw Error::Simple('Failed to add user: adding users is not supported');
+    }
+    my $provider = $this->{uac}->authProvider($this->{session}, $addTo);
+    unless($provider) {
+        throw Error::Simple('Failed to add user: could not get provider: '.$provider);
+    }
+    return $provider->addUser($login, $wikiname, $password, $emails);
 }
 
 =begin TML
