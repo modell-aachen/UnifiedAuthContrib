@@ -614,7 +614,7 @@ sub eachMembership {
     my $cuid = $this->_userToCUID($user);
     my @grps = map {$_->{name}} @{$this->{uac}->db->selectall_arrayref(<<SQL, {Slice => {}}, $cuid)};
 SELECT name FROM groups AS g
-JOIN group_members AS m ON u.cuid=m.g_cuid
+JOIN group_members AS m ON g.cuid=m.g_cuid
 WHERE m.u_cuid=?
 SQL
     return new Foswiki::ListIterator(\@grps);
