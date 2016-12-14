@@ -194,6 +194,27 @@ sub update_user {
     return $this->db->do("UPDATE users SET display_name=?, email=? WHERE cuid=?", {}, $display_name, $email, $cuid);
 }
 
+# Mockup for retrieval of users by search term.
+# Does not yet support different fiels (login, email, ...).
+sub queryUser {
+    my ($this, $term, $maxrows) = @_;
+
+    my $options = {};
+    $maxrows = 10 unless defined $maxrows;
+    $options->{MaxRows} = $maxrows if $maxrows;
+
+    $term = '' unless defined $term;
+    $term =~ s#^\s+##;
+    $term =~ s#\s+$##;
+    my @terms = split(/\s+/, $term);
+    @terms = ('') unless @terms;
+    @terms = map { "\%$_\%" } @terms;
+    my $condition = join(' AND ', map {'display_name ILIKE ?'} @terms);
+
+    my $res = $this->db->selectall_arrayref("SELECT login_name FROM users WHERE ($condition) ORDER BY display_name", $options, @terms);
+    return $res;
+}
+
 sub handleScript {
     my $session = shift;
 
