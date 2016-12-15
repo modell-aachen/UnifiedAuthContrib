@@ -67,7 +67,10 @@ sub _unpackRequest {
 }
 
 sub _authProvider {
-    Foswiki::UnifiedAuth->new()->authProvider($_[0]->{session}, $_[1]);
+    my ($this, $provider) = @_;
+
+    $this->{uac} = Foswiki::UnifiedAuth->new unless $this->{uac};
+    $this->{uac}->authProvider($this->{session}, $provider);
 }
 
 sub forceAuthentication {
@@ -81,7 +84,9 @@ sub forceAuthentication {
         my $authid = $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider};
         if ($authid) {
             my $auth = $this->_authProvider($authid);
-            return $auth->initiateLogin(_packRequest($session)) unless $auth->useDefaultLogin;
+            if ($auth->enabled && !$auth->useDefaultLogin) {
+                return $auth->initiateLogin(_packRequest($session));
+            }
         }
 
         # Respond with a 401 with an appropriate WWW-Authenticate
@@ -163,30 +168,36 @@ sub login {
     my $provider;
     $provider = $query->param('uauth_provider');
     $provider = $cgis->param('uauth_provider') if $cgis && $provider;
-#    $provider = $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider} unless $provider;
-
-    my $context = Foswiki::Func::getContext();
-#    unless ($Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
-        $context->{uauth_choose} = 1;
-#    }
 
     my @providers;
     push @providers, $provider if $provider;
     push @providers, keys %{$Foswiki::cfg{UnifiedAuth}{Providers}} unless $provider;
+
+    my @early = grep {$_->isEarlyLogin}, @providers;
+    if (scalar(@early)) {
+        foreach my $name (@early) {
+            $provider = $this->_authProvider($name);
+            if ($provider->enabled && $provider->isMyLogin) {
+                my $result = $this->processProviderLogin($query, $session, $provider);
+                return $result if $result;
+            }
+        }
+    }
+
+    my $context = Foswiki::Func::getContext();
+    $context->{uauth_choose} = 1;
+
     push @providers, 'default';
     my $external = $query->param('uauth_external') || 0;
 
     foreach my $name (@providers) {
         $provider = $this->_authProvider($name);
 
-        if ($provider->isMyLogin) {
+        if ($provider->enabled && $provider->isMyLogin) {
             my $result = $this->processProviderLogin($query, $session, $provider);
             return $result if $result;
         }
     }
-
-#    return $provider->initiateExternalLogin if $external && $provider->can('initiateExternalLogin');
-#        $provider->initiateLogin($query->param('foswiki_origin'));
 
     my $uauth_provider = $query->param('uauth_provider');
     if($external && $uauth_provider) {
@@ -302,8 +313,10 @@ sub processProviderLogin {
             extra    => "AUTHENTICATION FAILURE",
         }
     );
+
     my $tmpl = $this->_loadTemplate;
-    my $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE');
+    my $banner;
+    $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE') unless $provider->isEarlyLogin;
     $this->_renderTemplate($tmpl,
         UAUTH_AUTH_FAILURE_MESSAGE => $error,
         BANNER => $banner,

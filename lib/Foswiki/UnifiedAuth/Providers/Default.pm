@@ -38,9 +38,7 @@ sub initiateLogin {
 
     $session->{prefs}->setSessionPreferences(
         FOSWIKI_ORIGIN => Foswiki::entityEncode($origin),
-
         PATH_INFO => Foswiki::entityEncode($path_info),
-
         UAUTHSTATE => $state
     );
 
@@ -60,7 +58,6 @@ sub isMyLogin {
     my $this = shift;
 
     my $req = $this->{session}->{request};
-
     return 0 if $req->param('uauth_external');
 
     my $state = $req->param('state');

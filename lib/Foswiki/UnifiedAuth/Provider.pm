@@ -47,6 +47,17 @@ sub refresh {
     # my ( $this ) = @_;
 }
 
+sub enabled {
+    my $this = shift;
+    my $cfg = $this->{config};
+    return 1 unless defined $cfg->{enabled};
+    return $cfg->{enabled};
+}
+
+sub isEarlyLogin {
+    return 0;
+}
+
 # Indicated whether we have to handle this request.
 sub isMyLogin {
     my $this = shift;
