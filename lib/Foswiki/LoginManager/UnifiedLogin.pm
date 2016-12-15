@@ -172,28 +172,26 @@ sub login {
     my @providers;
     push @providers, $provider if $provider;
     push @providers, keys %{$Foswiki::cfg{UnifiedAuth}{Providers}} unless $provider;
+    push @providers, 'default';
+    @providers = map {$this->_authProvider($_)} @providers;
 
-    my @early = grep {$_->isEarlyLogin}, @providers;
-    if (scalar(@early)) {
-        foreach my $name (@early) {
-            $provider = $this->_authProvider($name);
-            if ($provider->enabled && $provider->isMyLogin) {
-                my $result = $this->processProviderLogin($query, $session, $provider);
-                return $result if $result;
-            }
+    my @enabledProvider = grep {$_ if $_->enabled} @providers;
+    my @earlyProvider = grep {$_ if $_->isEarlyLogin} @enabledProvider;
+
+    foreach my $p (@earlyProvider) {
+        if ($p->isMyLogin) {
+            my $result = $this->processProviderLogin($query, $session, $p);
+            return $result if $result;
         }
     }
 
+    my $external = $query->param('uauth_external') || 0;
     my $context = Foswiki::Func::getContext();
     $context->{uauth_choose} = 1;
 
-    push @providers, 'default';
-    my $external = $query->param('uauth_external') || 0;
-
-    foreach my $name (@providers) {
-        $provider = $this->_authProvider($name);
-
-        if ($provider->enabled && $provider->isMyLogin) {
+    foreach my $p (@enabledProvider) {
+        $provider = $p;
+        if ($provider->isMyLogin) {
             my $result = $this->processProviderLogin($query, $session, $provider);
             return $result if $result;
         }
@@ -256,11 +254,20 @@ sub processProviderLogin {
     my $error = '';
     eval {
         $loginResult = $provider->processLogin();
+        if ($loginResult && $provider->{config}->{identityProvider}) {
+            my $identity = $this->_authProvider($provider->{config}->{identityProvider});
+            if ($identity->isa('Foswiki::UnifiedAuth::IdentityProvider')) {
+                $loginResult = $identity->identify($loginResult);
+            } else {
+                $loginResult = 0;
+            }
+        }
     };
     if ($@) {
         $error = $@;
         $error = $@->text if ref($@) && $@->isa("Error");
     }
+
     if (ref($loginResult) eq 'HASH' && $loginResult->{cuid}) {
         $this->userLoggedIn($loginResult->{cuid});
         $session->logger->log(
@@ -304,7 +311,8 @@ sub processProviderLogin {
     if ($Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
         $context->{uauth_failed_nochoose} = 1;
     }
-    $session->{response}->status(200);
+
+    # $session->{response}->status(200);
     $session->logger->log(
         {
             level    => 'info',
@@ -315,7 +323,7 @@ sub processProviderLogin {
     );
 
     my $tmpl = $this->_loadTemplate;
-    my $banner;
+    my $banner = '';
     $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE') unless $provider->isEarlyLogin;
     $this->_renderTemplate($tmpl,
         UAUTH_AUTH_FAILURE_MESSAGE => $error,

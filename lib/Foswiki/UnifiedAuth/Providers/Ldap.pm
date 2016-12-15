@@ -14,8 +14,8 @@ use warnings;
 
 use Foswiki::Plugins::UnifiedAuthPlugin;
 use Foswiki::UnifiedAuth;
-use Foswiki::UnifiedAuth::Provider;
-our @ISA = qw(Foswiki::UnifiedAuth::Provider);
+use Foswiki::UnifiedAuth::IdentityProvider;
+our @ISA = qw(Foswiki::UnifiedAuth::IdentityProvider);
 
 my @schema_updates = (
     [
@@ -1005,11 +1005,24 @@ sub processLogin {
     my $username = $req->param('username');
     my $state = $req->param('state');
     my $password = $req->param('password');
-    $req->delete('state', 'foswiki_origin', 'username', 'password' );
+    $req->delete('state', 'foswiki_origin', 'username', 'password');
 
     die with Error::Simple("You seem to be using an outdated URL. Please try again.\n") unless $this->SUPER::processLogin($state);
 
     return $this->processLoginData($username, $password);
+}
+
+sub identify {
+    my $this = shift;
+    my $login = shift;
+
+    $login = $this->processLoginName($login);
+    my $db = Foswiki::UnifiedAuth->new()->db;
+    my $pid = $this->getPid;
+    my $user = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND users.pid=?", {}, $login, $pid);
+
+    return {cuid => $user->{cuid}, data => {}} if $user;
+    return undef;
 }
 
 1;
