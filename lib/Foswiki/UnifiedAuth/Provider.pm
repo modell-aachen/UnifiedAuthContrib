@@ -1,10 +1,11 @@
 package Foswiki::UnifiedAuth::Provider;
 
-use Digest::SHA qw(sha1_base64);
-use Error;
-
 use strict;
 use warnings;
+
+use Digest::SHA qw(sha1_base64);
+use Error;
+use Net::CIDR;
 
 sub new {
     my ($class, $session, $id, $config) = @_;
@@ -61,8 +62,28 @@ sub isEarlyLogin {
 # Indicated whether we have to handle this request.
 sub isMyLogin {
     my $this = shift;
+    return 1 unless $this->{config}->{deny} || $this->{config}->{allow};
 
-    return 0;
+    my $req = $this->{session}{request};
+    my $addr = $req->remote_addr;
+
+    if ($this->{config}->{deny}) {
+        my @deny;
+        foreach my $ip (split(/[\s,]+/, $this->{config}->{deny})) {
+            push @deny, Net::CIDR::range2cidr($ip);
+        }
+
+        return 0 if Net::CIDR::cidrlookup($addr, @deny);
+    }
+
+    return 1 unless $this->{config}->{allow};
+    my @allow;
+    foreach my $ip (split(/[\s,]+/, $this->{config}->{allow})) {
+        push @allow, Net::CIDR::range2cidr($ip)
+    }
+
+    return 0 unless Net::CIDR::cidrlookup($addr, @allow);
+    return 1;
 }
 
 sub supportsRegistration {
