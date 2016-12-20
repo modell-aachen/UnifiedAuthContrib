@@ -7,7 +7,6 @@ use Error;
 use GSSAPI;
 use JSON;
 use MIME::Base64;
-use Net::CIDR;
 
 use Foswiki::UnifiedAuth;
 use Foswiki::UnifiedAuth::Provider;
@@ -41,26 +40,19 @@ sub initiateLogin {
 sub isMyLogin {
     my $this = shift;
 
-    my $req = $this->{session}{request};
+    my $session = $this->{session};
+    my $cgis = $session->getCGISession();
+
+    if ($cgis) {
+        my $failed = $cgis->param('uauth_kerberos_run') || 0;
+        my $run = $cgis->param('uauth_kerberos_failed') || 0;
+        return 0 if $failed || $run;
+    }
+
+    my $req = $session->{request};
     my $addr = $req->remote_addr;
 
-    if ($this->{config}->{deny}) {
-        my @deny;
-        foreach my $ip (split(/[\s,]+/, $this->{config}->{deny})) {
-            push @deny, Net::CIDR::range2cidr($ip);
-        }
-
-        return 0 if Net::CIDR::cidrlookup($addr, @deny);
-    }
-
-    return 1 unless $this->{config}->{allow};
-    my @allow;
-    foreach my $ip (split(/[\s,]+/, $this->{config}->{allow})) {
-        push @allow, Net::CIDR::range2cidr($ip)
-    }
-
-    return 0 unless Net::CIDR::cidrlookup($addr, @allow);
-    return 1;
+    return $this->SUPER::isMyLogin;
 }
 
 sub processLogin {
@@ -106,9 +98,11 @@ sub processLogin {
             my $delegated
         );
 
-        # if ($otoken) {
-        #     my $enc = encode_base64($otoken);
-        # }
+        if ($otoken) {
+            my $enc = encode_base64($otoken);
+            $res->deleteHeader('WWW-Authenticate');
+            $res->header(-WWW_Authenticate => "Negotiate $enc");
+        }
 
         my $principal;
         $status = $client->display($principal);
@@ -118,6 +112,7 @@ sub processLogin {
             return 0;
         }
 
+        # ToDo. place an option in configure whether to strip off the realm
         $principal =~ s/\@$cfg->{realm}//;
         return $principal;
     }
