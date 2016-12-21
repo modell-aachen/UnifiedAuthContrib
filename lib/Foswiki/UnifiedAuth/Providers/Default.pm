@@ -92,6 +92,7 @@ sub processLogin {
         next if $name eq 'default';
 
         my $provider = $uauth->authProvider($session, $name);
+        next unless $provider->enabled;
         next unless $provider->useDefaultLogin();
 
         my $result = $provider->processLoginData($username, $password);

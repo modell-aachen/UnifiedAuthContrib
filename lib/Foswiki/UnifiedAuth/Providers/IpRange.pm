@@ -45,12 +45,6 @@ sub initiateLogin {
     return 1;
 }
 
-sub isMyLogin {
-    my $this = shift;
-    my $req = $this->{session}{request};
-    return $req->param('state');
-}
-
 sub processLogin {
     my $this = shift;
     my $req = $this->{session}{request};

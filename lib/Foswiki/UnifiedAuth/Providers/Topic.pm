@@ -130,21 +130,6 @@ sub addUser {
     return $cuid;
 }
 
-sub processLogin {
-    my $this = shift;
-    my $req = $this->{session}{request};
-    my $id = $this->{id};
-    my $config = $this->{config};
-    my $username = $req->param('username');
-    my $state = $req->param('state');
-    my $password = $req->param('password');
-    $req->delete('state', 'foswiki_origin', 'username', 'password' );
-
-    die with Error::Simple("You seem to be using an outdated URL. Please try again.\n") unless $this->SUPER::processLogin($state);
-
-    return $this->processLoginData($username, $password);
-}
-
 sub processLoginData {
     my ($this, $username, $password) = @_;
 

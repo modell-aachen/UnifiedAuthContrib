@@ -18,10 +18,15 @@ sub new {
     return $this;
 }
 
-sub enabled {
+sub isMyLogin {
     my $this = shift;
-    my $cfg = $this->{config};
+    my $cgis = $this->{session}->getCGISession;
+    if ($cgis) {
+        my $run = $cgis->param('uauth_kerberos_failed') || 0;
+        return 0 if $run;
+    }
 
+    my $cfg = $this->{config};
     return 0 unless $cfg->{realm} && $cfg->{keytab};
     return 1;
 }
@@ -37,22 +42,12 @@ sub initiateLogin {
     return $this->SUPER::initiateLogin($origin);
 }
 
-sub isMyLogin {
-    my $this = shift;
+sub handleLogout {
+    my $session = shift;
+    return unless $session;
 
-    my $session = $this->{session};
     my $cgis = $session->getCGISession();
-
-    if ($cgis) {
-        my $failed = $cgis->param('uauth_kerberos_run') || 0;
-        my $run = $cgis->param('uauth_kerberos_failed') || 0;
-        return 0 if $failed || $run;
-    }
-
-    my $req = $session->{request};
-    my $addr = $req->remote_addr;
-
-    return $this->SUPER::isMyLogin;
+    $cgis->param('uauth_kerberos_logged_out', 1);
 }
 
 sub processLogin {
@@ -61,6 +56,7 @@ sub processLogin {
     my $session = $this->{session};
     my $cgis = $session->getCGISession();
     return 0 if $cgis->param('uauth_kerberos_failed');
+    return 0 if $cgis->param('uauth_kerberos_logged_out');
 
     my $req    = $session->{request};
     my $res = $session->{response};

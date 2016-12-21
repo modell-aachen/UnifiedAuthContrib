@@ -59,6 +59,10 @@ sub new {
     return $this;
 }
 
+sub enabled {
+    1;
+}
+
 sub initiateLogin {
     my ($this, $origin) = @_;
     my $state = $this->SUPER::initiateLogin($origin);
@@ -71,7 +75,6 @@ sub useDefaultLogin {
 
 sub processLoginData {
     my ($this, $user, $pass) = @_;
-
     my $result = $this->checkPassword($user, $pass);
     return undef unless $result;
 

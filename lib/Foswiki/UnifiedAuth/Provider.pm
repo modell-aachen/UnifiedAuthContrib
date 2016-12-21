@@ -19,6 +19,11 @@ sub new {
     }, $class;
 }
 
+sub handleLogout {
+    # Static method
+    # Called by UnifiedLoading::loadSession when the user logged out
+}
+
 # Add user to provider.
 # Return cuid if successful, perl-false otherwise.
 sub addUser {
@@ -51,8 +56,29 @@ sub refresh {
 sub enabled {
     my $this = shift;
     my $cfg = $this->{config};
-    return 1 unless defined $cfg->{enabled};
-    return $cfg->{enabled};
+    return 0 if defined $cfg->{enabled} && !$cfg->{enabled};
+
+    return 1 unless $cfg->{deny} || $cfg->{allow};
+    my $req = $this->{session}{request};
+    my $addr = $req->remote_addr;
+
+    if ($cfg->{deny}) {
+        my @deny;
+        foreach my $ip (split(/[\s,]+/, $cfg->{deny})) {
+            push @deny, Net::CIDR::range2cidr($ip);
+        }
+
+        return 0 if Net::CIDR::cidrlookup($addr, @deny);
+    }
+
+    return 1 unless $cfg->{allow};
+    my @allow;
+    foreach my $ip (split(/[\s,]+/, $cfg->{allow})) {
+        push @allow, Net::CIDR::range2cidr($ip)
+    }
+
+    return 0 unless Net::CIDR::cidrlookup($addr, @allow);
+    return 1;
 }
 
 sub isEarlyLogin {
@@ -61,29 +87,7 @@ sub isEarlyLogin {
 
 # Indicated whether we have to handle this request.
 sub isMyLogin {
-    my $this = shift;
-    return 1 unless $this->{config}->{deny} || $this->{config}->{allow};
-
-    my $req = $this->{session}{request};
-    my $addr = $req->remote_addr;
-
-    if ($this->{config}->{deny}) {
-        my @deny;
-        foreach my $ip (split(/[\s,]+/, $this->{config}->{deny})) {
-            push @deny, Net::CIDR::range2cidr($ip);
-        }
-
-        return 0 if Net::CIDR::cidrlookup($addr, @deny);
-    }
-
-    return 1 unless $this->{config}->{allow};
-    my @allow;
-    foreach my $ip (split(/[\s,]+/, $this->{config}->{allow})) {
-        push @allow, Net::CIDR::range2cidr($ip)
-    }
-
-    return 0 unless Net::CIDR::cidrlookup($addr, @allow);
-    return 1;
+    0;
 }
 
 sub supportsRegistration {

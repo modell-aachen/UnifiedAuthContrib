@@ -172,7 +172,8 @@ sub login {
     my @providers;
     push @providers, $provider if $provider;
     push @providers, keys %{$Foswiki::cfg{UnifiedAuth}{Providers}} unless $provider;
-    push @providers, 'default';
+    push @providers, '__baseuser';
+    push @providers, '__default';
     @providers = map {$this->_authProvider($_)} @providers;
 
     my @enabledProvider = grep {$_ if $_->enabled} @providers;
@@ -221,7 +222,7 @@ sub login {
     }
 
     # render default dialog
-    return $this->_authProvider('default')->initiateLogin(_packRequest($session));
+    return $this->_authProvider('__default')->initiateLogin(_packRequest($session));
 
 }
 
@@ -237,6 +238,15 @@ sub loadSession {
         if ($cgis) {
             $cgis->clear(['uauth_provider']);
             $cgis->clear(['uauth_state']);
+        }
+
+        while (my ($id, $hash) = each %{$Foswiki::cfg{UnifiedAuth}{Providers}}) {
+            my $mod = $hash->{module};
+            next unless $mod;
+            my $provider = "Foswiki::UnifiedAuth::Providers::$mod";
+            eval("require $provider;");
+            my $handler = $provider->can('handleLogout');
+            $handler->($session);
         }
     }
 
