@@ -725,28 +725,14 @@ sub addUserToGroup {
         );
     }
 
-    my $grp;
     my $db = $this->{uac}->db;
-    if (!$isGroup) {
+    if (!$isGroup && !$create) {
         throw Error::Simple(
             $this->{session}->i18n->maketext(
                 'Group does not exist and create not permitted')
-        ) if !$create;
-
-        $grp = {
-            cuid => Data::GUID->guid,
-            name => $grpName
-        };
-
-        $db->begin_work;
-        $db->do(
-            'INSERT INTO groups (cuid, name) VALUES(?, ?)',
-            {}, $grp->{cuid}, $grp->{name});
-        $db->commit;
-    } else {
-        $grp = $db->selectrow_hashref(
-            'SELECT cuid, name FROM groups WHERE name=?', {}, $grpName);
+        );
     }
+    my $grpCuid = $this->{uac}->getOrCreateGroup($grpName, $this->getPid());
 
     if ($cuid) {
         my $isNested = $this->isGroup($cuid);
@@ -763,14 +749,18 @@ sub addUserToGroup {
         }
 
         $db->begin_work;
-        $db->do($statement, {}, $grp->{cuid}, $cuid);
+        $db->do($statement, {}, $grpCuid, $cuid);
         $db->commit;
     }
 
-    $this->_writeGroupTopic($grpWeb, $grpName, $actor, $grp->{cuid});
+    $this->_writeGroupTopic($grpWeb, $grpName, $actor, $grpCuid);
     $this->_clearGroupCache($grpName);
 
     return 1;
+}
+
+sub getPid {
+    return shift->{uac}->getPid('__uauth')
 }
 
 =begin TML

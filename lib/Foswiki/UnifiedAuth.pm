@@ -40,7 +40,8 @@ my @schema_updates = (
         "CREATE UNIQUE INDEX idx_mapped_cuid ON merged_users (mapped_cuid)",
         "CREATE TABLE groups (
             cuid UUID NOT NULL PRIMARY KEY,
-            name TEXT NOT NULL
+            name TEXT NOT NULL,
+            pid INTEGER NOT NULL
         )",
         "CREATE INDEX idx_groups ON groups (name)",
         "CREATE TABLE group_members (
@@ -253,6 +254,124 @@ sub authProvider {
 
     $this->{providers}->{$id} = $authProvider;
     return $authProvider;
+}
+
+sub getPid {
+    my ($this, $id) = @_;
+
+    my $db = $this->db;
+    my $pid = $db->selectrow_array("SELECT pid FROM providers WHERE name=?", {}, $id);
+
+    return $pid if($pid);
+
+    Foswiki::Func::writeWarning("Could not get pid of $id; creating a new one...");
+    $db->do("INSERT INTO providers (name) VALUES(?)", {}, $id);
+    return $this->getPid($id);
+}
+
+sub getOrCreateGroup {
+    my ($this, $grpName, $pid) = @_;
+
+    my $db = $this->{db};
+
+    my $cuid = $db->selectrow_array(
+        'SELECT cuid FROM groups WHERE name=? and pid=?', {}, $grpName, $pid);
+    return $cuid if $cuid;
+
+    $cuid = Data::GUID->guid;
+
+    $db->begin_work;
+    $db->do(
+        'INSERT INTO groups (cuid, name, pid) VALUES(?, ?, ?)',
+        {}, $cuid, $grpName, $pid);
+    $db->commit;
+
+    return $cuid;
+}
+
+sub removeGroup {
+    my ($this, %group) = @_;
+
+    my $db = $this->{db};
+
+    my $cuid;
+    if($group{cuid}) {
+        $cuid = $group{cuid};
+    } else {
+        my $name = $group{name};
+        my $pid = $group{pid};
+
+        die unless $name && defined $pid; # XXX
+        $cuid = $db->selectrow_array('SELECT cuid FROM groups WHERE name=? AND pid=?',
+            {}, $name, $pid);
+    }
+    die unless $cuid; # XXX
+
+    $db->begin_work;
+    $db->do(
+        'DELETE FROM groups WHERE cuid=?',
+        {}, $cuid);
+    $db->do(
+        'DELETE FROM group_members WHERE g_cuid=?',
+        {}, $cuid);
+    $db->do(
+        'DELETE FROM nested_groups WHERE parent=? OR child=?',
+        {}, $cuid, $cuid);
+    $db->commit;
+}
+
+sub updateGroup {
+    my ($this, $pid, $group, $members, $nested) = @_;
+
+    my $db = $this->{db};
+
+    my $cuid = $this->getOrCreateGroup($group, $pid);
+
+    my $currentMembers = {};
+    my $currentGroups = {};
+
+    # get current users
+    { # scope
+        my $fromDb = $db->selectcol_arrayref('SELECT u_cuid FROM group_members WHERE g_cuid=?', {}, $cuid);
+        foreach my $item ( @$fromDb ) {
+            $currentMembers->{$item} = 0;
+        }
+    }
+    # get current nested groups
+    { # scope
+        my $fromDb = $db->selectcol_arrayref('SELECT child FROM nested_groups WHERE parent=?', {}, $cuid);
+        foreach my $item ( @$fromDb ) {
+            $currentGroups->{$item} = 0;
+        }
+    }
+
+    $db->begin_work;
+    # add users / groups
+    foreach my $item ( @$members ) {
+        unless(defined $currentMembers->{$item}) {
+            $db->do('INSERT INTO group_members (g_cuid, u_cuid) VALUES(?,?)', {}, $cuid, $item);
+        }
+        $currentMembers->{$item} = 1;
+    }
+    foreach my $item ( @$nested ) {
+        unless(defined $currentMembers->{$item}) {
+            $db->do('INSERT INTO nested_groups (parent, child) VALUES(?,?)', {}, $cuid, $item);
+        }
+        $currentGroups->{$item} = 1;
+    }
+
+    # remove users/groups no longer present
+    foreach my $item ( keys %$currentMembers ) {
+        unless ($currentMembers->{$item}) {
+            $db->do('DELETE FROM group_members WHERE g_cuid=? AND u_cuid=?', {}, $cuid, $item);
+        }
+    }
+    foreach my $item ( keys %$currentGroups ) {
+        unless ($currentGroups->{$item}) {
+            $db->do('DELETE FROM nested_groups WHERE parent=? AND child=?', {}, $cuid, $item);
+        }
+    }
+    $db->commit();
 }
 
 

@@ -98,18 +98,12 @@ sub getPid {
     my ( $this ) = @_;
 
     return $this->{internal_provider_id} if defined $this->{internal_provider_id};
+
     my $uauth = Foswiki::UnifiedAuth->new();
-    my $db = $uauth->db;
-    my $pid = $db->selectrow_array("SELECT pid FROM providers WHERE name=?", {}, $this->{id});
+    my $pid = $uauth->getPid($this->{id});
+    $this->{internal_provider_id} = $pid;
 
-    if ($pid) {
-        $this->{internal_provider_id} = $pid;
-        return $pid;
-    }
-
-    Foswiki::Func::writeWarning("Could not get pid of $this->{id}; creating a new one...");
-    $db->do("INSERT INTO providers (name) VALUES(?)", {}, $this->{id});
-    return $this->getPid();
+    return $pid;
 }
 
 sub processLogin {
