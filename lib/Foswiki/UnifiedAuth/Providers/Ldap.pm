@@ -330,21 +330,8 @@ sub writeDebug {
     Foswiki::Func::writeWarning(@_);
 }
 
-sub refreshUsersCache {
-    my ($this, $data, $userBase) = @_;
-
-    writeDebug("called refreshUsersCache($userBase)");
-    $data ||= $this->{data};
-    $userBase ||= $this->{base};
-
-    # prepare search
-    my %args = (
-        filter => $this->{loginFilter},
-        base => $userBase,
-        scope => $this->{userScope},
-        deref => "always",
-        attrs => [$this->{loginAttribute}, $this->{mailAttribute}, $this->{primaryGroupAttribute}, @{$this->{wikiNameAttributes}}, @{$this->{displayAttributes}}],
-    );
+sub getData {
+    my ($this, %args) = @_;
 
     # use the control LDAP extension only if a valid pageSize value has been provided
     my $page;
@@ -359,7 +346,6 @@ sub refreshUsersCache {
     }
 
     # read pages
-    my $nrRecords = 0;
     my $gotError = 0;
 
     my $fromLdap = [];
@@ -374,7 +360,7 @@ sub refreshUsersCache {
         # perform search
         my $mesg = $this->search(%args);
         unless ($mesg) {
-            writeWarning("error refreshing the user cache: " . $this->getError());
+            writeWarning("error refreshing the cache: " . $this->getError());
             my $code = $this->getCode();
             $gotError = 1 if !defined($code) || $code != LDAP_SIZELIMIT_EXCEEDED;    # continue on sizelimit exceeded
             last;
@@ -408,6 +394,26 @@ sub refreshUsersCache {
         $page->size(0);
         $this->search(%args);
     }
+    return ($fromLdap, $gotError);
+}
+
+sub refreshUsersCache {
+    my ($this, $data, $userBase) = @_;
+
+    writeDebug("called refreshUsersCache($userBase)");
+    $data ||= $this->{data};
+    $userBase ||= $this->{base};
+
+    # prepare search
+    my %args = (
+        filter => $this->{loginFilter},
+        base => $userBase,
+        scope => $this->{userScope},
+        deref => "always",
+        attrs => [$this->{loginAttribute}, $this->{mailAttribute}, $this->{primaryGroupAttribute}, @{$this->{wikiNameAttributes}}, @{$this->{displayAttributes}}],
+    );
+
+    my ($fromLdap, $gotError, $nrRecords) = $this->getData(%args);
 
     # check for error
     return 0 if $gotError;
@@ -416,9 +422,151 @@ sub refreshUsersCache {
         $this->cacheUserFromEntry($entry);
     }
 
-    writeDebug("got $nrRecords keys in cache");
+    return 1;
+}
+
+sub refreshGroupsCache {
+    my ($this, $data, $groupBase) = @_;
+
+    writeDebug("called refreshGroupsCache($groupBase)");
+    $data ||= $this->{data};
+    $groupBase ||= $this->{base};
+
+    my $pid = $this->getPid();
+
+    # prepare search
+    my %args = (
+        filter => $this->{groupFilter},
+        base => $groupBase,
+        scope => $this->{groupScope},
+        deref => "always",
+        attrs => [$this->{groupAttribute}, $this->{memberAttribute}, $this->{innerGroupAttribute}, $this->{primaryGroupAttribute}],
+    );
+
+    my ($fromLdap, $gotError, $nrRecords) = $this->getData(%args);
+
+    # check for error
+    return 0 if $gotError;
+
+    my $groupsCache = {};
+    foreach my $entry ( @$fromLdap ) {
+        $this->cacheGroupFromEntry($entry, $groupsCache);
+    }
+
+    my $db = $this->{uauth}->db();
+    # Note: Selecting users from ALL ldaps (not filtered by pid), because one
+    # might want to configure multiple ldaps for multiple branches, but still
+    # have groups containing users from all branches. The DNs should be enough
+    # to distinguish members coming from different ldaps entirely.
+    my $users = $db->selectall_hashref('SELECT dn, cuid FROM users_ldap', 'dn', {});
+    my $oldGroups = $db->selectcol_arrayref('SELECT name FROM groups WHERE pid=?', {}, $pid);
+
+    $this->_processGroups($groupsCache, $users);
+
+    # kick removed groups
+    foreach my $oldName ( @$oldGroups ) {
+        unless ($groupsCache->{$oldName}) {
+            $this->{uauth}->removeGroup(name => $oldName, pid => $pid);
+        }
+    }
 
     return 1;
+}
+
+sub cacheGroupFromEntry {
+    my ($this, $entry, $groups) = @_;
+
+    my $dn = $this->fromLdapCharSet($entry->dn());
+    writeDebug("caching group for $dn");
+
+    my $groupName = $entry->get_value($this->{groupAttribute});
+    unless ($groupName) {
+        writeDebug("no groupName for $dn ... skipping");
+        return 0;
+    }
+    $groupName =~ s/^\s+//o;
+    $groupName =~ s/\s+$//o;
+    $groupName = $this->fromLdapCharSet($groupName);
+
+    if ($this->{normalizeGroupName}) {
+        $groupName = $this->normalizeWikiName($groupName);
+    }
+    return 0 if $this->{excludeMap}{$groupName};
+
+    # check for a rewrite rule
+    my $foundRewriteRule = 0;
+    my $oldGroupName = $groupName;
+    foreach my $pattern (keys %{$this->{rewriteGroups}}) {
+        my $subst = $this->{rewriteGroups}{$pattern};
+        if ($groupName =~ /^(?:$pattern)$/) {
+            my $arg1 = $1;
+            my $arg2 = $2;
+            my $arg3 = $3;
+            my $arg4 = $4;
+            my $arg5 = $5;
+            $arg1 = '' unless defined $arg1;
+            $arg2 = '' unless defined $arg2;
+            $arg3 = '' unless defined $arg3;
+            $arg4 = '' unless defined $arg4;
+            $subst =~ s/\$1/$arg1/g;
+            $subst =~ s/\$2/$arg2/g;
+            $subst =~ s/\$3/$arg3/g;
+            $subst =~ s/\$4/$arg4/g;
+            $subst =~ s/\$5/$arg5/g;
+            $groupName = $subst;
+            $foundRewriteRule = 1;
+            writeDebug("rewriting '$oldGroupName' to '$groupName' using rule $pattern");
+            last;
+        }
+    }
+
+    # TODO
+    if (!$this->{mergeGroups} && defined($groups->{$groupName})) {
+        # TODO: will only print a stupid hashref
+        writeWarning("$dn clashes with group $groups->{$groupName} on $groupName");
+        return 0;
+    }
+
+    my $loginName = $this->{caseSensitiveLogin} ? $groupName : lc($groupName);
+    $loginName =~ s/([^a-zA-Z0-9])/'_'.sprintf('%02x', ord($1))/ge;
+
+
+    $groups->{$loginName} = $entry;
+
+    # TODO
+    # resolve primary group memberships.
+    # ...
+
+    # TODO: add range syntax
+
+    return 1;
+}
+
+sub _processGroups {
+    my ($this, $groups, $users) = @_;
+
+    my $uauth = $this->{uauth};
+    my $db = $uauth->db();
+
+    foreach my $groupName ( keys %$groups ) {
+        my $entry = $groups->{$groupName};
+
+        # fetch all members of this group
+        my $memberVals = $entry->get_value($this->{memberAttribute}, alloptions => 1);
+        my $members = [];
+        my $nested = [];
+        if ($memberVals) {
+            foreach my $member ( @{$memberVals->{''} || []} ) {
+                if ($groups->{$member}) {
+                    push @$nested, $uauth->getOrCreateGroup($member, $this->getPid());
+                } elsif ($users->{$member}) {
+                    push @$members, $users->{$member}->{cuid};
+                }
+            }
+        }
+
+        $uauth->updateGroup($this->getPid(), $groupName, $members, $nested);
+    }
 }
 
 sub search {
@@ -958,7 +1106,7 @@ sub refreshCache {
 
     if ($isOk && $this->{mapGroups}) {
         foreach my $groupBase (@{$this->{groupBase}}) {
-            $isOk = 1; # TODO$this->refreshGroupsCache(\%tempData, $groupBase);
+            $isOk = $this->refreshGroupsCache(\%tempData, $groupBase);
             last unless $isOk;
         }
     }

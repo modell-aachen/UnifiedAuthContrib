@@ -333,6 +333,8 @@ sub getOrCreateGroup {
 sub removeGroup {
     my ($this, %group) = @_;
 
+    # TODO: retain cuids and nestings in case the group re-appears (eg. malfunctioning ldap)
+
     my $db = $this->{db};
 
     my $cuid;
