@@ -819,6 +819,56 @@ sub removeUserFromGroup {
     return 0;
 }
 
+sub isInGroup {
+    my ( $this, $user, $group, $options ) = @_;
+
+    return 0 unless $group;
+
+    if($group eq $Foswiki::cfg{SuperAdminGroup}) {
+        return 1 if Foswiki::UnifiedAuth::Providers::BaseUser::isAdminUser($user);
+        # other members will be detected below
+    }
+
+    # TODO: BaseGroup
+
+    # NobodyGroup will simply return no g_cUID
+
+    my $u_cUID = $this->{uac}->getCUID($user, 0, 1);
+    my $g_cUID = $this->{uac}->getCUID($group, 1, 0);
+    return 0 unless defined $u_cUID && defined $g_cUID;
+
+    return $this->_isInGroupCuid($u_cUID, $g_cUID, $options);
+}
+
+# Like isInGroup but expects to be called with valid cuids.
+sub _isInGroupCuid {
+    my ( $this, $u_cUID, $g_cUID, $options ) = @_;
+
+    my $db = $this->{uac}->db;
+
+    # look in group itself
+    return 1 if $db->selectrow_array('SELECT count(u_cuid) FROM group_members WHERE g_cuid=? AND u_cuid=?',
+        {}, $g_cUID, $u_cUID);
+
+    # do we have nesting?
+    my $nested = $db->selectrow_arrayref('SELECT child FROM nested_groups WHERE parent=?',
+        {}, $g_cUID);
+    if($nested) {
+        # do not recurse in infinite loops
+        $options = {} unless $options;
+        $options->{unifiedauth_seen} = {} unless $options->{unifiedauth_seen};
+        $options->{unifiedauth_seen}->{$g_cUID} = 1;
+
+        foreach my $ngroup ( @$nested ) {
+            my $nCuid = $ngroup->[0];
+            next if $options->{unifiedauth_seen}->{$nCuid};
+            return 1 if $this->_isInGroupCuid($u_cUID, $nCuid, $options);
+        }
+    }
+
+    return 0;
+}
+
 sub _writeGroupTopic {
     my ($this, $web, $topic, $author, $cuid) = @_;
 
