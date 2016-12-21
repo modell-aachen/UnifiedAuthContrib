@@ -53,6 +53,15 @@ my @schema_updates = (
     ]
 );
 
+sub isAdminUser {
+    my ($user) = @_;
+
+    return 0 unless defined $user;
+
+    return 1 if $user eq 'admin' || $user eq 'BaseUserMapping_333' || $user eq $CUIDs{BaseUserMapping_333};
+    return 0;
+}
+
 sub new {
     my ($class, $session, $id, $config) = @_;
     my $this = $class->SUPER::new($session, $id, $config);

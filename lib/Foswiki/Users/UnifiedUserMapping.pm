@@ -540,8 +540,7 @@ True if the user is an administrator.
 sub isAdmin {
     my ($this, $cuid) = @_;
     return 0 unless defined $cuid;
-    return 1 if $this->{base_cuids}->{BaseUserMapping_333} eq $cuid;
-    return 0;
+    return Foswiki::UnifiedAuth::Providers::BaseUser::isAdminUser($cuid);
 }
 
 =begin TML
