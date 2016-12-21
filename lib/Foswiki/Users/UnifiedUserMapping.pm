@@ -19,7 +19,6 @@ use Foswiki::UserMapping ();
 our @ISA = ('Foswiki::UserMapping');
 
 use Assert;
-use Data::GUID;
 use Error qw( :try );
 
 use Foswiki::Func;
