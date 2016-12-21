@@ -136,6 +136,47 @@ sub guid {
     Data::GUID->guid;
 }
 
+sub getCUID {
+    my ($this, $user, $noUsers, $noGroups) = @_;
+
+    my $db = $this->db;
+
+    my $unescapedName = $user =~ s/_2d/-/gr;
+    if(isCUID($unescapedName)) {
+        unless ($noUsers) {
+            my $fromDB = $db->selectrow_array('SELECT cuid FROM users WHERE cuid=?', {}, $unescapedName);
+            return $fromDB if defined $fromDB;
+        }
+
+        unless ($noGroups) {
+            my $fromDB = $db->selectrow_array('SELECT cuid FROM groups WHERE cuid=?', {}, $unescapedName);
+            return $fromDB if defined $fromDB;
+        }
+
+        return undef; # not found
+    }
+
+    unless ($noUsers) {
+        my $fromDB = $db->selectrow_array('SELECT cuid FROM users WHERE login_name=? OR wiki_name=?', {}, $user, $user);
+        return $fromDB if defined $fromDB;
+    }
+
+    unless ($noGroups) {
+        my $fromDB = $db->selectrow_array('SELECT cuid FROM groups WHERE name=?', {}, $user);
+
+        return $fromDB if defined $fromDB;
+    }
+
+    return undef;
+}
+
+sub isCUID {
+    my $login = shift;
+
+    return $login =~ /^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$/;
+}
+
+
 sub add_user {
     my $this = shift;
     my ($charset, $authdomainid, $cuid, $email, $login_name, $wiki_name, $display_name) = @_;

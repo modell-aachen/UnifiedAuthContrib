@@ -154,17 +154,13 @@ sub getLoginName {
     my ( $this, $cUID ) = @_;
     ASSERT($cUID) if DEBUG;
 
-    my $login = $cUID;
-    return unless _userReallyExists($this, $login);
-
-    $cUID = _isCUID($login);
+    $cUID = $this->{uac}->getCUID($cUID, 0 , 1);
     if ($cUID) {
         return $this->{uac}->db->selectrow_array(
         "SELECT login_name FROM users WHERE cuid=?", {}, $cUID);
     }
 
-    # Validated
-    return Foswiki::Sandbox::untaintUnchecked($login);
+    return undef;
 }
 
 =begin TML
@@ -563,22 +559,14 @@ Subclasses *must* implement this method.
 sub isGroup {
     my ( $this, $user ) = @_;
 
+    return 0 unless defined $user;
+
     # ToDo
-    return 1 if $user eq $Foswiki::cfg{SuperAdminGroup};
+    return 1 if ($user eq $Foswiki::cfg{SuperAdminGroup} || $user eq 'NobodyGroup' || $user eq 'BaseGroup');
 
-    my $exists;
-    my $cuid = $this->_userToCUID($user);
-    my $db = $this->{uac}->db;
+    return 1 if $this->{uac}->getCUID($user, 1);
 
-    if ($cuid) {
-        $exists = $db->selectrow_array(
-            'SELECT COUNT(cuid) FROM groups WHERE cuid=?', {}, $cuid);
-    } else {
-        $exists = $db->selectrow_array(
-            'SELECT COUNT(cuid) FROM groups WHERE name=?', {}, $user);
-    }
-
-    return $exists;
+    return 0;
 }
 
 =begin TML
@@ -593,10 +581,11 @@ Subclasses *must* implement this method.
 
 sub eachGroup {
     my ($this) = @_;
-    my @rows = @{$this->{uac}->db->selectall_arrayref(
-        'SELECT cuid, name FROM groups ORDER BY name ASC', {Slice => {}})};
-    my @groups = map {$_->{name}} @rows;
-    return new Foswiki::ListIterator(\@groups);
+
+    my $list = $this->{uac}->db->selectcol_arrayref(
+        "SELECT name FROM groups ORDER BY name ASC"
+    );
+    return new Foswiki::ListIterator($list);
 }
 
 =begin TML
@@ -909,12 +898,7 @@ sub _expandGroups {
     my $db = $this->{uac}->db;
 
     foreach my $group (@$groups) {
-        my $cuid = _isCUID($group);
-        unless ($cuid) {
-            my $grp = $db->selectrow_hashref(
-                'SELECT cuid, name FROM groups WHERE name=?', {}, $group);
-            $cuid = $grp->{cuid};
-        }
+        my $cuid = $this->{uac}->getCUID($group, 1);
 
         next if $expanded->{$cuid};
         $expanded->{$cuid} = 1;
@@ -977,19 +961,7 @@ sub _userToCUID {
     my ($this, $user) = @_;
     return $this->{base_cuids}->{$user} if defined $this->{base_cuids}->{$user};
 
-    my $cuid = _isCUID($user);
-    unless ($cuid) {
-        # SMELL.
-        # Needs further improvements.
-        # Attribute login_name is NOT unique. A provider other than 'BaseUser'
-        # may create another user with login 'admin'
-        my $row = $this->{uac}->db->selectrow_hashref(
-            'SELECT cuid FROM users WHERE login_name=? OR wiki_name=?',
-            {}, $user, $user);
-        $cuid = $row->{cuid};
-    }
-
-    return $cuid;
+    return $this->{uac}->getCUID($user, 0, 1);
 }
 
 1;
