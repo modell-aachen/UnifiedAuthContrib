@@ -88,8 +88,10 @@ sub processLogin {
 
     my $uauth = Foswiki::UnifiedAuth->new();
 
-    foreach my $name (keys %{$Foswiki::cfg{UnifiedAuth}{Providers}}) {
-        next if $name eq 'default';
+    my @providers = keys %{$Foswiki::cfg{UnifiedAuth}{Providers}};
+    push @providers, '__baseuser' unless grep(/^__baseuser$/, @providers);
+    foreach my $name (@providers) {
+        next if $name eq '__default';
 
         my $provider = $uauth->authProvider($session, $name);
         next unless $provider->enabled;
