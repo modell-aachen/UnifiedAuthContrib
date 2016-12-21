@@ -133,11 +133,11 @@ getCanonicalUserID will still be called if login2cUID is not defined.
 sub login2cUID {
     my ( $this, $login, $dontcheck ) = @_;
 
-    unless ($dontcheck) {
-        return unless ( _userReallyExists( $this, $login ) );
-    }
-# TODO
-    return $login;
+    my $cCUID = $this->{uac}->getCUID($login, 1);
+    return $cCUID if defined $cCUID;
+
+    return $login if $dontcheck;
+    return undef;
 }
 
 =begin TML
@@ -937,22 +937,6 @@ sub _isCUID {
     }
 
     0;
-}
-
-# check for user being present in the mapping DB
-sub _userReallyExists {
-    my ($this, $login) = @_;
-
-    my $cuid = _isCUID($login);
-    if ($cuid) {
-        return $this->{uac}->db->selectrow_array(
-            'SELECT COUNT(login_name) FROM users WHERE cuid=?', {}, $cuid);
-    }
-
-    return $this->{uac}->db->selectrow_array(
-        'SELECT COUNT(login_name) FROM users WHERE login_name=?', {},
-        $login
-    );
 }
 
 sub _userToCUID {
