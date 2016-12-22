@@ -933,10 +933,10 @@ sub _expandGroup {
     my ($this, $cuid, $recursive) = @_;
     $recursive ||= 0;
 
-    my @members;
+    my %members;
     my @groups = ($cuid);
-    $this->_expandGroups(\@groups, \@members, undef, $recursive);
-    return \@members;
+    $this->_expandGroups(\@groups, \%members, undef, $recursive);
+    return [keys %members];
 }
 
 sub _expandGroups {
@@ -951,13 +951,15 @@ sub _expandGroups {
         next if $expanded->{$cuid};
         $expanded->{$cuid} = 1;
 
-        my @usrs = map {
-            $_->{wiki_name}
-        } @{$db->selectall_arrayref(<<SQL, {Slice => {}}, $cuid)};
+        my $users = $db->selectall_arrayref(<<SQL, {Slice => {}}, $cuid);
 SELECT u.wiki_name FROM users AS u
 JOIN group_members AS g ON u.cuid=g.u_cuid
 WHERE g.g_cuid=?
 SQL
+
+        foreach my $user ( @$users ) {
+            $members->{$user->{wiki_name}} = 1;
+        }
 
         my @grps = map {
             $_->{name}
@@ -967,11 +969,12 @@ JOIN nested_groups AS n ON g.cuid=n.child
 WHERE n.parent=?
 SQL
 
-        push @{$members}, @usrs;
         if ($recursive) {
             $this->_expandGroups(\@grps, $members, $expanded, $recursive);
         } else {
-            push @{$members}, @grps;
+            foreach my $grp ( @grps ) {
+                $members->{$grp} = 1;
+            }
         }
     }
 }
