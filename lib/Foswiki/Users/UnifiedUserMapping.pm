@@ -864,12 +864,12 @@ sub isInGroup {
     my $g_cUID = $this->{uac}->getCUID($group, 1, 0);
     return 0 unless defined $u_cUID && defined $g_cUID;
 
-    return $this->_isInGroupCuid($u_cUID, $g_cUID, $options);
+    return $this->_isInGroupCuid($u_cUID, $g_cUID, {});
 }
 
 # Like isInGroup but expects to be called with valid cuids.
 sub _isInGroupCuid {
-    my ( $this, $u_cUID, $g_cUID, $options ) = @_;
+    my ( $this, $u_cUID, $g_cUID, $seen ) = @_;
 
     my $db = $this->{uac}->db;
 
@@ -882,14 +882,11 @@ sub _isInGroupCuid {
         {}, $g_cUID);
     if($nested) {
         # do not recurse in infinite loops
-        $options = {} unless $options;
-        $options->{unifiedauth_seen} = {} unless $options->{unifiedauth_seen};
-        $options->{unifiedauth_seen}->{$g_cUID} = 1;
+        $seen->{$g_cUID} = 1;
 
-        foreach my $ngroup ( @$nested ) {
-            my $nCuid = $ngroup->[0];
-            next if $options->{unifiedauth_seen}->{$nCuid};
-            return 1 if $this->_isInGroupCuid($u_cUID, $nCuid, $options);
+        foreach my $nCuid ( @$nested ) {
+            next if $seen->{$nCuid};
+            return 1 if $this->_isInGroupCuid($u_cUID, $nCuid, $seen);
         }
     }
 
