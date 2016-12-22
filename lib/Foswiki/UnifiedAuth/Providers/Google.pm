@@ -18,11 +18,11 @@ my @schema_updates = (
     [
         "CREATE TABLE users_google (
             cuid UUID NOT NULL,
+            pid INTEGER NOT NULL,
             info JSONB NOT NULL,
             PRIMARY KEY (cuid)
         )",
-        "INSERT INTO meta (type, version) VALUES('users_google', 0)",
-        "INSERT INTO providers (name) VALUES('google')",
+        "INSERT INTO meta (type, version) VALUES('users_google', 0)"
     ]
 );
 
@@ -113,7 +113,7 @@ sub processLogin {
     }
 
     $acc_info = decode_json($acc_info->decoded_content);
-    my $enforceDomain = $Foswiki::cfg{UnifiedAuth}{EnforceHostedDomainMembership} || 0;
+    my $enforceDomain = $this->{config}{enforceDomain} || 0;
     if ($this->{config}{domain} && $enforceDomain) {
         die with Error::Simple("\%BR\%You're *not allowed* to access this site.") unless ($acc_info->{hd} && $acc_info->{hd} eq $this->{config}{domain});
     }
@@ -130,7 +130,7 @@ sub processLogin {
         eval {
             $db->begin_work;
             $user_id = $uauth->add_user('UTF-8', $pid, undef, $user_email, $user_email, $this->_formatWikiName($acc_info), $this->_formatDisplayName($acc_info));
-            $db->do("INSERT INTO users_google (cuid, info) VALUES(?,?)", {}, $user_id, ,JSON::encode_json($acc_info));
+            $db->do("INSERT INTO users_google (cuid, pid, info) VALUES(?,?,?)", {}, $user_id, $pid,JSON::encode_json($acc_info));
             $db->commit;
         };
         if ($@) {
@@ -138,6 +138,8 @@ sub processLogin {
             eval { $db->rollback; };
             die with Error::Simple("Failed to initialize Google account '$user_email' ($err)\n");
         }
+
+        return $user_id if $this->{config}{identityProvider};
         return {
             cuid => $user_id,
             data => $acc_info,
@@ -150,6 +152,8 @@ sub processLogin {
     if ($cur_dn ne $userdata->{display_name}) {
         $uauth->update_user('UTF-8', $userdata->{cuid}, $acc_info->{email}, $cur_dn);
     }
+
+    return $userdata->{login_name} if $this->{config}{identityProvider};
     return {
         cuid => $userdata->{cuid},
         data => $acc_info,

@@ -108,14 +108,4 @@ $Foswiki::cfg{UnifiedAuth}{WikiNameNormalizers} = '';
 # </ul>
 $Foswiki::cfg{UnifiedAuth}{Providers} = {};
 
-# ---+++ Google G Suite
-# **BOOLEAN**
-# If enabled <code>UnifiedAuth</code> will decline any user who's not managed
-# by the hosted which may be specified within the Google authentication provider
-# configuration (parameter 'domain').
-# <br>
-# Enabling this preference but not configuring a hosted domain will still grant
-# access to any successfully authenticated Google user.
-$Foswiki::cfg{UnifiedAuth}{EnforceHostedDomainMembership} = 0;
-
 1;
