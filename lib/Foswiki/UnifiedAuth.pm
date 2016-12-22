@@ -12,13 +12,13 @@ use Data::GUID;
 
 my @schema_updates = (
     [
-        "CREATE TABLE meta (type TEXT NOT NULL UNIQUE, version INT NOT NULL)",
+        "CREATE TABLE IF NOT EXISTS meta (type TEXT NOT NULL UNIQUE, version INT NOT NULL)",
         "INSERT INTO meta (type, version) VALUES('core', 0)",
-        "CREATE TABLE providers (
+        "CREATE TABLE IF NOT EXISTS providers (
             pid SERIAL,
             name TEXT NOT NULL
         )",
-        "CREATE TABLE users (
+        "CREATE TABLE IF NOT EXISTS users (
             cuid UUID NOT NULL PRIMARY KEY,
             pid INTEGER NOT NULL,
             login_name TEXT NOT NULL,
@@ -30,7 +30,7 @@ my @schema_updates = (
         "CREATE UNIQUE INDEX idx_cuid ON users (cuid)",
         "CREATE INDEX idx_login_name ON users (login_name)",
         "CREATE INDEX idx_email ON users (email)",
-        "CREATE TABLE merged_users (
+        "CREATE TABLE IF NOT EXISTS merged_users (
             primary_cuid UUID NOT NULL,
             mapped_cuid UUID NOT NULL,
             primary_provider INTEGER NOT NULL,
@@ -38,20 +38,20 @@ my @schema_updates = (
         )",
         "CREATE UNIQUE INDEX idx_primary_cuid ON merged_users (primary_cuid)",
         "CREATE UNIQUE INDEX idx_mapped_cuid ON merged_users (mapped_cuid)",
-        "CREATE TABLE groups (
+        "CREATE TABLE IF NOT EXISTS groups (
             cuid UUID NOT NULL PRIMARY KEY,
             name TEXT NOT NULL,
             pid INTEGER NOT NULL
         )",
         "CREATE INDEX idx_groups ON groups (name)",
-        "CREATE TABLE group_members (
+        "CREATE TABLE IF NOT EXISTS group_members (
             g_cuid UUID NOT NULL,
             u_cuid UUID NOT NULL,
             PRIMARY KEY (g_cuid, u_cuid)
         )",
         "CREATE INDEX idx_group_cuid ON group_members (g_cuid)",
         "CREATE INDEX idx_member_cuid ON group_members (u_cuid)",
-        "CREATE TABLE nested_groups (
+        "CREATE TABLE IF NOT EXISTS nested_groups (
             parent UUID NOT NULL,
             child UUID NOT NULL,
             PRIMARY KEY (parent, child)

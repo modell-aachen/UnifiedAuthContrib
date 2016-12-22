@@ -29,7 +29,7 @@ our %CUIDs = (
 
 my @schema_updates = (
     [
-        "CREATE TABLE users_baseuser (
+        "CREATE TABLE IF NOT EXISTS users_baseuser (
             cuid UUID NOT NULL,
             info JSONB NOT NULL,
             PRIMARY KEY (cuid)

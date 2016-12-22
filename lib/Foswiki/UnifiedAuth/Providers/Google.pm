@@ -16,7 +16,7 @@ our @ISA = qw(Foswiki::UnifiedAuth::Provider);
 
 my @schema_updates = (
     [
-        "CREATE TABLE users_google (
+        "CREATE TABLE IF NOT EXISTS users_google (
             cuid UUID NOT NULL,
             pid INTEGER NOT NULL,
             info JSONB NOT NULL,

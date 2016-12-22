@@ -19,15 +19,14 @@ our @ISA = qw(Foswiki::UnifiedAuth::IdentityProvider);
 
 my @schema_updates = (
     [
-        "CREATE TABLE users_ldap (
+        "CREATE TABLE IF NOT EXISTS users_ldap (
             pid INTEGER NOT NULL,
             login TEXT NOT NULL,
             cuid UUID NOT NULL,
             dn TEXT NOT NULL,
             PRIMARY KEY (login,pid)
         )",
-        "INSERT INTO meta (type, version) VALUES('users_ldap', 1)",
-        "INSERT INTO providers (name) VALUES('ldap')",
+        "INSERT INTO meta (type, version) VALUES('users_ldap', 1)"
     ]
 );
 
