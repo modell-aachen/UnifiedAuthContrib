@@ -85,7 +85,7 @@ If you want to automatically create the user in question, include the following 
 
 %IF{"defined cuid" then="
 | *cUID* | *WikiName* | *LoginName* | *DisplayName* | *eMail* |
-$percentRENDERUSER{\"%URLPARAM{"cuid"}%\" format=\"| $cUID | $wikiName | $loginName | $displayName | $email |\"}$percent
+$percentRENDERUSER{\"%URLPARAM{"cuid"}%\" convert=\"1\" format=\"| $cUID | $wikiName | $loginName | $displayName | $email |\"}$percent
 "}%
 
 ---++ Contrib Info

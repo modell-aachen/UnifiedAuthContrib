@@ -133,7 +133,7 @@ getCanonicalUserID will still be called if login2cUID is not defined.
 sub login2cUID {
     my ( $this, $login, $dontcheck ) = @_;
 
-    my $cCUID = $this->{uac}->getCUID($login, 1);
+    my $cCUID = $this->{uac}->getCUID($login, 0, 1);
     return $cCUID if defined $cCUID;
 
     return $login if $dontcheck;
