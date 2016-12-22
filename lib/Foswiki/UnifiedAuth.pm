@@ -239,9 +239,16 @@ sub update_user {
 # Mockup for retrieval of users by search term.
 # Does not yet support different fiels (login, email, ...).
 sub queryUser {
-    my ($this, $term, $maxrows, $page, $fields) = @_;
+    my ($this, $opts) = @_;
+    my ($term, $maxrows, $page, $fields, $type) = (
+        $opts->{term},
+        $opts->{limit},
+        $opts->{page},
+        $opts->{searchable_fields},
+        $opts->{type}
+    );
 
-    my $options = {};
+    my $options = {Slice => {}};
     $maxrows = 10 unless defined $maxrows;
     $options->{MaxRows} = $maxrows if $maxrows;
     $page ||= 0;
@@ -253,22 +260,83 @@ sub queryUser {
     @terms = ('') unless @terms;
     @terms = map { "\%$_\%" } @terms;
 
-    my @params;
-    @{$fields} = map {
-        push @params, @terms;
-        $_ =~ s/([A-Z])/'_'.lc($1)/ger
-    } @{$fields};
-
-    my @parts;
-    map {
-        my $f = $_;
-        push @parts, join(' AND ', map {"$f ILIKE ?"} @terms)
-    } @$fields;
-
-    my $condition = join(' OR ', @parts);
+    my @list;
     my $offset = $maxrows * $page;
-    my $res = $this->db->selectall_arrayref("SELECT login_name FROM users WHERE ($condition) ORDER BY display_name OFFSET $offset", $options, @params);
-    return $res;
+
+    unless ($type eq 'groups') {
+        my @params;
+        @{$fields} = map {
+            push @params, @terms;
+            $_ =~ s/([A-Z])/'_'.lc($1)/ger
+        } @{$fields};
+
+        my @parts;
+        map {
+            my $f = $_;
+            push @parts, join(' AND ', map {"$f ILIKE ?"} @terms)
+        } @$fields;
+
+        my $u_condition = join(' OR ', @parts);
+        my $g_condition = join(' AND ', map {
+            push @params, @terms;
+            "name ILIKE ?"
+        } @terms) if $type eq 'any';
+
+        my $statement;
+        if ($type eq 'any') {
+            $statement = <<SQL;
+SELECT
+    'user' AS type,
+    cuid AS cUID,
+    login_name AS loginName,
+    wiki_name as wikiName,
+    display_name AS displayName,
+    email
+    FROM users
+    WHERE ($u_condition)
+UNION
+SELECT
+    'group' AS type,
+    cuid AS cUID,
+    name AS wikiName,
+    name AS displayName,
+    '' AS loginName,
+    '' AS email
+    FROM groups
+    WHERE ($g_condition)
+ORDER BY displayName
+OFFSET $offset
+SQL
+        } else {
+            $statement = <<SQL;
+SELECT
+    'user' AS type,
+    cuid AS cUID,
+    login_name AS loginName,
+    wiki_name as wikiName,
+    display_name AS displayName
+FROM users
+WHERE ($u_condition)
+ORDER BY displayName
+OFFSET $offset
+SQL
+        }
+        push @list, @{$this->db->selectall_arrayref($statement, $options, @params)};
+    } else {
+        my $condition = join(' AND ', map {"name ILIKE ?"} @terms);
+        push @list, @{$this->db->selectall_arrayref(<<SQL, $options, @terms)};
+SELECT
+    'group' AS type
+    cuid AS cUID,
+    name AS wikiName
+FROM groups
+WHERE ($condition)
+ORDER BY wikiName
+OFFSET $offset
+SQL
+    }
+
+    return \@list;
 }
 
 sub handleScript {
