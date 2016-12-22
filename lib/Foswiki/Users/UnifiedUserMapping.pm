@@ -598,13 +598,40 @@ Subclasses *must* implement this method.
 
 sub eachMembership {
     my ($this, $user) = @_;
+
+    return new Foswiki::ListIterator($this->getMemberships($user));
+}
+
+sub getMemberships {
+    my ($this, $user) = @_;
     my $cuid = $this->_userToCUID($user);
-    my @grps = map {$_->{name}} @{$this->{uac}->db->selectall_arrayref(<<SQL, {Slice => {}}, $cuid)};
-SELECT name FROM groups AS g
+    my %grpCuids = ();
+    my @groups = ();
+
+    my $doCheck;
+    $doCheck = sub {
+        foreach my $grp ( @{$_[0]} ) {
+            next if $grpCuids{$grp->[1]};
+            $grpCuids{$grp->[1]} = 1;
+            push @groups, $grp->[0];
+
+            my $nested = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $grp->[1]);
+SELECT groups.name, groups.cuid FROM nested_groups JOIN groups ON nested_groups.parent=groups.cuid WHERE nested_groups.child=?
+SQL
+
+            &$doCheck($nested) if $nested;
+        }
+    };
+
+    my $directMemberships = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $cuid);
+SELECT name, cuid FROM groups AS g
 JOIN group_members AS m ON g.cuid=m.g_cuid
 WHERE m.u_cuid=?
 SQL
-    return new Foswiki::ListIterator(\@grps);
+
+    &$doCheck($directMemberships);
+
+    return \@groups;
 }
 
 =begin TML
