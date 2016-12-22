@@ -28,7 +28,27 @@ The main settings are made via the =/bin/configure= interface or =LocalSite.cfg=
 
 Auth providers are configured in ={UnifiedAuth}{Providers}=. You can set up the same auth provider multiple times with different settings, giving each instance a different ID. The =config= hash is different for each provider; for providers shipped with !UnifiedAuthContrib, documentation follows.
 
+---+++ Common Settings
+TBD.
+
+---+++ !BaseUser
+TBD.
+
+---+++ Topic
+TBD.
+
+---+++ Ldap
+TBD.
+
+---+++ Kerberos
+TBD.
+
+---+++ Facebook
+TBD.
+
 ---++++ Google
+
+ToDo. enforceDomain, identityProvider
 
    * =client_id=: The ID for your Google API access, registered in Google's developer console.
    * =client_secret=: The secret token for your Google API access.
@@ -54,10 +74,24 @@ If you want to automatically create the user in question, include the following 
 
 %$INSTALL_INSTRUCTIONS%
 
+---++ Query User Information
+<h6 id="query"></h6>
+<form type="GET" action="%SCRIPTURL{"view"}%/%WEB%/%TOPIC%#query">
+   <label>User
+      <input type="text" name="cuid">
+   </label>
+   <input type="submit">
+</form>
+
+%IF{"defined cuid" then="
+| *cUID* | *WikiName* | *LoginName* | *DisplayName* | *eMail* |
+$percentRENDERUSER{\"%URLPARAM{"cuid"}%\" format=\"| $cUID | $wikiName | $loginName | $displayName | $email |\"}$percent
+"}%
+
 ---++ Contrib Info
 
-|  Author(s): | Foswiki:Main.JanKrueger |
-|  Copyright: | Copyright (C) 2015 Modell Aachen GmbH |
+|  Author(s): | Foswiki:Main.JanKrueger, Foswiki:Main.SvenMeyer, Foswiki:Main.StephanOsthold |
+|  Copyright: | Copyright (C) 2015-2016 Modell Aachen !GmbH |
 |  License: | [[http://www.gnu.org/licenses/gpl.html][GPL (Gnu General Public License)]] |
 |  Version: | %$VERSION% |
 |  Release: | %$RELEASE% |
@@ -65,6 +99,6 @@ If you want to automatically create the user in question, include the following 
 |  0.1 (02 Feb 2015) | First public version |
 |  Dependencies: | %$DEPENDENCIES% |
 |  Contrib Home: | http://foswiki.org/Extensions/%TOPIC% |
-|  Support: | http://foswiki.org/Support/%TOPIC% | 
+|  Support: | http://foswiki.org/Support/%TOPIC% |
 
 <!-- Do _not_ attempt to edit this topic; it is auto-generated. Please add comments/questions/remarks to the Dev topic instead. -->
