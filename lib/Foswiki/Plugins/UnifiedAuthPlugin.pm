@@ -5,15 +5,22 @@ package Foswiki::Plugins::UnifiedAuthPlugin;
 use strict;
 use warnings;
 
+use Foswiki::Func;
+use Foswiki::Contrib::PostgreContrib;
+
 our $VERSION = '1.0';
 our $RELEASE = "1.0";
 our $SHORTDESCRIPTION = 'Handlers for UnifiedAuthContrib';
+
+our $connection;
 
 sub initPlugin {
     Foswiki::Func::registerTagHandler(
         'AUTHPROVIDERS',
         \&_AUTHPROVIDERS
     );
+
+    Foswiki::Func::registerTagHandler('TOTALUSERS', \&_TOTALUSERS);
     return 1;
 }
 
@@ -21,6 +28,22 @@ sub _AUTHPROVIDERS {
     my ( $session, $attrs, $topic, $web ) = @_;
     # TODO
     return "AUTHPROVIDERS: not implemented yet";
+}
+
+sub _TOTALUSERS {
+  my($session, $params, $topic, $web, $topicObject) = @_;
+  my $db = _getConnection();
+  $db->selectrow_array("SELECT COUNT(cuid) FROM users", {});
+}
+
+sub finishPlugin {
+  $connection->finish if $connection;
+}
+
+sub _getConnection {
+  return $connection if $connection && !$connection->{finished};
+  $connection = Foswiki::Contrib::PostgreContrib::getConnection('foswiki_users');
+  $connection->{db};
 }
 
 1;
