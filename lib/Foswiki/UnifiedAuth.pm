@@ -239,7 +239,7 @@ sub update_user {
 # Mockup for retrieval of users by search term.
 # Does not yet support different fiels (login, email, ...).
 sub queryUser {
-    my ($this, $term, $maxrows, $page) = @_;
+    my ($this, $term, $maxrows, $page, $fields) = @_;
 
     my $options = {};
     $maxrows = 10 unless defined $maxrows;
@@ -252,10 +252,22 @@ sub queryUser {
     my @terms = split(/\s+/, $term);
     @terms = ('') unless @terms;
     @terms = map { "\%$_\%" } @terms;
-    my $condition = join(' AND ', map {'display_name ILIKE ?'} @terms);
 
+    my @params;
+    @{$fields} = map {
+        push @params, @terms;
+        $_ =~ s/([A-Z])/'_'.lc($1)/ger
+    } @{$fields};
+
+    my @parts;
+    map {
+        my $f = $_;
+        push @parts, join(' AND ', map {"$f ILIKE ?"} @terms)
+    } @$fields;
+
+    my $condition = join(' OR ', @parts);
     my $offset = $maxrows * $page;
-    my $res = $this->db->selectall_arrayref("SELECT login_name FROM users WHERE ($condition) ORDER BY display_name OFFSET $offset", $options, @terms);
+    my $res = $this->db->selectall_arrayref("SELECT login_name FROM users WHERE ($condition) ORDER BY display_name OFFSET $offset", $options, @params);
     return $res;
 }
 
