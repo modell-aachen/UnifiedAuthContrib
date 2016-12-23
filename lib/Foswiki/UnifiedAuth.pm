@@ -261,7 +261,8 @@ sub queryUser {
     @terms = ('') unless @terms;
     @terms = map { "\%$_\%" } @terms;
 
-    my @list;
+    my $list;
+    my $count;
     my $offset = $maxrows * $page;
 
     unless ($type eq 'groups') {
@@ -295,6 +296,7 @@ sub queryUser {
         } @terms) if $type eq 'any';
 
         my $statement;
+        my $statement_count;
         if ($type eq 'any') {
             $statement = <<SQL;
 SELECT
@@ -319,6 +321,21 @@ SELECT
 ORDER BY displayName
 OFFSET $offset
 SQL
+            $statement_count = <<SQL;
+SELECT
+    COUNT(*)
+    FROM (
+SELECT
+    cuid
+    FROM users
+    WHERE ($u_condition)
+UNION
+SELECT
+    cuid
+    FROM groups
+    WHERE ($g_condition)
+) AS gu
+SQL
         } else {
             $statement = <<SQL;
 SELECT
@@ -332,13 +349,21 @@ WHERE ($u_condition)
 ORDER BY displayName
 OFFSET $offset
 SQL
+            $statement_count = <<SQL;
+SELECT
+    count(*)
+FROM users
+WHERE ($u_condition)
+SQL
         }
-        push @list, @{$this->db->selectall_arrayref($statement, $options, @params)};
+        $list = $this->db->selectall_arrayref($statement, $options, @params);
+        $count = $this->db->selectrow_array($statement_count, $options, @params);
     } else {
         my $condition = join(' AND ', map {"name ILIKE ?"} @terms);
-        push @list, @{$this->db->selectall_arrayref(<<SQL, $options, @terms)};
+            Foswiki::Func::writeWarning("condition: $condition");
+        $list = $this->db->selectall_arrayref(<<SQL, $options, @terms);
 SELECT
-    'group' AS type
+    'group' AS type,
     cuid AS cUID,
     name AS wikiName
 FROM groups
@@ -346,9 +371,15 @@ WHERE ($condition)
 ORDER BY wikiName
 OFFSET $offset
 SQL
+        $count = $this->db->selectrow_array(<<SQL, $options, @terms);
+SELECT
+    COUNT(*)
+FROM groups
+WHERE ($condition)
+SQL
     }
 
-    return \@list;
+    return ($list, $count);
 }
 
 sub handleScript {
