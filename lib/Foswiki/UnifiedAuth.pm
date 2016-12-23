@@ -267,7 +267,7 @@ sub queryUser {
         my @params;
         @{$fields} = map {
             push @params, @terms;
-            $_ =~ s/([A-Z])/'_'.lc($1)/ger
+            $_ =~ s/([A-Z])/'_'.lc($1)/ger =~ s/[^a-z_]//gr
         } @{$fields};
 
         my @parts;
