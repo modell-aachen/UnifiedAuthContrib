@@ -59,7 +59,7 @@ sub isAdminUser {
 
     return 0 unless defined $user;
 
-    return 1 if $user eq 'admin' || $user eq 'BaseUserMapping_333' || $user eq $CUIDs{BaseUserMapping_333};
+    return 1 if $user eq $bu->{BaseUserMapping_111}{login} || $user eq 'BaseUserMapping_333' || $user eq $CUIDs{BaseUserMapping_333};
     return 0;
 }
 
@@ -102,7 +102,7 @@ sub processLoginData {
 
     my $uauth = Foswiki::UnifiedAuth->new();
     my $db = $uauth->db;
-    my $provider = $db->selectrow_hashref("SELECT * FROM providers WHERE name=?", {}, 'baseuser');
+    my $provider = $db->selectrow_hashref("SELECT * FROM providers WHERE name=?", {}, $this->{id});
     my $userdata = $db->selectrow_hashref("SELECT * FROM users AS u NATURAL JOIN users_baseuser WHERE u.login_name=? AND u.pid=?", {}, $user, $provider->{pid});
     return {
         cuid => $userdata->{cuid},
