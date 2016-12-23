@@ -26,9 +26,9 @@ my @schema_updates = (
             dn TEXT NOT NULL,
             PRIMARY KEY (login,pid)
         )",
-        "INSERT INTO meta (type, version) VALUES('users_ldap', 1)"
     ]
 );
+my $schema_xxx = "INSERT INTO meta (type, version) VALUES('users_ldap', 1)"; # XXX must fake upsert
 
 sub new {
     my ($class, $session, $id, $config) = @_;
@@ -173,6 +173,10 @@ sub makeConfig {
 
     $this->{uauth} = Foswiki::UnifiedAuth->new();
     $this->{displayNameFormat} = $this->{config}{DisplayNameFormat} || '$cn';
+    my @xxx = @schema_updates;
+    unless($this->{uauth}->db->selectrow_array("SELECT COUNT(version) FROM meta WHERE type='users_ldap'")) {
+        push @xxx, $schema_xxx;
+    }
     $this->{uauth}->apply_schema('users_ldap', @schema_updates);
 
     return $this;
