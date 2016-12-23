@@ -240,12 +240,13 @@ sub update_user {
 # Does not yet support different fiels (login, email, ...).
 sub queryUser {
     my ($this, $opts) = @_;
-    my ($term, $maxrows, $page, $fields, $type) = (
+    my ($term, $maxrows, $page, $fields, $type, $basemapping) = (
         $opts->{term},
         $opts->{limit},
         $opts->{page},
         $opts->{searchable_fields},
-        $opts->{type}
+        $opts->{type},
+        $opts->{basemapping},
     );
 
     my $options = {Slice => {}};
@@ -277,6 +278,17 @@ sub queryUser {
         } @$fields;
 
         my $u_condition = join(' OR ', @parts);
+        if($basemapping eq 'skip') {
+            my $session = $Foswiki::Plugins::SESSION;
+            $u_condition = "($u_condition) AND pid!='" . $this->authProvider($session, '__baseuser')->getPid() . "'";
+        } elsif ($basemapping eq 'adminonly') {
+            my $session = $Foswiki::Plugins::SESSION;
+            my $base = $this->authProvider($session, '__baseuser');
+            my $admin = $base->getAdminCuid();
+            my $pid = $base->getPid();
+            $u_condition = "($u_condition) AND (pid !='$pid' OR cuid='$admin')";
+        }
+
         my $g_condition = join(' AND ', map {
             push @params, @terms;
             "name ILIKE ?"

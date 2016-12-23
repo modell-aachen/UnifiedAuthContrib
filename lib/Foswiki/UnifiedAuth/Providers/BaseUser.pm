@@ -63,6 +63,10 @@ sub isAdminUser {
     return 0;
 }
 
+sub getAdminCuid {
+    return $CUIDs{BaseUserMapping_333};
+}
+
 sub new {
     my ($class, $session, $id, $config) = @_;
     my $this = $class->SUPER::new($session, $id, $config);
