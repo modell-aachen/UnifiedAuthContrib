@@ -27,6 +27,7 @@ our %CUIDs = (
     BaseUserMapping_999 => '40dda76a-1207-400f-b234-69da71ac405b'
 );
 
+# XXX note: %pid% must be hacked out when applying
 my @schema_updates = (
     [
         "CREATE TABLE IF NOT EXISTS users_baseuser (
@@ -42,14 +43,14 @@ my @schema_updates = (
                 ('$CUIDs{BaseUserMapping_666}', '{\"wikiname\": \"$bu->{BaseUserMapping_666}{wikiname}\", \"description\": \"Guest User\"}'),
                 ('$CUIDs{BaseUserMapping_999}', '{\"wikiname\": \"$bu->{BaseUserMapping_999}{wikiname}\", \"description\": \"Unknown User\"}')",
         "INSERT INTO meta (type, version) VALUES('users_baseuser', 0)",
-        "INSERT INTO providers (pid, name) VALUES(0, 'baseuser')",
+        "INSERT INTO providers (pid, name) VALUES(%pid%, 'baseuser')",
         "INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email)
             VALUES
-                ('$CUIDs{BaseUserMapping_111}', 0, '$bu->{BaseUserMapping_111}{login}', '$bu->{BaseUserMapping_111}{wikiname}', 'Project Contributor', ''),
-                ('$CUIDs{BaseUserMapping_222}', 0, '$bu->{BaseUserMapping_222}{login}', '$bu->{BaseUserMapping_222}{wikiname}', 'Registration Agent', ''),
-                ('$CUIDs{BaseUserMapping_333}', 0, '$bu->{BaseUserMapping_333}{login}', '$bu->{BaseUserMapping_333}{wikiname}', 'Internal Admin User', '$bu->{BaseUserMapping_333}{email}'),
-                ('$CUIDs{BaseUserMapping_666}', 0, '$bu->{BaseUserMapping_666}{login}', '$bu->{BaseUserMapping_666}{wikiname}', 'Guest User', ''),
-                ('$CUIDs{BaseUserMapping_999}', 0, '$bu->{BaseUserMapping_999}{login}', '$bu->{BaseUserMapping_999}{wikiname}', 'Unknown User', '')"
+                ('$CUIDs{BaseUserMapping_111}', %pid%, '$bu->{BaseUserMapping_111}{login}', '$bu->{BaseUserMapping_111}{wikiname}', 'Project Contributor', ''),
+                ('$CUIDs{BaseUserMapping_222}', %pid%, '$bu->{BaseUserMapping_222}{login}', '$bu->{BaseUserMapping_222}{wikiname}', 'Registration Agent', ''),
+                ('$CUIDs{BaseUserMapping_333}', %pid%, '$bu->{BaseUserMapping_333}{login}', '$bu->{BaseUserMapping_333}{wikiname}', 'Internal Admin User', '$bu->{BaseUserMapping_333}{email}'),
+                ('$CUIDs{BaseUserMapping_666}', %pid%, '$bu->{BaseUserMapping_666}{login}', '$bu->{BaseUserMapping_666}{wikiname}', 'Guest User', ''),
+                ('$CUIDs{BaseUserMapping_999}', %pid%, '$bu->{BaseUserMapping_999}{login}', '$bu->{BaseUserMapping_999}{wikiname}', 'Unknown User', '')"
     ]
 );
 
@@ -82,6 +83,18 @@ sub useDefaultLogin {
     1;
 }
 
+sub refresh {
+    my $this = shift;
+
+    my $uauth = Foswiki::UnifiedAuth->new();
+    my $pid = $this->getPid();
+    my @pid_schema_updates = @schema_updates;
+    foreach my $a ( @pid_schema_updates ) {
+        $a = [ map { $_ =~ s#\%pid\%#$pid#gr } @$a];
+    }
+    $uauth->apply_schema('users_baseuser', map { $_ =~ s#\%pid\%#$pid#gr } @pid_schema_updates);
+}
+
 sub processLoginData {
     my ($this, $user, $pass) = @_;
     my $result = $this->checkPassword($user, $pass);
@@ -89,7 +102,6 @@ sub processLoginData {
 
     my $uauth = Foswiki::UnifiedAuth->new();
     my $db = $uauth->db;
-    $uauth->apply_schema('users_baseuser', @schema_updates);
     my $provider = $db->selectrow_hashref("SELECT * FROM providers WHERE name=?", {}, 'baseuser');
     my $userdata = $db->selectrow_hashref("SELECT * FROM users AS u NATURAL JOIN users_baseuser WHERE u.login_name=? AND u.pid=?", {}, $user, $provider->{pid});
     return {
