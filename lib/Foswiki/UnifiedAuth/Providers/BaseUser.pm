@@ -101,14 +101,12 @@ sub refresh {
 
 sub processLoginData {
     my ($this, $user, $pass) = @_;
-    my $uauth = Foswiki::UnifiedAuth->new();
-    my $db = $uauth->db;
-    my $provider = $db->selectrow_hashref("SELECT * FROM providers WHERE name=?", {}, $this->{id});
-    $uauth->apply_schema('users_baseuser', @schema_updates);
-
     my $result = $this->checkPassword($user, $pass);
     return undef unless $result;
 
+    my $uauth = Foswiki::UnifiedAuth->new();
+    my $db = $uauth->db;
+    my $provider = $db->selectrow_hashref("SELECT * FROM providers WHERE name=?", {}, $this->{id});
     my $userdata = $db->selectrow_hashref("SELECT * FROM users AS u NATURAL JOIN users_baseuser WHERE u.login_name=? AND u.pid=?", {}, $user, $provider->{pid});
     return {
         cuid => $userdata->{cuid},
