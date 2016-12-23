@@ -29,7 +29,7 @@ sub new {
     if(my $refresh = $session->{request}->param('refreshauth')) {
         if($refresh eq 'all') {
             Foswiki::Func::writeWarning("refreshing all providers");
-            foreach my $id ( keys %{$Foswiki::cfg{UnifiedAuth}{Providers}} ) {
+            foreach my $id ( ('__baseuser', keys %{$Foswiki::cfg{UnifiedAuth}{Providers}}) ) {
                 Foswiki::Func::writeWarning("refreshing $id");
                 my $provider = $this->_authProvider($id);
                 $provider->refresh() if $provider;
