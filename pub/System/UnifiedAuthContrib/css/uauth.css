@@ -43,3 +43,9 @@
 .uauth button[name="google"] {
   background-image: url('../google.png');
 }
+
+.uauth button[name="steam"] {
+  background-image: url('../steam.png');
+  height: 35px;
+  width: 180px;
+}
