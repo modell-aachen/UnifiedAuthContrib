@@ -229,7 +229,7 @@ sub connect {
         $args{"clientkey"} = $this->{tlsClientKey} if $this->{tlsClientKey};
         $args{"sslversion"} = $this->{tlsSSLVersion} if $this->{tlsSSLVersion};
         my $msg = $this->{ldap}->start_tls(%args);
-        Foswiki::Func::writeWarning($msg->{errorMessage}) if $msg->{errorMessage};
+        writeDebug($msg->{errorMessage}) if $msg->{errorMessage};
     }
 
     $dn = $this->toLdapCharSet($dn) if $dn;
@@ -363,7 +363,7 @@ sub getData {
         # perform search
         my $mesg = $this->search(%args);
         unless ($mesg) {
-            writeWarning("error refreshing the cache: " . $this->getError());
+            writeDebug("error refreshing the cache: " . $this->getError());
             my $code = $this->getCode();
             $gotError = 1 if !defined($code) || $code != LDAP_SIZELIMIT_EXCEEDED;    # continue on sizelimit exceeded
             last;
@@ -526,7 +526,7 @@ sub cacheGroupFromEntry {
     # TODO
     if (!$this->{mergeGroups} && defined($groups->{$groupName})) {
         # TODO: will only print a stupid hashref
-        writeWarning("$dn clashes with group $groups->{$groupName} on $groupName");
+        writeDebug("$dn clashes with group $groups->{$groupName} on $groupName");
         return 0;
     }
 
@@ -954,7 +954,7 @@ sub cacheUserFromEntry {
         $email = (sort map {$_ =~ s#^\s+##; $_ =~ s#\s+$##; $_ } @$emails)[0]; # XXX
     }
     unless($email) {
-        Foswiki::Func::writeWarning("No email for $dn - skipping user");
+        writeDebug("No email for $dn - skipping user");
         return 0;
     }
 
@@ -982,8 +982,8 @@ sub cacheUserFromEntry {
 
         unless ($wikiName) {
             #$wikiName = $loginName;
-            #writeWarning("no WikiNameAttributes found for $dn ... deriving WikiName from LoginName: '$wikiName'");
-            writeWarning("no WikiNameAttributes found for $dn ... ignoring");
+            #writeDebug("no WikiNameAttributes found for $dn ... deriving WikiName from LoginName: '$wikiName'");
+            writeDebug("no WikiNameAttributes found for $dn ... ignoring");
             return 0;
         }
 

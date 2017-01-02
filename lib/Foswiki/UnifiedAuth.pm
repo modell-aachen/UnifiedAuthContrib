@@ -98,9 +98,11 @@ sub apply_schema {
     my $this = shift;
     my $type = shift;
     my $db = $this->{db};
+
     if (!$this->{schema_versions}{$type}) {
         $this->{schema_versions}{$type} = { version => 0 };
     }
+
     my $v = $this->{schema_versions}{$type}{version};
     return if $v >= @_;
     for my $schema (@_[$v..$#_]) {
@@ -112,6 +114,7 @@ sub apply_schema {
                 $db->do($s);
             }
         }
+
         $db->do("UPDATE meta SET version=? WHERE type=?", {}, ++$v, $type);
         $db->commit;
     }
