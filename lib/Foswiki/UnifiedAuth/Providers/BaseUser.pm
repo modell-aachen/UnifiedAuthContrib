@@ -110,7 +110,7 @@ sub processLoginData {
     my $userdata = $db->selectrow_hashref("SELECT * FROM users AS u NATURAL JOIN users_baseuser WHERE u.login_name=? AND u.pid=?", {}, $user, $provider->{pid});
     return {
         cuid => $userdata->{cuid},
-        data => JSON::from_json($userdata->{info})
+        data => {}
     };
 }
 
