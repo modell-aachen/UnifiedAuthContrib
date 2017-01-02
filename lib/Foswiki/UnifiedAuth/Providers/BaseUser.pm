@@ -59,7 +59,7 @@ sub isAdminUser {
 
     return 0 unless defined $user;
 
-    return 1 if $user eq $bu->{BaseUserMapping_111}{login} || $user eq 'BaseUserMapping_333' || $user eq $CUIDs{BaseUserMapping_333};
+    return 1 if $user eq $bu->{BaseUserMapping_333}{login} || $user eq 'BaseUserMapping_333' || $user eq $CUIDs{BaseUserMapping_333};
     return 0;
 }
 
