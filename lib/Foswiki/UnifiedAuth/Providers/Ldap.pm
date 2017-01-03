@@ -413,7 +413,7 @@ sub refreshUsersCache {
         base => $userBase,
         scope => $this->{userScope},
         deref => "always",
-        attrs => [$this->{loginAttribute}, $this->{mailAttribute}, $this->{primaryGroupAttribute}, @{$this->{wikiNameAttributes}}, @{$this->{displayAttributes}}],
+        attrs => [$this->{loginAttribute}, $this->{mailAttribute}, $this->{primaryGroupAttribute}, @{$this->{wikiNameAttributes}}, @{$this->{displayAttributes}}, 'userAccountControl'],
     );
 
     my ($fromLdap, $gotError, $nrRecords) = $this->getData(%args);
@@ -962,6 +962,13 @@ sub cacheUserFromEntry {
     $displayName =~ s#\$(\w+)#$entry->get_value($1) || "\$$1"#ge;
     $displayName =~ s#\$\{(\w+)\}#$entry->get_value($1) || "\$$1"#ge;
 
+    # Check whether the current user entry is deactivated (flag ACCOUNTDISABLE)
+    # SMELL. Applies to Active Directory only
+    # See https://support.microsoft.com/en-us/kb/305144
+    my $accoundControl = int($entry->get_value('userAccountControl') || 0);
+    my $isDeactivated = $accoundControl & 2;
+    $isDeactivated = $isDeactivated ? 1 : 0;
+
     # get old data
     my $cuid = $db->selectrow_array("SELECT cuid FROM users WHERE pid=? AND login_name=?", {}, $pid, $loginName);
 
@@ -1025,10 +1032,10 @@ sub cacheUserFromEntry {
         }
 
         # XXX UTF-8
-        $cuid = $uauth->add_user('UTF-8', $pid, undef, $email, $loginName, $wikiName, $displayName);
+        $cuid = $uauth->add_user('UTF-8', $pid, undef, $email, $loginName, $wikiName, $displayName, $isDeactivated);
     } else {
         # XXX UTF-8
-        $uauth->update_user('UTF-8', $cuid, $email, $displayName);
+        $uauth->update_user('UTF-8', $cuid, $email, $displayName, $isDeactivated);
     }
     # fake upsert
     $db->begin_work;

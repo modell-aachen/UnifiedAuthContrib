@@ -24,7 +24,8 @@ my @schema_updates = (
             login_name TEXT NOT NULL,
             wiki_name TEXT NOT NULL,
             display_name TEXT NOT NULL,
-            email TEXT NOT NULL
+            email TEXT NOT NULL,
+            deactivated INTEGER DEFAULT 0
         )",
         "CREATE UNIQUE INDEX idx_wiki_name ON users (wiki_name)",
         "CREATE UNIQUE INDEX idx_cuid ON users (cuid)",
@@ -182,7 +183,8 @@ sub isCUID {
 
 sub add_user {
     my $this = shift;
-    my ($charset, $authdomainid, $cuid, $email, $login_name, $wiki_name, $display_name) = @_;
+    my ($charset, $authdomainid, $cuid, $email, $login_name, $wiki_name, $display_name, $deactivated) = @_;
+    $deactivated = 0 unless defined $deactivated;
 
     _uni($charset, $cuid, $wiki_name, $display_name, $email);
 
@@ -213,8 +215,8 @@ sub add_user {
     }
     $wiki_name = $wn;
 
-    $this->{db}->do("INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email) VALUES(?,?,?,?,?,?)", {},
-        $cuid, $authdomainid, $login_name, $wiki_name, $display_name, $email
+    $this->{db}->do("INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email, deactivated) VALUES(?,?,?,?,?,?,?)", {},
+        $cuid, $authdomainid, $login_name, $wiki_name, $display_name, $email, $deactivated
     );
     return $cuid;
 }
@@ -234,9 +236,10 @@ sub _uni {
 }
 
 sub update_user {
-    my ($this, $charset, $cuid, $email, $display_name) = @_;
+    my ($this, $charset, $cuid, $email, $display_name, $deactivated) = @_;
+    $deactivated = 0 unless defined $deactivated;
     _uni($charset, $cuid, $display_name, $email);
-    return $this->db->do("UPDATE users SET display_name=?, email=? WHERE cuid=?", {}, $display_name, $email, $cuid);
+    return $this->db->do("UPDATE users SET display_name=?, email=?, deactivated=? WHERE cuid=?", {}, $display_name, $email, $deactivated, $cuid);
 }
 
 # Mockup for retrieval of users by search term.
@@ -310,7 +313,7 @@ SELECT
     display_name AS displayName,
     email
     FROM users
-    WHERE ($u_condition)
+    WHERE deactivated=0 AND ($u_condition)
 UNION
 SELECT
     'group' AS type,
@@ -331,7 +334,7 @@ SELECT
 SELECT
     cuid
     FROM users
-    WHERE ($u_condition)
+    WHERE deactivated=0 AND ($u_condition)
 UNION
 SELECT
     cuid
@@ -348,7 +351,7 @@ SELECT
     wiki_name as wikiName,
     display_name AS displayName
 FROM users
-WHERE ($u_condition)
+WHERE deactivated=0 AND ($u_condition)
 ORDER BY displayName
 OFFSET $offset
 SQL
@@ -356,7 +359,7 @@ SQL
 SELECT
     count(*)
 FROM users
-WHERE ($u_condition)
+WHERE deactivated=0 AND ($u_condition)
 SQL
         }
         $list = $this->db->selectall_arrayref($statement, $options, @params);
