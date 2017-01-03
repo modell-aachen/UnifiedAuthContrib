@@ -11,70 +11,462 @@ One line description, required for extensions repository catalog.
 This extension provides:
 
    * A user mapping, assigning readable names to each user.
-      * For each of the existing authentication providers (listed below), a mapping is provided.
-   * A login manager that supports authentication from multiple sources (auth providers). The following sources are currently supported:
+      * For each of the existing authentication providers (listed below),
+        a mapping is provided.
+      * Internally a user is represented by an universally unique identifier.
+   * A login manager that supports authentication from multiple sources
+     (auth providers). The following sources are currently supported:
       * Foswiki's !BaseUserMapping (specifically, !AdminUser)
-      * Google accounts
-   * A mapping for groups and group memberships that supports multiple data source. The following sources are currently supported:
-      * Foswiki's System.TopicUserMappingContrib (copied implementation; this will be improved later)
-   * A small plugin to handle user interface for selecting an auth provider (not implemented yet). The plugin must be enabled in order for logins to work.
+      * Foswiki's !TopicUserMapping
+      * Google accounts (including hosted domains)
+      * LDAP (replaces !LdapContrib)
+      * Kerberos
+      * IP ranges
+   * A mapping for groups and group memberships that supports multiple data
+     source. The following sources are currently supported:
+      * Foswiki's System.TopicUserMappingContrib (copied implementation; this
+        will be improved later)
 
-Internally, the mapping data is stored in a database. Unless you provide your own configuration, this is an SQLite database file.
-
----++ Settings
-The main settings are made via the =/bin/configure= interface or =LocalSite.cfg=. They are documented in the configuration interface. The details of how to configure each authentication provider live here, so as to not overload the configuration interface with text.
-
----+++ Auth provider configuration
-
-Auth providers are configured in ={UnifiedAuth}{Providers}=. You can set up the same auth provider multiple times with different settings, giving each instance a different ID. The =config= hash is different for each provider; for providers shipped with !UnifiedAuthContrib, documentation follows.
-
----+++ Common Settings
-TBD.
-
----+++ !BaseUser
-TBD.
-
----+++ Topic
-TBD.
-
----+++ Ldap
-TBD.
-
----+++ Kerberos
-TBD.
-
----+++ Facebook
-TBD.
-
----++++ Google
-
-ToDo. enforceDomain, identityProvider
-
-   * =client_id=: The ID for your Google API access, registered in Google's developer console.
-   * =client_secret=: The secret token for your Google API access.
-   * =domain=: optional; if set, only Google accounts on this domain can be used.
-   * =wikiname_format=: how to generate wiki names from the account data. This can use field names as provided by Google (e.g. =name=, =email=, =given_name=, =family_name=). Field names must be prefixed by a =$= sign to be expanded. Any characters not permitted in wiki names will be eliminated after expansion. (Defaults to =$name=)
-   * =displayname_format=: same, but for the readable display name. (Defaults to =$name=)
-
----++++ IpRange
-
-Allows automatically logging in a user based on their IP address. This makes it possible to grant restricted, guest-like access based on a user's location.
-
-   * =ip_range=: an arrayref or a single value. Each value is either an IP address range (e.g. '192.168.1.0-192.168.1.255') or a netblock in CIDR notation. (Individual IP addresses must be specified as e.g. 1.2.3.4/32 or ::/128.) Both IPv4 and IPv6 are supported.
-   * =exclude_ip_range=: if set, similar to =ip_range= but prevents these addresses from getting authenticated even if they match one of the IP ranges given in =ip_range=.
-   * =user_id=: The user ID (of an existing !UnifiedAuth user) which this auth provider authenticates. Anyone logging in from one of the addresses in =ip_range= is automatically assigned this user ID.
-
-If you want to automatically create the user in question, include the following fields, too. Since the user will only be created once, these fields have no effect afterwards.
-
-   * =wiki_name=: The WikiName assigned to the user.
-   * =display_name=: The display name.
-   * =email=: Optionally, assign an e-mail address.
+Internally, the mapping data is stored in a Postgre database. Thus
+!UnifiedAuthContrib has a strong dependency on PostgreContrib. At the moment
+there is no support for any other database.
 
 ---++ Installation Instructions
 
 %$INSTALL_INSTRUCTIONS%
 
+As mentioned earlier =UnifiedAuthContrib= has a strong dependency on
+PostgreContrib. Before switching to =UnifiedLogin= ensure that PostgreContrib is
+installed and configured properly.
+
+If all dependencies are met, enable =UnifiedLogin= by setting at least the
+following preferences via the =/bin/configure= interface.
+<verbatim>
+{LoginManager}       = Foswiki::LoginManager::UnifiedLogin
+{PasswordManager}    = Foswiki::Users::UnifiedAuthUser
+{UserMappingManager} = Foswiki::Users::UnifiedUserMapping
+</verbatim>
+
+---++ Anatomy of a provider configuration
+
+Auth providers are configured in ={UnifiedAuth}{Providers}=. You can set up the
+same auth provider multiple times with different settings, giving each instance
+a different ID. The =config= hash is different for each provider.
+
+Basically the =config= hash looks as follows:%BR%
+Each auth provider is named by an unique ID (=provider_id_1=, =provider_id_2=),
+has its own configuration specified by key =config= and an authentication
+=module= (=auth_provider_1=, =auth_provider_2=) which handles the actual
+authentication process.
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'provider_id_1' => {
+      'config' => {...},
+      'module' => 'auth_provider_1'
+   },
+   'provider_id_2' => {
+      'config' => {...},
+      'module' => 'auth_provider_2'
+   }
+}
+</verbatim>
+
+---+++ Available Authentication Modules
+
+For now =UnifiedAuthContrib= ships with the following modules:
+| *Module* | *Description* |
+| !BaseUser | Foswiki's !BaseUserMapping |
+| Topic | Foswiki's !TopicUserMapping |
+| Kerberos | Single Sign-on using MIT Kerberos |
+| Ldap | Authentication based on a LDAP directory |
+| !IpRange | Authentication based on IP addresses |
+| Google | Google accounts, as well as Google's G Suite |
+
+*Note*: Module names are *case sensitive*.
+
+%RED% *Note* %ENDCOLOR%%BR%
+You *never* should configure an auth provider by using the =BaseUser= module.
+!UnifiedAuthContrib enables this module on its own - whether it's provided
+within the configuration hash or not. Using the =BaseUser= module twice may lead
+to duplicate user entries within the database.
+
+---+++ Common Configuration
+
+Although each provider has its own unique configuration, there are some options
+which are shared across all providers.
+
+| *Preference* | *Description* | *Default* |
+| enabled | Boolean value indicating whether this provider is enabled | 1 |
+| allow | Comma separated list of IPs | |
+| deny | Comma separated list of IPs | |
+
+Any authentication provider may be disabled by setting its =enabled= attribute
+to a falsely value (0).%BR%
+In addition any provider can be configured to handle requests only for a given
+set of IP addresses. For instance it's possible to disallow Google
+authentication for users from the local network while external access is still
+granted.
+
+Specifying =allow= means any request from an address within the given value
+is granted while any other client is declined. Preference =deny= works the other
+way around. If a client's address is matching the given value he will be
+declined.
+
+Attributes =allow= and =deny= takes a comma spearated list of either individual
+IPs, ranges or netblocks in CIDR notation, e.g.
+   * 192.168.178.10, 10.10.20.1-10.10.20.20, 10.10.10.0/24
+
+In the following example =UnifiedAuth= tries to authenticate users from the
+internal network =10.10.10.0/24= by using module =Kerberos=.%BR%If the
+authentication using SSO was successful a user's identity is fetched using
+=LDAP=. Elsewise a user may still enter his login data which is validated
+against the configured =LDAP= directory server.%BR%
+=Google= authentication is disabled, while logging in using =TopicUserMapping=
+is only granted to clients from an external network, e.g. the Internet.
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'sso' => {
+      'config' => {
+         'allow' => '10.10.10.0/24',
+         'identityProvider' => 'ldap'
+      },
+      'module' => 'Kerberos'
+   },
+   'ldap' => {
+      'config' => {
+         'allow' => '10.10.10.0/24'
+      },
+      'module' => 'Ldap'
+   },
+   'google' => {
+      'config' => {
+         'enabled' => 0,
+      },
+      'module' => 'Google'
+   },
+   'topic' => {
+      'config' => {
+         'deny' => '10.10.10.0/24'
+      },
+      'module' => 'Topic'
+   }
+}
+</verbatim>
+
+---++ Configuring Authentication Modules
+
+---+++ !BaseUserMapping (Admin Access)
+*The =BaseUser= provider is handled internally and should never be configured*
+*by yourself!*
+
+---+++ !TopicUserMapping
+The =Topic= module which provides Foswiki's !TopicUserMapping doesn't require
+any special configuration. Aside from the common attributes =enabled=, =allow=
+and =deny= no further configuration is necessary.
+
+*Example configuration*
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'topic' => {
+      'module' => 'Topic'
+   }
+}
+</verbatim>
+
+---+++ Single Sign-on
+The =Kerberos= module enables Foswiki to perform Kerberos authentication on its
+own. It is *not* necessary to configure the used web server to do any
+authentication. This module delegates negotiation tokens to =GSSAPI= to handle
+login request.
+
+*Note* %BR%
+This module *doesn't* provide any user identity information. Thus you usually
+want to use =Kerberos= login in conjunction with =Ldap=.
+
+*Note* %BR%
+This authentication provider can be configured multiple times.
+
+*Note* %BR%
+It's highly advisable to configure this module for a given network, e.g. your
+company's internal network. Most browsers will render an additional login prompt
+when they receive a negotiation challange while they are not able to generate a
+proper response (for instance because the client is not able to perform a SSO
+login attempt due to a missing domain membership; no available KDC; etc.).
+
+%RED% *Note* %ENDCOLOR%%BR%
+Make sure to set proper ACLs in =SitePreferences= and/or =WebPreferences= when
+disabling authentication on web server basis.
+
+| *Preference* | *Description* |
+| identityProvider | ID of a configured Ldap provider which shall be used to fetch user information |
+| keytab | Path to a valid Kerberos keytab file |
+| realm | The domain realm |
+| serviceName | Service principal name |
+
+*Example configuration*
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'sso' => {
+      'config' => {
+         'allow' => '10.10.10.0/24',
+         'identityProvider' => 'my_ldap',
+         'keytab' => '/etc/apache2/http.keytab',
+         'realm' => 'EXAMPLE.COM',
+         'serviceName' => 'HTTP/server.example.com'
+      },
+      'module' => 'Kerberos'
+   },
+   'my_ldap' => {
+      'config' => {...},
+      'module' => 'Ldap'
+   }
+}
+</verbatim>
+
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'realm_foo' => {
+      'config' => {
+         'allow' => '10.10.10.0/24',
+         'identityProvider' => 'ldap_provider_id1',
+         'keytab' => '/etc/apache2/http.keytab',
+         'realm' => 'FOO.ORG',
+         'serviceName' => 'HTTP/server.foo.org'
+      },
+      'module' => 'Kerberos'
+   },
+   'realm_bar' => {
+      'config' => {
+         'allow' => '10.10.20.0/24',
+         'identityProvider' => 'ldap_provider_id2',
+         'keytab' => '/etc/apache2/http.keytab',
+         'realm' => 'BAR.ORG',
+         'serviceName' => 'HTTP/server.bar.org'
+      },
+      'module' => 'Kerberos'
+   }
+}
+</verbatim>
+
+---+++ LDAP Services
+Provides LDAP based authentication and user identity information.%BR%
+Currently this is to 95% identical to LdapContrib. Unfortunately there is still
+no nice GUI to create the complex configuration hash for this provider.%BR%
+
+For documentation of configuration values head to LdapContrib.%BR%
+The following example shows a hash of all possible values.
+
+In a production environment you have to specify at least the following
+parameters:
+
+| *Preference* | *Description* | *Default* |
+| !AllowChangePassword | Allow/disallow changing the LDAP password using the !ChangePassword feature | 0 |
+| Base | Base DN to use in searches | |
+| !BindDN | The DN to use when binding to the LDAP server; if undefined anonymous binding will be used.%BR%Example 'cn=proxyuser,dc=my,dc=domain,dc=com' | |
+| !BindPassword | The password used when binding to the LDAP server | |
+| !CharSet | Set this to the charset encoding of data coming from the LDAP server. | utf-8 |
+| !DefaultAutocompleteFields | Comma-separated list of fields to search in when using autocomplete | sn,givenName,sAMAccountName |
+| !DisplayNameFormat | Formatting string for generating a "display name" (human-friendly label for a user). | $displayName |
+| !GroupAttribute | This is the name of the attribute that holds the name of the group in a group record. | cn |
+| !GroupBase | A list of trees where to search for group records. | |
+| !GroupFilter | Filter to be used to find groups. Compare to !LoginFilter. | objectClass=group |
+| !GroupScope | The scope of the search for groups starting at !GroupBase. | sub |
+| Host | IP address (or hostname) of the LDAP server | |
+| !InnerGroupAttribute | This is the name of the attribute in a group record used to point to the inner group record. | member |
+| !LoginAttribute | The user login name attribute. This is the attribute name that is used to login. | sAMAccountName |
+| !LoginFilter | Filter to be used to find login accounts. Compare to =GroupFilter= above | objectClass=person |
+| !MailAttribute | The user mail attribute. This is the attribute name used to fetch users e-mail. | mail |
+| !MapGroups | Enable use of LDAP groups. | 1 |
+| !MemberIndirection | Flag indicating wether the !MemberAttribute of a group stores a DN. | 1 |
+| Port | Port used when binding to the LDAP server | 389 |
+| !PrimaryGroupAttribute | This is the name of the attribute that holds the primary group attribute. | gidNumber |
+| !RewriteWikiNames | A hash mapping of rewrite rules. Rules are separated by commas. | { '^(.*)@.*$' => '$1' } |
+| !UserBase | A list of trees where to search for users records. | |
+| !UserScope | The scope of the search for users starting at !UserBase. | sub |
+| !WikiGroupsBackoff | Flag indicating wether we fallback to !WikiGroups. | 1 |
+| !WikiNameAttributes | The user's wiki name attribute. This is the attribute to generate the !WikiName from. | givenName,sn |
+
+*Example configuration*
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'topic' => {
+      'config' => {
+         'AllowChangePassword' => 1,
+         'Base' => 'dc=example,dc=com',
+         'BindDN' => 'cn=ldap_bind,ou=Users,dc=example,dc=com',
+         'BindPassword' => 'bind_password',
+         'CaseSensitiveLogin' => 0,
+         'CharSet' => 'utf-8',
+         'Debug' => 0,
+         'DefaultAutocompleteFields' => 'sn,givenName,sAMAccountName',
+         'DefaultCacheExpire' => 0,
+         'DisplayAttributes' => 'cn,mail',
+         'DisplayNameFormat' => '$cn',
+         'Exclude' => 'WikiGuest, ProjectContributor, RegistrationAgent, UnknownUser, AdminGroup, NobodyGroup, AdminUser, admin, guest,Administrator,administrator',
+         'GroupAttribute' => 'cn',
+         'GroupBase' => [
+             'ou=Groups,dc=example,dc=com'
+         ],
+         'GroupFilter' => 'objectClass=group',
+         'GroupScope' => 'sub',
+         'Host' => 'ldap_server.example.com',
+         'IPv6' => 0,
+         'IgnorePrivateGroups' => 1,
+         'IgnoreViewRightsInSearch' => 0,
+         'IndexEmails' => 1,
+         'InnerGroupAttribute' => 'member',
+         'KerberosKeyTab' => '/etc/krb5.keytab',
+         'KnownReferralsOnly' => 0,
+         'Krb5CredentialsCacheFile' => '',
+         'LoginAttribute' => 'sAMAccountName',
+         'LoginFilter' => 'objectClass=user',
+         'MailAttribute' => 'mail',
+         'MapGroups' => 1,
+         'MaxCacheAge' => 86400,
+         'MemberAttribute' => 'member',
+         'MemberIndirection' => 1,
+         'MergeGroups' => 0,
+         'NormalizeGroupNames' => 0,
+         'NormalizeLoginNames' => 0,
+         'NormalizeWikiNames' => 1,
+         'PageSize' => 500,
+         'PersonAttribures' => {
+            'c' => 'Country',
+            'company' => 'OrganisationName',
+            'department' => 'Department',
+            'division' => 'Division',
+            'facsimileTelephoneNumber' => 'Telefax',
+            'givenName' => 'FirstName',
+            'l' => 'Location',
+            'mail' => 'Email',
+            'manager' => 'Manager',
+            'mobile' => 'Mobile',
+            'physicalDeliveryOfficeName' => 'Address',
+            'postalAddress' => 'Address',
+            'sAMAccountName' => 'LoginName',
+            'sn' => 'LastName',
+            'streetAddress' => 'Address',
+            'telephoneNumber' => 'Telephone',
+            'title' => 'Title',
+            'uid' => 'LoginName'
+         },
+         'PersonDataForm' => 'UserForm',
+         'Port' => 389,
+         'Precache' => 1,
+         'PreferLocalSettings' => 1,
+         'PrimaryGroupAttribute' => 'cn',
+         'PrimaryGroupMapping' => {},
+         'ReferralConfig' => {},
+         'RewriteGroups' => {},
+         'RewriteLoginNames' => [],
+         'RewriteWikiNames' => {
+            '^(.*)@.*$' => '$1'
+         },
+         'SASLMechanism' => 'PLAIN CRAM-MD5 EXTERNAL ANONYMOUS',
+         'TLSCAFile' => '',
+         'TLSCAPath' => '',
+         'TLSClientCert' => '',
+         'TLSClientKey' => '',
+         'TLSSSLVersion' => 'tlsv1',
+         'TLSVerify' => 'require',
+         'UseSASL' => 0,
+         'UseTLS' => 0,
+         'UserBase' => [
+            'ou=Users,dc=example,dc=com'
+         ],
+         'UserMappingTopic' => '',
+         'UserScope' => 'sub',
+         'Version' => 3,
+         'WikiGroupsBackoff' => 1,
+         'WikiNameAliases' => '',
+         'WikiNameAttributes' => 'cn'
+      },
+      'module' => 'Ldap'
+   }
+}
+</verbatim>
+
+
+---+++ Google and Google G Suite
+This provider delegates authentication to Google allowing users to sign in
+using their Google account. In addition Google's G Suite, former Google Apps,
+is supported and can be configured by specifying the according =domain=.
+
+*Note* %BR%
+This authentication provider can be configured multiple times.
+
+| *Preference* | *Description* | *Default* |
+| client_id | The ID for your Google API access, registered in Google's developer console | |
+| client_secret | The secret token for your Google API access | |
+| domain | If set, only Google accounts on this domain can be used (G Suite membership) | |
+| wikiname_format | How to generate wiki names from the account data. This can use field names as provided by Google (e.g. =name=, =email=, =given_name=, =family_name=).%BR%Field names must be prefixed by a =$= sign to be expanded. Any characters not permitted in wiki names will be eliminated after expansion | =$name= |
+| displayname_format | Same as =wikiname_format= but for the readable display name | =$name= |
+
+*Example configuration*
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'google' => {
+      'config' => {
+         'client_id' => '127098520938-mvolksjdf834zhnfsmdjfsdbus80akjh.apps.googleusercontent.com',
+         'client_secret' => 'D34j-9sSdSDFSdcvsdubHam_',
+         'domain' => 'example.com'
+      },
+      'module' => 'Google'
+   }
+}
+</verbatim>
+
+---+++ !IP Ranges
+Allows automatically logging in a user based on their IP address. This makes it
+possible to grant restricted, guest-like access based on a user's location.
+
+*Note* %BR%
+This authentication provider can be configured multiple times.
+
+%RED% *Note* %BR%
+This provider is currently not supported and requires further development!
+%ENDCOLOR%
+
+| *Preference* | *Description* |
+| ip_range | A comma separated list of IPs.%BR%Each value is either an IP address range (e.g. '192.168.1.0-192.168.1.255') or a netblock in CIDR notation.%BR%Both IPv4 and IPv6 are supported.|
+| exclude_ip_range | If set, similar to =ip_range= but prevents these addresses from getting authenticated even if they match one of the IP ranges given in =ip_range= |
+| user_id | The user ID (of an existing !UnifiedAuth user) which this auth provider authenticates. Anyone logging in from one of the addresses in =ip_range= is automatically assigned this user ID |
+
+If you want to automatically create the user in question, include the following
+fields, too. Since the user will only be created once, these fields have no
+effect afterwards.
+
+| *Preference* | *Description* |
+| wiki_name | The !WikiName assigned to the user |
+| display_name | The display name |
+| email | Optionally, assign an e-mail address |
+
+*Example configuration*
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'range1' => {
+      'config' => {
+         'ip_range' => '10.10.10.0/24',
+         'user_id' => 'guest'
+      },
+      'module' => 'IpRange'
+   },
+   'range2' => {
+      'config' => {
+         'ip_range' => '10.10.20.0/24',
+         'wiki_name' => 'ProductionUser',
+         'display_name' => 'Production Plant 2',
+         'email' => 'noreply@example.com'
+      },
+      'module' => 'IpRange'
+   }
+}
+</verbatim>
+
 ---++ Query User Information
+The following form provides a convinient way to print user information by his
+login name, wikiname or cUID. Just fill the textbox and submit the form.
+
 <h6 id="query"></h6>
 <form type="GET" action="%SCRIPTURL{"view"}%/%WEB%/%TOPIC%#query">
    <label>User
@@ -95,10 +487,6 @@ $percentRENDERUSER{\"%URLPARAM{"cuid"}%\" convert=\"1\" format=\"| $cUID | $wiki
 |  License: | [[http://www.gnu.org/licenses/gpl.html][GPL (Gnu General Public License)]] |
 |  Version: | %$VERSION% |
 |  Release: | %$RELEASE% |
-|  Change History: | <!-- versions below in reverse order -->&nbsp; |
-|  0.1 (02 Feb 2015) | First public version |
 |  Dependencies: | %$DEPENDENCIES% |
 |  Contrib Home: | http://foswiki.org/Extensions/%TOPIC% |
 |  Support: | http://foswiki.org/Support/%TOPIC% |
-
-<!-- Do _not_ attempt to edit this topic; it is auto-generated. Please add comments/questions/remarks to the Dev topic instead. -->

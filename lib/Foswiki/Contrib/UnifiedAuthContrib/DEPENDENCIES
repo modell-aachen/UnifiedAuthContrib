@@ -1,4 +1,12 @@
 # Dependencies for UnifiedAuthContrib
-DBI, >=0, cpan, Required.
-DBD::SQLite, >=0, cpan, Recommended (and required if you do not set up a database config).
+Data::GUID, >=0, cpan, Required.
+GSSAPI, >=0, cpan, Required by Kerberos Provider.
+LWP::UserAgent, >=0, cpan, Required by Google Provider.
+MIME::Base64, >=0, cpan, Required by Kerberos Provider.
+Net::CIDR, >=0, cpan, Required.
+Net::LDAP, >=0, cpan, Required by Ldap provider.
+Net::OAuth2::Profile::WebServer;, >=0, cpan, Required by Google provider.
 Text::Unidecode, >=0, cpan, Recommended (for transliterating Unicode WikiNames).
+Unicode::Normalize, >=0, cpan, Required.
+URI::ldap, >=0, cpan, Required by Ldap provider.
+Foswiki::Contrib::PostgreContrib, >=1.0, perl, Required.
