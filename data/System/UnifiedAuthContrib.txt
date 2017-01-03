@@ -193,6 +193,18 @@ when they receive a negotiation challange while they are not able to generate a
 proper response (for instance because the client is not able to perform a SSO
 login attempt due to a missing domain membership; no available KDC; etc.).
 
+*Note* %BR%
+*In order to retreive authorization tokens sent by the client, minor changes to*
+*your web servers configuration are required.* %BR%
+The =Authorization= header is stripped off because usually the web server takes
+care of user authorization. When using module =Kerberos= !UnifiedAuth needs to
+retreive that header in order to perform the authorization.%BR%
+For Apache that can be achived by adjusting the wev server configuration as
+shown below:
+<verbatim>
+SetEnvIf Authorization (.+) HTTP_AUTHORIZATION=$1
+</verbatim>
+
 %RED% *Note* %ENDCOLOR%%BR%
 Make sure to set proper ACLs in =SitePreferences= and/or =WebPreferences= when
 disabling authentication on web server basis.
