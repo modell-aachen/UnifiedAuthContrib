@@ -55,7 +55,7 @@ Therefore =UnifiedAuth= ships with a script called =convert_ua_users.pl=
 located at the =tools= directory of your Foswiki installation.%BR%
 This script should always be executed by the web server user and takes as only
 optional parameter the name of a virtual host for which you're planning to
-convert cUIDs. The latter only applies for VirtualHostingContrib.
+convert cUIDs. The latter only applies to VirtualHostingContrib.
 
 *Note* %BR%
 You may skip this step if you're configuring a freshly installed Foswiki.
