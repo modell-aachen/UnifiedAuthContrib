@@ -28,14 +28,14 @@ This extension provides:
         will be improved later)
 
 Internally, the mapping data is stored in a Postgre database. Thus
-!UnifiedAuthContrib has a strong dependency on PostgreContrib. At the moment
+UnifiedAuthContrib has a strong dependency on PostgreContrib. At the moment
 there is no support for any other database.
 
 ---++ Installation Instructions
 
 %$INSTALL_INSTRUCTIONS%
 
-As mentioned earlier =UnifiedAuthContrib= has a strong dependency on
+As mentioned earlier UnifiedAuthContrib has a strong dependency on
 PostgreContrib. Before switching to =UnifiedLogin= ensure that PostgreContrib is
 installed and configured properly.
 
@@ -45,6 +45,35 @@ following preferences via the =/bin/configure= interface.
 {LoginManager}       = Foswiki::LoginManager::UnifiedLogin
 {PasswordManager}    = Foswiki::Users::UnifiedAuthUser
 {UserMappingManager} = Foswiki::Users::UnifiedUserMapping
+</verbatim>
+
+---++ User Migration
+If you're migrating from another user mapping, e.g. !LdapUserMapping, to
+=UnifiedAuth= you probably want to (and should) convert stored user information,
+e.g. topic ACLs, history data etc., into =UnifiedAuth's= UUID format.%BR%
+Therefore =UnifiedAuth= ships with a script called =convert_ua_users.pl=
+located at the =tools= directory of your Foswiki installation.%BR%
+This script should always be executed by the web server user and takes as only
+optional parameter the name of a virtual host for which you're planning to
+convert cUIDs. The latter only applies for VirtualHostingContrib.
+
+*Note* %BR%
+You may skip this step if you're configuring a freshly installed Foswiki.
+
+%RED% *Note* %ENDCOLOR%%BR%
+*Before running =convert_ua_users.pl= you have to*
+   1 Provide a valid ={Provider}= configuration (see below)
+   1 Refresh the users cache initially
+
+*Example usage*
+<verbatim>
+cd $FOSWIKI_ROOT/bin
+sudo -u www-data ./view / refreshauth=all
+
+cd $FOSWIKI_ROOT/tools
+sudo -u www-data perl convert_ua_users.pl
+sudo -u www-data perl convert_ua_users.pl host=all
+sudo -u www-data perl convert_ua_users.pl host=myvhc.example.com
 </verbatim>
 
 ---++ Anatomy of a provider configuration
@@ -73,7 +102,7 @@ authentication process.
 
 ---+++ Available Authentication Modules
 
-For now =UnifiedAuthContrib= ships with the following modules:
+For now UnifiedAuthContrib ships with the following modules:
 | *Module* | *Description* |
 | !BaseUser | Foswiki's !BaseUserMapping |
 | Topic | Foswiki's !TopicUserMapping |
@@ -86,7 +115,7 @@ For now =UnifiedAuthContrib= ships with the following modules:
 
 %RED% *Note* %ENDCOLOR%%BR%
 You *never* should configure an auth provider by using the =BaseUser= module.
-!UnifiedAuthContrib enables this module on its own - whether it's provided
+UnifiedAuthContrib enables this module on its own - whether it's provided
 within the configuration hash or not. Using the =BaseUser= module twice may lead
 to duplicate user entries within the database.
 
@@ -474,6 +503,32 @@ effect afterwards.
    }
 }
 </verbatim>
+
+---++ Refreshing User Information
+=UnifiedAuth= caches information about known users within its database.
+Providers which are allowing to query all users at once (e.g. =Ldap=) can be
+forced to refresh their cached information by passing a query parameter called
+=refreshauth= to the view script.%BR%
+As value you may specify =all= to refresh all configured auth providers at once
+or a specific provider ID to just refresh that provider.
+
+*Note* %BR%
+Only wiki administrators are allowed to force a cache update.
+
+*Example configuration*
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'my_provider_1' => {...},
+   'my_provider_2' => {...},
+   'my_provider_3' => {...},
+}
+</verbatim>
+<pre>
+%SCRIPTURL{"view"}%/%WEB%/%TOPIC%?refreshauth=my_provider_2
+
+%SCRIPTURL{"view"}%/%WEB%/%TOPIC%?refreshauth=all
+</pre>
+
 
 ---++ Query User Information
 The following form provides a convinient way to print user information by his
