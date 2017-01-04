@@ -26,19 +26,6 @@ sub new {
         $session->enterContext('can_remember_login');
     }
 
-    if(my $refresh = $session->{request}->param('refreshauth')) {
-        if($refresh eq 'all') {
-            Foswiki::Func::writeWarning("refreshing all providers");
-            foreach my $id ( ('__baseuser', keys %{$Foswiki::cfg{UnifiedAuth}{Providers}}) ) {
-                Foswiki::Func::writeWarning("refreshing $id");
-                my $provider = $this->_authProvider($id);
-                $provider->refresh() if $provider;
-            }
-        } else {
-            my $provider = $this->_authProvider($refresh);
-            $provider->refresh() if $provider;
-        }
-    }
     return $this;
 }
 
@@ -230,7 +217,8 @@ sub loadSession {
     my $this = shift;
 
     my $session = $this->{session};
-    my $logout = $session && $session->{request} && $session->{request}->param('logout');
+    my $req = $session->{request};
+    my $logout = $session && $req && $req->param('logout');
     my $user = $this->SUPER::loadSession(@_);
 
     if ($logout) {
@@ -247,6 +235,21 @@ sub loadSession {
             eval("require $provider;");
             my $handler = $provider->can('handleLogout');
             $handler->($session);
+        }
+    }
+
+    if(Foswiki::Func::isAnAdmin($user) && (my $refresh = $req->param('refreshauth'))) {
+        $req->delete('refreshauth');
+        if($refresh eq 'all') {
+            Foswiki::Func::writeWarning("refreshing all providers");
+            foreach my $id ( ('__baseuser', keys %{$Foswiki::cfg{UnifiedAuth}{Providers}}) ) {
+                Foswiki::Func::writeWarning("refreshing $id");
+                my $provider = $this->_authProvider($id);
+                $provider->refresh() if $provider;
+            }
+        } elsif (defined $Foswiki::cfg{UnifiedAuth}{Providers}{$refresh}) {
+            my $provider = $this->_authProvider($refresh);
+            $provider->refresh() if $provider;
         }
     }
 
