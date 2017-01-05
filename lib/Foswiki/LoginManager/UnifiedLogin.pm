@@ -16,6 +16,9 @@ use JSON;
 use Unicode::Normalize;
 
 use Foswiki::LoginManager ();
+use Foswiki::Users::BaseUserMapping;
+use Foswiki::UnifiedAuth::Providers::BaseUser;
+
 our @ISA = ('Foswiki::LoginManager');
 
 sub new {
@@ -220,6 +223,16 @@ sub loadSession {
     my $req = $session->{request};
     my $logout = $session && $req && $req->param('logout');
     my $user = $this->SUPER::loadSession(@_);
+
+    my $bu = \%Foswiki::Users::BaseUserMapping::BASE_USERS;
+    my $cuids = \%Foswiki::UnifiedAuth::Providers::BaseUser::CUIDs;
+    foreach my $base (keys $bu) {
+        my $login = $bu->{$base}{login};
+        my $wn = $bu->{$base}{wikiname};
+        $session->{users}->{login2cUID}->{$login} = $cuids->{$base};
+        $session->{users}->{wikiName2cUID}->{$wn} = $cuids->{$base};
+    }
+
 
     if ($logout) {
         my $cgis = $session->getCGISession();
