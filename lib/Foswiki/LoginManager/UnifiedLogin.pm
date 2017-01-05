@@ -177,8 +177,6 @@ sub login {
     }
 
     my $external = $query->param('uauth_external') || 0;
-    my $context = Foswiki::Func::getContext();
-    $context->{uauth_choose} = 1;
 
     foreach my $p (@enabledProvider) {
         $provider = $p;

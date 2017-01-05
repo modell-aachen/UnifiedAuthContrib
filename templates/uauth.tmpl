@@ -33,8 +33,7 @@
 }%%TMPL:P{"statestep"}%%{
 }%%TMPL:P{"uauthloginstep"}%%{
 }%%TMPL:P{"submitstep"}%%{
-}%<hr>%{
-}%%TMPL:P{context="uauth_choose" then="auth_providers"}%%{
+}%%IF{"context UA_CHOOSE" then="$percntTMPL:P{\"auth_providers\"}$percnt"}%%{
 }%%TMPL:P{"formend"}%%{
 }%<hr>%{
 }%%TMPL:P{"seealsostep"}%%{
@@ -48,17 +47,18 @@
 %TMPL:DEF{"passwordfieldnoteremember"}%%TMPL:P{"passwordfield"}%%TMPL:END%
 
 %TMPL:DEF{"auth_providers"}%%{
-}%<div class="foswikiFormStep">
+}%<hr><div class="foswikiFormStep">
 <h3>%MAKETEXT{"Log on with a social network"}%</h3>
-<p>
-<button style="float: left;" class="social_provider" type="subbmit" name="facebook"></button>
-<button style="float: right;" class="social_provider" type="subbmit" name="google"></button>
-<button style="float: right;" class="social_provider" type="subbmit" name="steam"></button>
+%TMPL:P{context="UA_FACEBOOK" then="auth_buttons" provider="facebook"}%
+%TMPL:P{context="UA_GOOGLE" then="auth_buttons" provider="google"}%
+%TMPL:P{context="UA_STEAM" then="auth_buttons" provider="steam"}%
 <input type="hidden" name="uauth_provider" value="" />
 <input type="hidden" name="uauth_external" value="" />
-<div style="clear: both;"></div>
-</p>
 </div>%{
+}%%TMPL:END%
+
+%TMPL:DEF{"auth_buttons"}%%{
+}%<button class="social_provider" type="submit" name="%provider%"></button>%{
 }%%TMPL:END%
 
 %TMPL:DEF{"link_retry"}%<div id="foswikiLogin">
@@ -72,7 +72,5 @@
   </div>
 </div></div>%TMPL:END%
 
-%TMPL:DEF{"content"}%%JQREQUIRE{"blockui"}%%{
-}%%ADDTOZONE{"head" id="uauth:css" text="<link rel='stylesheet' type='text/css' media='all' href='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/css/uauth.css' />"}%%{
-}%%ADDTOZONE{"script" requires="JQUERYPLUGIN::FOSWIKI::PREFERENCES" id="uauth:js" text="<script type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/uauth.js'></script>"}%%{
+%TMPL:DEF{"content"}%%JQREQUIRE{"blockui"}%%AUTHPROVIDERS%%{
 }%%TMPL:P{context="uauth_failed_nochoose" then="link_retry" else="form"}%%TMPL:END%

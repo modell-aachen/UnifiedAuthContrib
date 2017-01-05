@@ -36,6 +36,7 @@ sub initiateLogin {
 
 sub isMyLogin {
     my $this = shift;
+    return 0;
 }
 
 sub processLogin {
