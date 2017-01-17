@@ -1042,7 +1042,7 @@ sub cacheUserFromEntry {
     my $oldDn = $db->selectrow_array("SELECT dn FROM users_ldap WHERE pid=? AND login=?", {}, $pid, $loginName);
     if($oldDn) {
         unless($oldDn eq $dn) {
-            $db->do("UPDATE users_ldap SET dn=?, cuid=? where pid=? AND login=?", {}, $dn, $cuid, $pid, $loginName, $dn);
+            $db->do("UPDATE users_ldap SET dn=?, cuid=? where pid=? AND login=?", {}, $dn, $cuid, $pid, $loginName);
         }
     } else {
         $db->do("INSERT INTO users_ldap (pid, login, dn, cuid) VALUES (?,?,?,?)", {}, $pid, $loginName, $dn, $cuid);
