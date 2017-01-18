@@ -224,7 +224,7 @@ sub loadSession {
 
     my $bu = \%Foswiki::Users::BaseUserMapping::BASE_USERS;
     my $cuids = \%Foswiki::UnifiedAuth::Providers::BaseUser::CUIDs;
-    foreach my $base (keys $bu) {
+    foreach my $base (keys %$bu) {
         my $login = $bu->{$base}{login};
         my $wn = $bu->{$base}{wikiname};
         $session->{users}->{login2cUID}->{$login} = $cuids->{$base};
