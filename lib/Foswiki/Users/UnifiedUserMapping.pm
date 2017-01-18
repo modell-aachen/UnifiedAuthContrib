@@ -1007,6 +1007,8 @@ SQL
 sub _isCUID {
     my $login = shift;
 
+    return 0 unless defined $login;
+
     $login =~ s/_2d/-/g;
     return $login if Foswiki::UnifiedAuth::isCUID($login);
 

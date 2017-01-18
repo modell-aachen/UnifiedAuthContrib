@@ -177,6 +177,8 @@ sub getCUID {
 sub isCUID {
     my $login = shift;
 
+    return 0 unless defined $login;
+
     return $login =~ /^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$/;
 }
 
