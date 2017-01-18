@@ -913,6 +913,17 @@ sub normalizeWikiName {
     return $wikiName;
 }
 
+sub normalizeLoginName {
+  my ($this, $name) = @_;
+
+  $name =~ s/@.*$//o;    # remove REALM
+
+  $name = transliterate($name);
+  $name =~ s/[^$Foswiki::cfg{LoginNameFilterIn}]//;
+
+  return $name;
+}
+
 sub cacheUserFromEntry {
     my ($this, $entry) = @_;
 
