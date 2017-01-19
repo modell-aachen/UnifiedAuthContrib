@@ -117,17 +117,6 @@ sub _loadTemplate {
     return $tmpls->readTemplate('uauth');
 }
 
-sub _renderTemplate {
-    my ($this, $tmpl, %params) = @_;
-    my $session = $this->{session};
-    $session->{prefs}->setSessionPreferences(%params);
-    my $topicObject = Foswiki::Meta->new($session, $session->{webName}, $session->{topicName});
-    $tmpl = $topicObject->expandMacros($tmpl);
-    $tmpl = $topicObject->renderTML($tmpl);
-    $tmpl =~ s/<nop>//g;
-    $session->writeCompletePage($tmpl);
-}
-
 =begin TML
 
 ---++ ObjectMethod login( $query, $session )
@@ -153,6 +142,8 @@ database, that can then be displayed by referring to
 sub login {
     my ( $this, $query, $session ) = @_;
     my $users = $session->{users};
+
+    my (@errors, @banners);
 
     my $cgis = $session->getCGISession();
     my $provider;
@@ -349,10 +340,8 @@ sub processProviderLogin {
     my $tmpl = $this->_loadTemplate;
     my $banner = '';
     $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE') unless $provider->isEarlyLogin;
-    $this->_renderTemplate($tmpl,
-        UAUTH_AUTH_FAILURE_MESSAGE => $error,
-        BANNER => $banner,
-    );
+
+    $session->{prefs}->setSessionPreferences(UAUTH_AUTH_FAILURE_MESSAGE => $error, BANNER => $banner);
 
     return 0;
 }
