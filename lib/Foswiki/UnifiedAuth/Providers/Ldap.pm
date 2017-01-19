@@ -969,10 +969,7 @@ sub cacheUserFromEntry {
 #    }
         $email = (sort map {$_ =~ s#^\s+##; $_ =~ s#\s+$##; $_ } @$emails)[0]; # XXX
     }
-    unless($email) {
-        writeDebug("No email for $dn - skipping user");
-        return 0;
-    }
+    $email = '' unless defined $email;
 
     my $displayName = $this->{displayNameFormat};
     $displayName =~ s#\$(\w+)#$entry->get_value($1) || "\$$1"#ge;
