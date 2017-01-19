@@ -197,12 +197,18 @@ sub add_user {
         next if $n =~ /^\s*$/;
         $wiki_name = $normalizers{$n}->($wiki_name);
     }
-    eval {
-        require Text::Unidecode;
-        $wiki_name = Text::Unidecode::unidecode($wiki_name);
-    };
-    $wiki_name =~ s/([^a-z0-9])//gi;
-    $wiki_name =~ s/^([a-z])/uc($1)/e;
+
+    # make sure we have a valid topic name
+    sub unidecode {
+        my $text = shift;
+            eval {
+                require Text::Unidecode;
+                $text = Text::Unidecode::unidecode($text);
+            };
+        return $text;
+    }
+    $wiki_name =~ s/$Foswiki::cfg{NameFilter}/unidecode($_)/gi;
+    $wiki_name =~ s/$Foswiki::cfg{NameFilter}//gi;
 
     my $db = $this->db;
     my $has = sub {
