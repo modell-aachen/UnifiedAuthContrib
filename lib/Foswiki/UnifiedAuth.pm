@@ -536,7 +536,7 @@ sub updateGroup {
         $currentMembers->{$item} = 1;
     }
     foreach my $item ( @$nested ) {
-        unless(defined $currentMembers->{$item}) {
+        unless(defined $currentGroups->{$item}) {
             $db->do('INSERT INTO nested_groups (parent, child) VALUES(?,?)', {}, $cuid, $item);
         }
         $currentGroups->{$item} = 1;

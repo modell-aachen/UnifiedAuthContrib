@@ -451,9 +451,10 @@ sub refreshGroupsCache {
     # check for error
     return 0 if $gotError;
 
-    my $groupsCache = {};
+    my $groupsCache = {}; # maps name -> ldap entry
+    my $groupsCacheDN = {}; # maps dn -> name
     foreach my $entry ( @$fromLdap ) {
-        $this->cacheGroupFromEntry($entry, $groupsCache);
+        $this->cacheGroupFromEntry($entry, $groupsCache, $groupsCacheDN);
     }
 
     my $db = $this->{uauth}->db();
@@ -464,7 +465,7 @@ sub refreshGroupsCache {
     my $users = $db->selectall_hashref('SELECT dn, cuid FROM users_ldap', 'dn', {});
     my $oldGroups = $db->selectcol_arrayref('SELECT name FROM groups WHERE pid=?', {}, $pid);
 
-    $this->_processGroups($groupsCache, $users);
+    $this->_processGroups($groupsCache, $groupsCacheDN, $users);
 
     # kick removed groups
     foreach my $oldName ( @$oldGroups ) {
@@ -477,7 +478,7 @@ sub refreshGroupsCache {
 }
 
 sub cacheGroupFromEntry {
-    my ($this, $entry, $groups) = @_;
+    my ($this, $entry, $groups, $groupsDN) = @_;
 
     my $dn = $this->fromLdapCharSet($entry->dn());
     writeDebug("caching group for $dn");
@@ -535,6 +536,7 @@ sub cacheGroupFromEntry {
 
 
     $groups->{$loginName} = $entry;
+    $groupsDN->{$dn} = $loginName;
 
     # TODO
     # resolve primary group memberships.
@@ -546,7 +548,7 @@ sub cacheGroupFromEntry {
 }
 
 sub _processGroups {
-    my ($this, $groups, $users) = @_;
+    my ($this, $groups, $groupsDN, $users) = @_;
 
     my $uauth = $this->{uauth};
     my $db = $uauth->db();
@@ -560,6 +562,9 @@ sub _processGroups {
         my $nested = [];
         if ($memberVals) {
             foreach my $member ( @{$memberVals->{''} || []} ) {
+                if ($groupsDN->{$member}) {
+                    $member = $groupsDN->{$member};
+                }
                 if ($groups->{$member}) {
                     push @$nested, $uauth->getOrCreateGroup($member, $this->getPid());
                 } elsif ($users->{$member}) {
