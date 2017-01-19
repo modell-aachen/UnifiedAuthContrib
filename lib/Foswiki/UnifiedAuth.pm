@@ -237,6 +237,9 @@ sub delete_user {
 
 sub _uni {
     my $charset = shift;
+
+    return unless $charset;
+
     for my $i (@_) {
         next if not defined $i || utf8::is_utf8($i);
         $i = decode($charset, $i);

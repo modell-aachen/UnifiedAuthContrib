@@ -185,6 +185,8 @@ sub makeConfig {
 sub fromLdapCharSet {
     my ($this, $string) = @_;
 
+    return undef unless defined $string;
+
     my $ldapCharSet = $this->{config}{CharSet} || 'utf-8';
 
     if ($Foswiki::UNICODE) {
@@ -562,6 +564,7 @@ sub _processGroups {
         my $nested = [];
         if ($memberVals) {
             foreach my $member ( @{$memberVals->{''} || []} ) {
+            $member = $this->fromLdapCharSet($member);
                 if ($groupsDN->{$member}) {
                     $member = $groupsDN->{$member};
                 }
@@ -967,13 +970,13 @@ sub cacheUserFromEntry {
 #      $emails{$loginName} = $email;
 #      $data->{"EMAIL2U::$email"} = join(',', sort keys %emails);
 #    }
-        $email = (sort map {$_ =~ s#^\s+##; $_ =~ s#\s+$##; $_ } @$emails)[0]; # XXX
+        $email = (sort map { $this->fromLdapCharSet($_) =~ s#^\s+##r =~ s#\s+$##r } @$emails)[0]; # XXX
     }
     $email = '' unless defined $email;
 
     my $displayName = $this->{displayNameFormat};
-    $displayName =~ s#\$(\w+)#$entry->get_value($1) || "\$$1"#ge;
-    $displayName =~ s#\$\{(\w+)\}#$entry->get_value($1) || "\$$1"#ge;
+    $displayName =~ s#\$(\w+)#$this->fromLdapCharSet($entry->get_value($1)) || "\$$1"#ge;
+    $displayName =~ s#\$\{(\w+)\}#$this->fromLdapCharSet($entry->get_value($1)) || "\$$1"#ge;
 
     # Check whether the current user entry is deactivated (flag ACCOUNTDISABLE)
     # SMELL. Applies to Active Directory only
@@ -1044,11 +1047,9 @@ sub cacheUserFromEntry {
             $wikiName = $alias;
         }
 
-        # XXX UTF-8
-        $cuid = $uauth->add_user('UTF-8', $pid, undef, $email, $loginName, $wikiName, $displayName, $isDeactivated);
+        $cuid = $uauth->add_user(undef, $pid, undef, $email, $loginName, $wikiName, $displayName, $isDeactivated);
     } else {
-        # XXX UTF-8
-        $uauth->update_user('UTF-8', $cuid, $email, $displayName, $isDeactivated);
+        $uauth->update_user(undef , $cuid, $email, $displayName, $isDeactivated);
     }
     # fake upsert
     $db->begin_work;
