@@ -43,7 +43,7 @@ sub initiateLogin {
 }
 
 sub handleLogout {
-    my $session = shift;
+    my ($this, $session) = @_;
     return unless $session;
 
     my $cgis = $session->getCGISession();

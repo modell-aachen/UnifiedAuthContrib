@@ -233,10 +233,10 @@ sub loadSession {
         while (my ($id, $hash) = each %{$Foswiki::cfg{UnifiedAuth}{Providers}}) {
             my $mod = $hash->{module};
             next unless $mod;
-            my $provider = "Foswiki::UnifiedAuth::Providers::$mod";
-            eval("require $provider;");
-            my $handler = $provider->can('handleLogout');
-            $handler->($session);
+            my $provider = $this->_authProvider($id);
+            if($provider->can('handleLogout')) {
+                $provider->handleLogout($session, $user);
+            }
         }
     }
 
