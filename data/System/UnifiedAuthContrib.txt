@@ -110,6 +110,7 @@ For now UnifiedAuthContrib ships with the following modules:
 | Ldap | Authentication based on a LDAP directory |
 | !IpRange | Authentication based on IP addresses |
 | Google | Google accounts, as well as Google's G Suite |
+| Cas | Single Sign-on using CAS |
 
 *Note*: Module names are *case sensitive*.
 
@@ -285,6 +286,40 @@ disabling authentication on web server basis.
          'serviceName' => 'HTTP/server.bar.org'
       },
       'module' => 'Kerberos'
+   }
+}
+</verbatim>
+
+---+++ Single Sign-on with CAS
+The =Cas= module enables Foswiki to perform CAS authentication.
+
+*Note* %BR%
+This module *doesn't* provide any user identity information. Thus you usually
+want to use =Cas= login in conjunction with =Ldap=.
+
+*Note* %BR%
+This authentication provider should *not* be configured multiple times.
+
+| *Preference* | *Description* |
+| =casUrl= | Url of your _CAS_ provider |
+| =identityProvider= | =ID= of a configured (Ldap) provider which shall be used to fetch user information, omit to use _all_ providers |
+| =AllowLoginUsingEmailAddress= | If your provider returns the email instead of a user name, set this to =1= and foswiki will search for a fitting user |
+| =LogoutFromCAS= | If set to perl-true, foswiki will redirect to the logout page of your _CAS_, when the user presses 'Logout'. Otherwise it will just deactivate sso for this browser session (you will get a login page). |
+
+*Example configuration*
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'cas' => {
+      'config' => {
+         'identityProvider' => 'my_ldap',
+         'casUrl' => 'www.mycas.com/cas',
+         'LogoutFromCas' => 1,
+      },
+      'module' => 'Cas'
+   },
+   'my_ldap' => {
+      'config' => {...},
+      'module' => 'Ldap'
    }
 }
 </verbatim>
