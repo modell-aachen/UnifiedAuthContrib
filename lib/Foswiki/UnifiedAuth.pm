@@ -282,7 +282,7 @@ sub queryUser {
     my $count;
     my $offset = $maxrows * $page;
 
-    unless ($type eq 'groups') {
+    unless ($type eq 'group') {
         my @params;
         @{$fields} = map {
             push @params, @terms;
