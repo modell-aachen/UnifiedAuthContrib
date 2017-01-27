@@ -878,7 +878,7 @@ sub _isInGroupCuid {
         {}, $g_cUID, $u_cUID);
 
     # do we have nesting?
-    my $nested = $db->selectrow_arrayref('SELECT child FROM nested_groups WHERE parent=?',
+    my $nested = $db->selectcol_arrayref('SELECT child FROM nested_groups WHERE parent=?',
         {}, $g_cUID);
     if($nested) {
         # do not recurse in infinite loops
