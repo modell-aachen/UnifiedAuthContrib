@@ -754,7 +754,7 @@ sub addUserToGroup {
 
         if ($isNested) {
             my $row = $db->selectrow_hashref(
-                'SELECT cuid FROM groups WHERE name=?', {}, $cuid);
+                'SELECT cuid FROM groups WHERE name=? OR cuid=?', {}, $cuid, $cuid);
             $cuid = $row->{cuid};
             $statement = 'INSERT INTO nested_groups (parent, child) VALUES(?, ?)';
         } else {
