@@ -2,16 +2,19 @@
 
 =begin TML
 
----+ package Foswiki::Users::UnifiedPasswdUser
+---+ package Foswiki::Users::UnifiedAuthUser
 
 Unified password manager that can draw from multiple sources.
 
 =cut
 
-package Foswiki::Users::UnifiedPasswdUser;
+package Foswiki::Users::UnifiedAuthUser;
 use strict;
 use warnings;
 
+use Crypt::PBKDF2;
+
+use Foswiki::Users::HtPasswdUser;
 use Foswiki::Users::Password ();
 our @ISA = ('Foswiki::Users::Password');
 
@@ -46,16 +49,67 @@ sub canFetchUsers {
 
 sub fetchPass {
     my ( $this, $login ) = @_;
-    # TODO
-    $this->{error} = "Can't fetch password information in this implementation";
-    return;
+	my $ret = 0;
+	my $enc = '';
+	my $userinfo;
+
+	if( $login ) {
+		my $uauth = Foswiki::UnifiedAuth->new();
+		my $db = $uauth->db;
+		$db = $uauth->db;
+
+		my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name, password FROM users WHERE users.login_name=?", {}, $login);
+		if( $userinfo ) {
+			$ret = $userinfo->{password};
+		} else {
+			$this->{error} = "Login $login invalid";
+			$ret = undef;
+		}
+	} else {
+		$this->{error} = 'No user';
+	}
+    return (wantarray) ? ( $ret, $userinfo ) : $ret;
+}
+
+sub _generatePwHash {
+    my $password = shift;
+
+    my $pbkdf2 = Crypt::PBKDF2->new(
+        hash_class => 'HMACSHA2',
+        hash_args => {
+            sha_size => 512,
+        },
+        iterations => 10000,
+        salt_len => 10,
+    );
+    return $pbkdf2->generate($password);
 }
 
 sub setPassword {
-    my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
-    # TODO
-    $this->{error} = "Can't change passwords in this implementation";
-    return;
+	my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
+
+	if ( defined($oldUserPassword) ) {
+		unless ( $oldUserPassword eq '1' ) {
+			return undef unless $this->checkPassword( $login, $oldUserPassword );
+		}
+	}
+	elsif ( $this->fetchPass($login) ) {
+		$this->{error} = $login . ' already exists';
+		return 0;
+	}
+
+    my $uauth = Foswiki::UnifiedAuth->new();
+    # XXX UTF-8
+    my $pwHash;
+    if ($newUserPassword) {
+        $pwHash = _generatePwHash($newUserPassword);
+    }
+    my $db = $uauth->db;
+    my $userinfo = $db->selectrow_hashref("SELECT cuid, email, display_name, deactivated FROM users WHERE users.login_name=?", {}, $login);
+    my $cuid = $uauth->update_user('UTF-8', $userinfo->{cuid}, $userinfo->{email}, $userinfo->{display_name}, $userinfo->{deactivated}, $pwHash);
+
+	$this->{error} = undef;
+	return 1;
 }
 
 sub removeUser {
@@ -67,9 +121,25 @@ sub removeUser {
 
 sub checkPassword {
     my ( $this, $login, $password ) = @_;
-    # TODO
-    $this->{error} = "Cannot check passwords in this implementation";
-    return;
+
+    my $uauth = Foswiki::UnifiedAuth->new();
+    my $db = $uauth->db;
+
+    my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name, password FROM users WHERE users.login_name=?", {}, $login);
+    return undef unless $userinfo;
+    if( $userinfo->{password} ) {
+        my $pbkdf2 = Crypt::PBKDF2->new;
+        return undef unless $pbkdf2->validate( $userinfo->{password}, $password );
+    } else {
+        my $topicPwManager = Foswiki::Users::HtPasswdUser->new($this->{session});
+        return undef unless $topicPwManager->checkPassword( $userinfo->{wiki_name}, $password );
+        #TODO: Set cgisession variable
+        #return undef unless $this::SUPER->processLoginData( $username , $password );
+        my $cgis = $this->{session}->getCGISession();
+        $cgis->param('force_set_pw', 1);
+    }
+
+    return $userinfo->{cuid};
 }
 
 sub isManagingEmails {

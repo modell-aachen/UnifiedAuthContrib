@@ -212,6 +212,7 @@ sub loadSession {
     my $req = $session->{request};
     my $logout = $session && $req && $req->param('logout');
     my $user = $this->SUPER::loadSession(@_);
+    my $cgis = $session->getCGISession();
 
     my $bu = \%Foswiki::Users::BaseUserMapping::BASE_USERS;
     my $cuids = \%Foswiki::UnifiedAuth::Providers::BaseUser::CUIDs;
@@ -222,9 +223,7 @@ sub loadSession {
         $session->{users}->{wikiName2cUID}->{$wn} = $cuids->{$base};
     }
 
-
     if ($logout) {
-        my $cgis = $session->getCGISession();
         if ($cgis) {
             $cgis->clear(['uauth_provider']);
             $cgis->clear(['uauth_state']);
@@ -255,6 +254,14 @@ sub loadSession {
         }
     }
 
+    if ($cgis->param('force_set_pw')) {
+        my $topic  = $session->{topicName};
+        my $web    = $session->{webName};
+        if($web ne 'System' && $topic ne 'ChangePassword') {
+            #Foswiki::Func::setPreferencesValue( 'BROADCASTMESSAGE', "Pls give a new PW." );
+            Foswiki::Func::redirectCgiQuery( undef, Foswiki::Func::getViewUrl( 'System', 'ChangePassword' ));
+        }
+    }
     return $user;
 }
 

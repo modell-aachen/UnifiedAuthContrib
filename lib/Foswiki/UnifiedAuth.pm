@@ -25,6 +25,7 @@ my @schema_updates = (
             wiki_name TEXT NOT NULL,
             display_name TEXT NOT NULL,
             email TEXT NOT NULL,
+            password CHAR(135),
             deactivated INTEGER DEFAULT 0
         )",
         "CREATE UNIQUE INDEX idx_wiki_name ON users (wiki_name)",
@@ -185,7 +186,7 @@ sub isCUID {
 
 sub add_user {
     my $this = shift;
-    my ($charset, $authdomainid, $cuid, $email, $login_name, $wiki_name, $display_name, $deactivated) = @_;
+    my ($charset, $authdomainid, $cuid, $email, $login_name, $wiki_name, $display_name, $deactivated, $password) = @_;
     $deactivated = 0 unless defined $deactivated;
 
     _uni($charset, $cuid, $wiki_name, $display_name, $email);
@@ -223,8 +224,8 @@ sub add_user {
     }
     $wiki_name = $wn;
 
-    $this->{db}->do("INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email, deactivated) VALUES(?,?,?,?,?,?,?)", {},
-        $cuid, $authdomainid, $login_name, $wiki_name, $display_name, $email, $deactivated
+    $this->{db}->do("INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email, deactivated, password) VALUES(?,?,?,?,?,?,?,?)", {},
+        $cuid, $authdomainid, $login_name, $wiki_name, $display_name, $email, $deactivated, $password
     );
     return $cuid;
 }
@@ -247,10 +248,10 @@ sub _uni {
 }
 
 sub update_user {
-    my ($this, $charset, $cuid, $email, $display_name, $deactivated) = @_;
+    my ($this, $charset, $cuid, $email, $display_name, $deactivated, $password) = @_;
     $deactivated = 0 unless defined $deactivated;
     _uni($charset, $cuid, $display_name, $email);
-    return $this->db->do("UPDATE users SET display_name=?, email=?, deactivated=? WHERE cuid=?", {}, $display_name, $email, $deactivated, $cuid);
+    return $this->db->do("UPDATE users SET display_name=?, email=?, deactivated=?, password=? WHERE cuid=?", {}, $display_name, $email, $deactivated, $password, $cuid);
 }
 
 # Mockup for retrieval of users by search term.

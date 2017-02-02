@@ -43,6 +43,14 @@ sub new {
     my $this = $class->SUPER::new($session, 'unified_auth_mapper');
     $this->{uac} = Foswiki::UnifiedAuth->new();
 
+
+    my $implPasswordManager = $this->{config}->{PasswordManager} || 'Foswiki::Users::UnifiedAuthUser';
+    $implPasswordManager = 'Foswiki::Users::Password'
+      if ( $implPasswordManager eq 'none' );
+    eval "require $implPasswordManager";
+    die $@ if $@;
+    $this->{passwords} = $implPasswordManager->new($session);
+
     my $base = \%Foswiki::UnifiedAuth::Providers::BaseUser::CUIDs;
     $this->{base_cuids} = $base;
 
@@ -436,10 +444,8 @@ Default behaviour is to return 1.
 =cut
 
 sub checkPassword {
-    # Logins to one of our providers never end up here; this can only be
-    # caused by using sudo=sudo and then trying to use an account not handled
-    # by BaseUserMapping
-    0;
+    my ( $this, $login, $password ) = @_;
+    return $this->{passwords}->checkPassword( $login, $password);
 }
 
 =begin TML
@@ -461,10 +467,16 @@ Default behaviour is to fail.
 =cut
 
 sub setPassword {
-    throw Error::Simple(
-        "The standard password change feature is not supported on this site ".
-        "because several different login sources are used here."
-    );
+	my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
+    my $addTo = $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider};
+    unless($addTo) {
+        throw Error::Simple('Failed to add user: adding users is not supported');
+    }
+    my $provider = $this->{uac}->authProvider($this->{session}, $addTo);
+    unless($provider) {
+        throw Error::Simple('Failed to add user: could not get provider: '.$provider);
+    }
+    return $provider->setPassword($login, $newUserPassword, $oldUserPassword);
 }
 
 =begin TML
