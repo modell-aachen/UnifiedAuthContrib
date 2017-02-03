@@ -43,14 +43,6 @@ sub new {
     my $this = $class->SUPER::new($session, 'unified_auth_mapper');
     $this->{uac} = Foswiki::UnifiedAuth->new();
 
-
-    my $implPasswordManager = $this->{config}->{PasswordManager} || 'Foswiki::Users::UnifiedAuthUser';
-    $implPasswordManager = 'Foswiki::Users::Password'
-      if ( $implPasswordManager eq 'none' );
-    eval "require $implPasswordManager";
-    die $@ if $@;
-    $this->{passwords} = $implPasswordManager->new($session);
-
     my $base = \%Foswiki::UnifiedAuth::Providers::BaseUser::CUIDs;
     $this->{base_cuids} = $base;
 
@@ -445,6 +437,15 @@ Default behaviour is to return 1.
 
 sub checkPassword {
     my ( $this, $login, $password ) = @_;
+
+    unless ($this->{passwords}) {
+        my $implPasswordManager = $this->{config}->{PasswordManager} || 'Foswiki::Users::UnifiedAuthUser';
+        $implPasswordManager = 'Foswiki::Users::Password'
+          if ( $implPasswordManager eq 'none' );
+        eval "require $implPasswordManager";
+        die $@ if $@;
+        $this->{passwords} = $implPasswordManager->new($this->{session});
+    }
     return $this->{passwords}->checkPassword( $login, $password);
 }
 
@@ -467,7 +468,7 @@ Default behaviour is to fail.
 =cut
 
 sub setPassword {
-	my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
+    my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
     my $addTo = $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider};
     unless($addTo) {
         throw Error::Simple('Failed to add user: adding users is not supported');

@@ -258,8 +258,10 @@ sub loadSession {
         my $topic  = $session->{topicName};
         my $web    = $session->{webName};
         unless( $req->param('resetpw')) {
-            unless( $topic eq 'WebHome' && $web eq 'System') {
-                my $url = Foswiki::Func::getScriptUrl('System', 'ChangePassword', 'oops',
+            unless( $topic eq $Foswiki::cfg{HomeTopicName} && $web eq $Foswiki::cfg{SystemWebName}) {
+                my $url = Foswiki::Func::getScriptUrl($Foswiki::cfg{SystemWebName},
+                               'ChangePassword',
+                               'oops',
                                template => 'oopsresetpassword',
                                resetpw => '1');
                 Foswiki::Func::redirectCgiQuery( undef, $url);

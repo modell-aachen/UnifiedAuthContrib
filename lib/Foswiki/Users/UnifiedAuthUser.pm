@@ -49,25 +49,25 @@ sub canFetchUsers {
 
 sub fetchPass {
     my ( $this, $login ) = @_;
-	my $ret = 0;
-	my $enc = '';
-	my $userinfo;
+    my $ret = 0;
+    my $enc = '';
+    my $userinfo;
 
-	if( $login ) {
-		my $uauth = Foswiki::UnifiedAuth->new();
-		my $db = $uauth->db;
-		$db = $uauth->db;
+    if( $login ) {
+        my $uauth = Foswiki::UnifiedAuth->new();
+        my $db = $uauth->db;
+        $db = $uauth->db;
 
-		my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name, password FROM users WHERE users.login_name=?", {}, $login);
-		if( $userinfo ) {
-			$ret = $userinfo->{password};
-		} else {
-			$this->{error} = "Login $login invalid";
-			$ret = undef;
-		}
-	} else {
-		$this->{error} = 'No user';
-	}
+        my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name, password FROM users WHERE users.login_name=?", {}, $login);
+        if( $userinfo ) {
+            $ret = $userinfo->{password};
+        } else {
+            $this->{error} = "Login $login invalid";
+            $ret = undef;
+        }
+    } else {
+        $this->{error} = 'No user';
+    }
     return (wantarray) ? ( $ret, $userinfo ) : $ret;
 }
 
@@ -86,17 +86,17 @@ sub _generatePwHash {
 }
 
 sub setPassword {
-	my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
+    my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
 
-	if ( defined($oldUserPassword) ) {
-		unless ( $oldUserPassword eq '1' ) {
-			return undef unless $this->checkPassword( $login, $oldUserPassword );
-		}
-	}
-	elsif ( $this->fetchPass($login) ) {
-		$this->{error} = $login . ' already exists';
-		return 0;
-	}
+    if ( defined($oldUserPassword) ) {
+        unless ( $oldUserPassword eq '1' ) {
+            return undef unless $this->checkPassword( $login, $oldUserPassword );
+        }
+    }
+    elsif ( $this->fetchPass($login) ) {
+        $this->{error} = $login . ' already exists';
+        return 0;
+    }
 
     my $uauth = Foswiki::UnifiedAuth->new();
     # XXX UTF-8
@@ -110,8 +110,8 @@ sub setPassword {
     my $cgis = $this->{session}->getCGISession();
     $cgis->param('force_set_pw', 0);
 
-	$this->{error} = undef;
-	return 1;
+    $this->{error} = undef;
+    return 1;
 }
 
 sub removeUser {
@@ -135,8 +135,6 @@ sub checkPassword {
     } else {
         my $topicPwManager = Foswiki::Users::HtPasswdUser->new($this->{session});
         return undef unless $topicPwManager->checkPassword( $userinfo->{wiki_name}, $password );
-        #TODO: Set cgisession variable
-        #return undef unless $this::SUPER->processLoginData( $username , $password );
         my $cgis = $this->{session}->getCGISession();
         $cgis->param('force_set_pw', 1);
     }
