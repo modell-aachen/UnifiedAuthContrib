@@ -212,7 +212,7 @@ sub loadSession {
     my $req = $session->{request};
     my $logout = $session && $req && $req->param('logout');
     my $user = $this->SUPER::loadSession(@_);
-    my $cgis = $session->getCGISession();
+    my $cgis = $session->getCGISession(); # note: might not exist (eg. call from cli)
 
     my $bu = \%Foswiki::Users::BaseUserMapping::BASE_USERS;
     my $cuids = \%Foswiki::UnifiedAuth::Providers::BaseUser::CUIDs;
@@ -254,7 +254,7 @@ sub loadSession {
         }
     }
 
-    if ($cgis->param('force_set_pw') && $req) {
+    if ($cgis && $cgis->param('force_set_pw') && $req) {
         my $topic  = $session->{topicName};
         my $web    = $session->{webName};
         unless( $req->param('resetpw')) {
