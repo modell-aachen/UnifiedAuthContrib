@@ -355,7 +355,7 @@ sub processProviderLogin {
     $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE') unless $provider->isEarlyLogin;
 
     if($error eq '') {
-        $error = "Wrong username or password"
+        $error = $session->i18n->maketext("Wrong username or password");
     }
     $session->{prefs}->setSessionPreferences(UAUTH_AUTH_FAILURE_MESSAGE => $error, BANNER => $banner);
 

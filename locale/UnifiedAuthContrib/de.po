@@ -20,3 +20,9 @@ msgstr "Ihr %1 nutzt eine neue Benutzerverwaltung, bitte vergeben Sie hierfür e
 
 msgid "Please set a new password"
 msgstr "Bitte vergeben Sie ein neues Passwort"
+
+msgid "We could not authenticate you. The following error occurred: %1"
+msgstr "Wir konnten Sie nicht authentifizieren. Der folgende Fehler ist aufgetreten: %1"
+
+msgid "Wrong username or password"
+msgstr "Benutzername oder Passwort falsch"
