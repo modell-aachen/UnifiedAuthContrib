@@ -144,7 +144,7 @@ sub processLoginData {
     my ($this, $username, $password) = @_;
 
     my $cuid = $this->{passwords}->checkPassword( $username, $password );
-    return { cuid => $cuid, data => {} };
+    $cuid ? return { cuid => $cuid, data => {} } : return undef;
 }
 
 1;

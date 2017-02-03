@@ -107,6 +107,8 @@ sub setPassword {
     my $db = $uauth->db;
     my $userinfo = $db->selectrow_hashref("SELECT cuid, email, display_name, deactivated FROM users WHERE users.login_name=?", {}, $login);
     my $cuid = $uauth->update_user('UTF-8', $userinfo->{cuid}, $userinfo->{email}, $userinfo->{display_name}, $userinfo->{deactivated}, $pwHash);
+    my $cgis = $this->{session}->getCGISession();
+    $cgis->param('force_set_pw', 0);
 
 	$this->{error} = undef;
 	return 1;

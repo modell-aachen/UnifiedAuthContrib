@@ -254,12 +254,16 @@ sub loadSession {
         }
     }
 
-    if ($cgis->param('force_set_pw')) {
+    if ($cgis->param('force_set_pw') && $req) {
         my $topic  = $session->{topicName};
         my $web    = $session->{webName};
-        if($web ne 'System' && $topic ne 'ChangePassword') {
-            #Foswiki::Func::setPreferencesValue( 'BROADCASTMESSAGE', "Pls give a new PW." );
-            Foswiki::Func::redirectCgiQuery( undef, Foswiki::Func::getViewUrl( 'System', 'ChangePassword' ));
+        unless( $req->param('resetpw')) {
+            unless( $topic eq 'WebHome' && $web eq 'System') {
+                my $url = Foswiki::Func::getScriptUrl('System', 'ChangePassword', 'oops',
+                               template => 'oopsresetpassword',
+                               resetpw => '1');
+                Foswiki::Func::redirectCgiQuery( undef, $url);
+            }
         }
     }
     return $user;
