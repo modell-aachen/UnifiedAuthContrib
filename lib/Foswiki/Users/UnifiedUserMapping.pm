@@ -438,15 +438,7 @@ Default behaviour is to return 1.
 sub checkPassword {
     my ( $this, $login, $password ) = @_;
 
-    unless ($this->{passwords}) {
-        my $implPasswordManager = $this->{config}->{PasswordManager} || 'Foswiki::Users::UnifiedAuthUser';
-        $implPasswordManager = 'Foswiki::Users::Password'
-          if ( $implPasswordManager eq 'none' );
-        eval "require $implPasswordManager";
-        die $@ if $@;
-        $this->{passwords} = $implPasswordManager->new($this->{session});
-    }
-    return $this->{passwords}->checkPassword( $login, $password);
+    return $this->{uac}->checkPassword($this->{session}, $login, $password);
 }
 
 =begin TML
@@ -469,15 +461,8 @@ Default behaviour is to fail.
 
 sub setPassword {
     my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
-    my $addTo = $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider};
-    unless($addTo) {
-        throw Error::Simple('Failed to add user: adding users is not supported');
-    }
-    my $provider = $this->{uac}->authProvider($this->{session}, $addTo);
-    unless($provider) {
-        throw Error::Simple('Failed to add user: could not get provider: '.$provider);
-    }
-    return $provider->setPassword($login, $newUserPassword, $oldUserPassword);
+
+    return $this->{uac}->setPassword($this->{session}, $login, $newUserPassword, $oldUserPassword);
 }
 
 =begin TML

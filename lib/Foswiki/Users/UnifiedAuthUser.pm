@@ -12,15 +12,11 @@ package Foswiki::Users::UnifiedAuthUser;
 use strict;
 use warnings;
 
-use Crypt::PBKDF2;
-
-use Foswiki::Users::HtPasswdUser;
 use Foswiki::Users::Password ();
 our @ISA = ('Foswiki::Users::Password');
 
 use Assert;
 use Error qw( :try );
-use Fcntl qw( :DEFAULT :flock );
 
 sub new {
     my ( $class, $session ) = @_;
@@ -43,8 +39,23 @@ sub readOnly {
 }
 
 sub canFetchUsers {
-    # TODO make dynamic
-    return 0;
+    return 1;
+}
+
+sub getUAC {
+    my ($this) = @_;
+    $this->{uac} = Foswiki::UnifiedAuth->new() unless $this->{uac};
+    return $this->{uac};
+}
+
+sub fetchUsers {
+    my ($this) = @_;
+
+    my $uauth = $this->getUAC();
+    my $list = $uauth->db->selectcol_arrayref(
+        "SELECT DISTINCT login_name FROM users"
+    );
+    return new Foswiki::ListIterator($list);
 }
 
 sub fetchPass {
@@ -54,7 +65,7 @@ sub fetchPass {
     my $userinfo;
 
     if( $login ) {
-        my $uauth = Foswiki::UnifiedAuth->new();
+        my $uauth = $this->getUAC();
         my $db = $uauth->db;
         $db = $uauth->db;
 
@@ -71,47 +82,10 @@ sub fetchPass {
     return (wantarray) ? ( $ret, $userinfo ) : $ret;
 }
 
-sub _generatePwHash {
-    my $password = shift;
-
-    my $pbkdf2 = Crypt::PBKDF2->new(
-        hash_class => 'HMACSHA2',
-        hash_args => {
-            sha_size => 512,
-        },
-        iterations => 10000,
-        salt_len => 10,
-    );
-    return $pbkdf2->generate($password);
-}
-
 sub setPassword {
     my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
 
-    if ( defined($oldUserPassword) ) {
-        unless ( $oldUserPassword eq '1' ) {
-            return undef unless $this->checkPassword( $login, $oldUserPassword );
-        }
-    }
-    elsif ( $this->fetchPass($login) ) {
-        $this->{error} = $login . ' already exists';
-        return 0;
-    }
-
-    my $uauth = Foswiki::UnifiedAuth->new();
-    # XXX UTF-8
-    my $pwHash;
-    if ($newUserPassword) {
-        $pwHash = _generatePwHash($newUserPassword);
-    }
-    my $db = $uauth->db;
-    my $userinfo = $db->selectrow_hashref("SELECT cuid, email, display_name, deactivated FROM users WHERE users.login_name=?", {}, $login);
-    my $cuid = $uauth->update_user('UTF-8', $userinfo->{cuid}, $userinfo->{email}, $userinfo->{display_name}, $userinfo->{deactivated}, $pwHash);
-    my $cgis = $this->{session}->getCGISession();
-    $cgis->param('force_set_pw', 0);
-
-    $this->{error} = undef;
-    return 1;
+    return $this->{uac}->setPassword($this->{session}, $login, $newUserPassword, $oldUserPassword);
 }
 
 sub removeUser {
@@ -124,22 +98,7 @@ sub removeUser {
 sub checkPassword {
     my ( $this, $login, $password ) = @_;
 
-    my $uauth = Foswiki::UnifiedAuth->new();
-    my $db = $uauth->db;
-
-    my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name, password FROM users WHERE users.login_name=?", {}, $login);
-    return undef unless $userinfo;
-    if( $userinfo->{password} ) {
-        my $pbkdf2 = Crypt::PBKDF2->new;
-        return undef unless $pbkdf2->validate( $userinfo->{password}, $password );
-    } else {
-        my $topicPwManager = Foswiki::Users::HtPasswdUser->new($this->{session});
-        return undef unless $topicPwManager->checkPassword( $userinfo->{wiki_name}, $password );
-        my $cgis = $this->{session}->getCGISession();
-        $cgis->param('force_set_pw', 1);
-    }
-
-    return $userinfo->{cuid};
+    return $this->{uac}->checkPassword($this->{session}, $login, $password);
 }
 
 sub isManagingEmails {

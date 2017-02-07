@@ -560,5 +560,35 @@ sub updateGroup {
     $db->commit();
 }
 
+sub checkPassword {
+    my ( $this, $session, $login, $password ) = @_;
+
+    my $db = $this->db();
+    my $providers = $db->selectcol_arrayref(
+        'SELECT p.name FROM users as u, providers as p WHERE u.pid = p.pid AND login_name=? ORDER BY p.name', {}, $login) || [];
+    foreach my $provider_id (@$providers) {
+        my $provider = $this->authProvider($session, $provider_id);
+        next unless $provider->can('checkPassword');
+        return 1 if $provider->checkPassword($login, $password);
+    }
+
+    return undef;
+}
+
+sub setPassword {
+    my ( $this, $session, $login, $newUserPassword, $oldUserPassword ) = @_;
+
+    my $passwordChanged;
+    my $db = $this->db();
+    my $providers = $db->selectcol_arrayref(
+        'SELECT p.name FROM users as u, providers as p WHERE u.pid = p.pid AND login_name=? ORDER BY p.name', {}, $login) || [];
+    foreach my $provider_id (@$providers) {
+        my $provider = $this->authProvider($session, $provider_id);
+        next unless $provider->can('setPassword');
+        $passwordChanged = 1 if $provider->setPassword($login, $newUserPassword, $oldUserPassword);
+    }
+
+    return $passwordChanged;
+}
 
 1;
