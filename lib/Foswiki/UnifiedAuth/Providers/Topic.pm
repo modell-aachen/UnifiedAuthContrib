@@ -141,7 +141,11 @@ sub addUser {
     unless($pid) {
         throw Error::Simple("Failed to add user: TopicUserMapping mal-configured (could not get pid)");
     }
-    unless(@{ $emails }) {
+
+    if(ref $emails eq 'ARRAY') {
+        $emails = $emails->[0];
+    }
+    unless($emails) {
         throw Error::Simple("Failed to add user: No email given for $wikiname");
     }
     if ($this->{passwords}->fetchPass($login) ) {
