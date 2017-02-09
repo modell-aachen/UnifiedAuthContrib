@@ -243,7 +243,7 @@ sub loadSession {
         $req->delete('refreshauth');
         if($refresh eq 'all') {
             Foswiki::Func::writeWarning("refreshing all providers");
-            foreach my $id ( ('__baseuser', keys %{$Foswiki::cfg{UnifiedAuth}{Providers}}) ) {
+            foreach my $id ( ('__baseuser', sort keys %{$Foswiki::cfg{UnifiedAuth}{Providers}}) ) {
                 Foswiki::Func::writeWarning("refreshing $id");
                 my $provider = $this->_authProvider($id);
                 $provider->refresh() if $provider;
