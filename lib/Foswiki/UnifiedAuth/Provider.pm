@@ -1,5 +1,6 @@
 package Foswiki::UnifiedAuth::Provider;
 
+use JSON;
 use strict;
 use warnings;
 
@@ -131,4 +132,8 @@ sub origin {
     return $3;
 }
 
+sub getDisplayAttributesOfLogin {
+    my ($this, $login, $data) = @_;
+    return 0;
+}
 1;

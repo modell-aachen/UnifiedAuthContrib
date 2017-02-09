@@ -21,6 +21,7 @@ my @schema_updates = (
     [
         "CREATE TABLE IF NOT EXISTS users_ldap (
             pid INTEGER NOT NULL,
+            info JSONB NOT NULL,
             login TEXT NOT NULL,
             cuid UUID NOT NULL,
             dn TEXT NOT NULL,
@@ -938,6 +939,7 @@ sub cacheUserFromEntry {
     my $uauth = $this->{uauth};
     my $db = $uauth->db();
     my $pid = $this->getPid();
+    my $info = '{}';
     #writeDebug("called cacheUserFromEntry()");
 
     my $dn = $this->fromLdapCharSet($entry->dn());
@@ -977,6 +979,20 @@ sub cacheUserFromEntry {
     my $displayName = $this->{displayNameFormat};
     $displayName =~ s#\$(\w+)#$this->fromLdapCharSet($entry->get_value($1)) || "\$$1"#ge;
     $displayName =~ s#\$\{(\w+)\}#$this->fromLdapCharSet($entry->get_value($1)) || "\$$1"#ge;
+
+    # store extra display fields
+    # 
+    # 'DisplayAttributes' => 'cn,mail',
+    # 'DisplayNameFormat' => '$cn - $mail',
+    #
+    if ($this->{displayAttributes}) {
+        my $extradata = {};
+        for my $attr (@{$this->{displayAttributes}}) {
+            # Foswiki::Func::writeWarning($attr . '<->' . $this->fromLdapCharSet($entry->get_value($attr)));
+            $extradata->{$attr} = $this->fromLdapCharSet($entry->get_value($attr));
+        }
+        $info = to_json($extradata);
+    }
 
     # Check whether the current user entry is deactivated (flag ACCOUNTDISABLE)
     # SMELL. Applies to Active Directory only
@@ -1053,13 +1069,14 @@ sub cacheUserFromEntry {
     }
     # fake upsert
     $db->begin_work;
-    my $oldDn = $db->selectrow_array("SELECT dn FROM users_ldap WHERE pid=? AND login=?", {}, $pid, $loginName);
-    if($oldDn) {
-        unless($oldDn eq $dn) {
-            $db->do("UPDATE users_ldap SET dn=?, cuid=? where pid=? AND login=?", {}, $dn, $cuid, $pid, $loginName);
+    my $oldData = $db->selectall_arrayref("SELECT dn, info FROM users_ldap WHERE pid=? AND login=?", undef, $pid, $loginName);
+    my $row = @$oldData["0"];
+    if($row && @$row) {
+        if(@$row["dn"] ne $dn || @$row["info"] ne $info) {
+            $db->do("UPDATE users_ldap SET dn=?, cuid=?, info=? where pid=? AND login=?", {}, $dn, $cuid, $info, $pid, $loginName);
         }
     } else {
-        $db->do("INSERT INTO users_ldap (pid, login, dn, cuid) VALUES (?,?,?,?)", {}, $pid, $loginName, $dn, $cuid);
+        $db->do("INSERT INTO users_ldap (pid, login, dn, cuid, info) VALUES (?,?,?,?,?)", {}, $pid, $loginName, $dn, $cuid, $info);
     }
     $db->commit;
 
@@ -1067,16 +1084,6 @@ sub cacheUserFromEntry {
 #  if ($this->{primaryGroupAttribute}) {
 #    my $groupId = $entry->get_value($this->{primaryGroupAttribute});
 #    $this->{_primaryGroup}{$groupId}{$loginName} = 1 if $groupId;    # delayed
-#  }
-
-    # TODO
-#  # store extra display fields
-#  if ($this->{displayAttributes}) {
-#    my $extradata = {};
-#    for my $attr (@{$this->{displayAttributes}}) {
-#      $extradata->{$attr} = $this->fromLdapCharSet($entry->get_value($attr));
-#    }
-#    $data->{"U2DIS::$loginName"} = to_json($extradata);
 #  }
 
 #  my %groupNames = {}; # TODO  map { $_ => 1 } @{$this->getGroupNames($data)};
@@ -1181,6 +1188,22 @@ sub identify {
     return {cuid => $user->{cuid}, data => {}} if $user;
     return undef;
 }
+=pod 
 
+---++ getDisplayAttributesOfLogin($login, $data) -> $displayAttributes
+
+returns the login's display attributes as a hashref
+
+=cut
+
+sub getDisplayAttributesOfLogin {
+    my ($this, $login, $data) = @_;
+    return 0 unless $login;
+
+    my $pid = $this->getPid();
+    my $db = Foswiki::UnifiedAuth->new()->db;
+    my $dat = $db->selectrow_array("SELECT info FROM users_ldap WHERE pid=? AND login=?", undef, $pid, $login);
+    return 0 unless $dat;
+    return from_json(Foswiki::Sandbox::untaintUnchecked($dat));
+}
 1;
-
