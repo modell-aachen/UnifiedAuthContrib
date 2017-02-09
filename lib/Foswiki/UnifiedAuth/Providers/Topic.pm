@@ -170,18 +170,15 @@ sub addUser {
     unless($emails) {
         throw Error::Simple("Failed to add user: No email given for $wikiname");
     }
-    if ($this->{passwords}->fetchPass($login) ) {
-
+    ($cuid, undef, my $error) = $this->_checkPassword($login, $password);
+    return $cuid if $cuid;
+    if ($error && $error ne 'notFound') {
         # They exist; their password must match
-        unless ( $this->{passwords}->checkPassword( $login, $password ) ) {
-            throw Error::Simple(
-                $this->{session}->i18n->maketext(
-                    'User exists in the Password Manager,  and the password you provided is different from the users current password.   You cannot add a user and change the password at the same time.'
-                )
-            );
-        }
-
-        # User exists, and the password was good.
+        throw Error::Simple(
+            $this->{session}->i18n->maketext(
+                'User exists in the Password Manager,  and the password you provided is different from the users current password.   You cannot add a user and change the password at the same time.'
+            )
+        );
     } else {
         # add a new user
 
@@ -199,13 +196,14 @@ sub addUser {
             $pwHash = _generatePwHash($password);
         }
         $cuid = $auth->add_user('UTF-8', $pid, undef, $emails, $login, $wikiname, $wikiname, 0, $pwHash);
+
+        my $addedWikiName = $this->{session}->{users}->getWikiName($cuid);
+        unless($addedWikiName eq $wikiname) {
+            $auth->delete_user($cuid);
+            throw Error::Simple("Failed to add user: WikiName ($wikiname) already in use");
+        }
     }
 
-    my $addedWikiName = $this->{session}->{users}->getWikiName($cuid);
-    unless($addedWikiName eq $wikiname) {
-        $auth->delete_user($cuid);
-        throw Error::Simple("Failed to add user: WikiName ($wikiname) already in use");
-    }
     return $cuid;
 }
 
@@ -223,21 +221,33 @@ sub processLoginData {
     return { cuid => $cuid, data => {} };
 }
 
+# Validates password and user for _this provider_.
+#
+#    * Will return the cuid, if the password check passed (htpasswd or db)
+#    * Will set the change_password flag, when the password could be validated
+#      from the .htpasswd file only, but not from the db
+#    * Will set errorCode to 'notFound' if the user does not exist in the db
+#    * Will set errorCode to 'wrongPassword' if the user was found but the
+#      password is wrong (htpasswd or db)
+#
+# returns (cuid, change_password, errorCode)
 sub _checkPassword {
     my ( $this, $login, $password ) = @_;
 
     my $uauth = Foswiki::UnifiedAuth->new();
     my $db = $uauth->db;
 
-    my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name, password FROM users WHERE users.login_name=?", {}, $login);
-    return undef unless $userinfo;
+    my $pid = $this->getPid();
+
+    my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name, password FROM users WHERE users.login_name=? AND users.pid=?", {}, $login, $pid);
+    return (undef, undef, 'notFound') unless $userinfo;
     my $change_password;
     if( $userinfo->{password} ) {
         my $pbkdf2 = Crypt::PBKDF2->new;
-        return undef unless $pbkdf2->validate( $userinfo->{password}, $password );
+        return (undef, undef, 'wrongPassword') unless $pbkdf2->validate( $userinfo->{password}, $password );
     } else {
         my $topicPwManager = Foswiki::Users::HtPasswdUser->new($this->{session});
-        return undef unless $topicPwManager->checkPassword( $userinfo->{wiki_name}, $password );
+        return (undef, undef, 'wrongPassword') unless $topicPwManager->checkPassword( $login, $password );
         $change_password = 1;
     }
 
