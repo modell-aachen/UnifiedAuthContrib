@@ -4,6 +4,8 @@ use Error;
 use JSON;
 use Net::CIDR;
 use Crypt::PBKDF2;
+use Error ':try';
+use Error::Simple;
 
 use strict;
 use warnings;
@@ -99,24 +101,44 @@ sub refresh {
 
     my $pid = $this->getPid();
     my $uauth = Foswiki::UnifiedAuth->new();
-    my $topicMapping = Foswiki::Users::TopicUserMapping->new($this->{session});
-    my $db = $uauth->db;
+    my @addUsers = ();
 
-    my $topicPwManager = Foswiki::Users::HtPasswdUser->new($this->{session});
-    if( $topicPwManager->canFetchUsers() ) {
-        my $iter = $topicPwManager->fetchUsers();
-        while ( $iter->hasNext() ) {
-            my $login = $iter->next();
-            # XXX
-            my $cuid = $db->selectrow_array("SELECT cuid FROM users WHERE users.login_name=? AND users.pid=?", {}, $login, $pid);
-            unless($cuid) {
-                #Import user
-                $cuid = $topicMapping->login2cUID($login);
-                my $wikiname = $topicMapping->getWikiName($cuid);
-                my @emails = $topicPwManager->getEmails($login);
-                $this->addUser( $login, $wikiname, undef, \@emails, 1);
+    # Faking HtPasswdUser, so we get the correct wikiname and email from the
+    # UserMapper.
+    # XXX: If we do not find the user in WikiUsers, it will simply generate a
+    # new WikiName.
+    {
+        local $Foswiki::cfg{PasswordManager} = 'Foswiki::Users::HtPasswdUser';
+        my $topicMapping = Foswiki::Users::TopicUserMapping->new($this->{session});
+        my $db = $uauth->db;
+
+        my $topicPwManager = Foswiki::Users::HtPasswdUser->new($this->{session});
+        if( $topicPwManager->canFetchUsers() ) {
+            my $iter = $topicPwManager->fetchUsers();
+            while ( $iter->hasNext() ) {
+                my $login = $iter->next();
+                # XXX
+                my $cuid = $db->selectrow_array("SELECT cuid FROM users WHERE users.login_name=? AND users.pid=?", {}, $login, $pid);
+                unless($cuid) {
+                    #Import user
+                    $cuid = $topicMapping->login2cUID($login);
+                    my $wikiname = $topicMapping->getWikiName($cuid);
+                    my @emails = $topicPwManager->getEmails($login);
+                    if($wikiname && @emails) {
+                        push @addUsers, [$login, $wikiname, \@emails];
+                    } else {
+                        Foswiki::Func::writeWarning("Error importing user $login: could not determine email or wikiname");
+                    }
+                }
             }
         }
+    }
+    foreach my $addUser ( @addUsers ) {
+        try {
+            $this->addUser($addUser->[0], $addUser->[1], undef, $addUser->[2], 1);
+        } catch Error::Simple with {
+            Foswiki::Func::writeWarning(shift);
+        };
     }
 
 }
