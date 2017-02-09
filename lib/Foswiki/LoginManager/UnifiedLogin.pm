@@ -14,6 +14,8 @@ use Assert;
 
 use JSON;
 use Unicode::Normalize;
+use Error ':try';
+use Error::Simple;
 
 use Foswiki::LoginManager ();
 use Foswiki::Users::BaseUserMapping;
@@ -245,8 +247,12 @@ sub loadSession {
             Foswiki::Func::writeWarning("refreshing all providers");
             foreach my $id ( ('__baseuser', sort keys %{$Foswiki::cfg{UnifiedAuth}{Providers}}) ) {
                 Foswiki::Func::writeWarning("refreshing $id");
-                my $provider = $this->_authProvider($id);
-                $provider->refresh() if $provider;
+                try {
+                    my $provider = $this->_authProvider($id);
+                    $provider->refresh() if $provider;
+                } catch Error::Simple with {
+                    Foswiki::Func::writeWarning(shift);
+                };
             }
         } elsif (defined $Foswiki::cfg{UnifiedAuth}{Providers}{$refresh}) {
             my $provider = $this->_authProvider($refresh);
