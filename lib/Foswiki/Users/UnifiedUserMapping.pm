@@ -299,6 +299,47 @@ sub getDisplayName {
         "SELECT display_name FROM users WHERE login_name=?", {}, $login);
 }
 
+sub getDisplayAttributesOfLogin {
+    my ($this, $login, $data) = @_;
+
+    my $db = $this->{uac}->db;
+
+    # get pid
+    my $pid = $db->selectrow_array('SELECT name from providers LEFT OUTER JOIN users on (providers.pid = users.pid) WHERE login_name=? ', {}, $login);
+    return 0 unless $pid;
+
+    my $provider = $this->{uac}->authProvider($this->{session}, $pid);
+    return 0 unless $provider;
+
+    return $provider->getDisplayAttributesOfLogin($login,$data);
+}
+
+sub getUsers{
+    my ($this, $opts) = @_;
+    my ($fields, $basemapping) = (
+        $opts->{fields},
+        $opts->{basemapping}
+    );
+
+    my $db = $this->{uac}->db;
+
+    my $cond = '';
+    if($basemapping eq 'skip') {
+        my $session = $Foswiki::Plugins::SESSION;
+        $cond = "AND pid!='" . $this->{uac}->authProvider($session, '__baseuser')->getPid() . "'";
+    } elsif ($basemapping eq 'adminonly') {
+        my $session = $Foswiki::Plugins::SESSION;
+        my $base = $this->{uac}->authProvider($session, '__baseuser');
+        my $admin = $base->getAdminCuid();
+        my $pid = $base->getPid();
+        $cond = "AND pid !='$pid' OR cuid='$admin'";
+    }
+    my $statement = <<SQL;
+SELECT $fields FROM users WHERE deactivated=0 $cond;
+SQL
+    return $db->selectall_arrayref($statement, undef);
+}
+
 =begin TML
 
 ---++ ObjectMethod findUserByEmail( $email ) -> \@users
