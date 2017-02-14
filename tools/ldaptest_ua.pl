@@ -1,0 +1,142 @@
+#!/usr/bin/env perl
+# Test program to check your ldap connectivity using perl
+#
+# Copyright (C) 2006-2015 Michael Daum http://michaeldaumconsulting.com
+# Portions Copyright (C) 2006 Spanlink Communications
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version. For
+# more details read LICENSE in the root of this distribution.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# As per the GPL, removal of this notice is prohibited.
+
+use strict;
+use warnings;
+use open qw(:std :utf8);
+
+use Net::LDAP qw(LDAP_REFERRAL);
+use Authen::SASL ();
+use URI::ldap;
+
+# usage: ldaptet 'ldap-query'
+
+## PLEASE MODIFIY #############################################
+
+# server name or IP address
+my $server = 'localhost';
+
+# dn from where searches are performed recursively
+my $baseDN = 'dc=nodomain';
+
+# username and credentials used to connect to the LDAP server;
+# if unset an anonymous connect will be used
+# CAUTION: when typing in a password, this is plain text.
+# please make sure that this file is only readable for authorized personell
+my $bindUser = '';
+my $bindPassword = '';
+
+my $useSASL = 0;
+my $saslMechanism = 'GSSAPI';
+
+# maximum number of records returned
+my $sizeLimit = 10;
+
+# possible values: "never", "search", "find", "always"
+my $deref = "always";
+
+###############################################################
+# The second argument indicates that an UA provider config
+# should be used.
+if ($ARGV[1]) {
+  do '../bin/setlib.cfg';
+  require Foswiki;
+  Foswiki->new('admin');
+
+  no warnings 'once';
+  my $providerConfig = $Foswiki::cfg{UnifiedAuth}{Providers}->{$ARGV[1]}->{config};
+  unless ($providerConfig) {
+    print "Provider config not available.\n";
+    die;
+  }
+  print "Using ldap config for provider $ARGV[1]\n";
+  $server = $providerConfig->{Host};
+  $baseDN = $providerConfig->{Base};
+  $bindUser = $providerConfig->{BindDN};
+  $bindPassword = $providerConfig->{BindPassword};
+  $useSASL = $providerConfig->{UseSASL} || $useSASL;
+  $saslMechanism = $providerConfig->{SASLMechanism} || $saslMechanism;
+}
+
+###############################################################
+ldapSearch($server, $baseDN, $ARGV[0] || '(objectClass=*)');
+
+###############################################################
+sub ldapSearch {
+  my ($server, $dn, $filter, $noFollow) = @_;
+  my $ldap = Net::LDAP->new($server) || die "$@";
+  my $mesg;
+
+  if ($useSASL) {
+    my $sasl = Authen::SASL->new(mechanism => $saslMechanism) || die "$@";
+    $mesg = $ldap->bind(sasl => $sasl);
+  } elsif ($bindUser) {
+    $mesg = $ldap->bind($bindUser, password => $bindPassword);
+  } else {
+    $mesg = $ldap->bind();
+  }
+  my $code = $mesg->code;
+  $code && die "$code: " . $mesg->error;
+
+  $mesg = $ldap->search(
+    filter => $filter,
+    base => $dn,
+    deref => "always",
+    sizelimit => $sizeLimit,
+    callback => sub {
+      my ($ldap, $entry) = @_;
+      processSearch($ldap, $entry, $filter);
+    },
+  );
+  $code = $mesg->code;
+
+  print "code=$code\n" if $code;
+
+  if (!$noFollow && $code == LDAP_REFERRAL) {
+    foreach my $link ($mesg->referrals) {
+      followUrl($link, $filter);
+    }
+  } elsif ($code && $code != 4) {
+    die "$code: " . $mesg->error;
+  }
+}
+
+###############################################################
+sub processSearch {
+  my ($ldap, $entry, $filter) = @_;
+
+  return unless defined $entry;
+  if ($entry->isa("Net::LDAP::Reference")) {
+    foreach my $link ($entry->references) {
+      followUrl($link, $filter);
+    }
+  } else {
+    $entry->dump();
+    print "\n";
+  }
+}
+
+###############################################################
+sub followUrl {
+  my ($url, $filter) = @_;
+
+  print "following $url\n";
+  my $link = URI::ldap->new($url);
+
+  ldapSearch($link->host, $link->dn, $filter, 1);
+}
