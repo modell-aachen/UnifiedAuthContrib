@@ -299,7 +299,11 @@ sub processProviderLogin {
     };
     if ($@) {
         $error = $@;
-        $error = $@->text if ref($@) && $@->isa("Error");
+        if (ref($@) && $@->isa("Error")) {
+            $error = $@->text if ref($@) && $@->isa("Error");
+        } else {
+            Foswiki::Func::writeWarning($error);
+        }
     }
 
     if (ref($loginResult) eq 'HASH' && $loginResult->{cuid}) {
