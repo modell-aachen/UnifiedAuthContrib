@@ -492,47 +492,43 @@ This authentication provider can be configured multiple times.
 }
 </verbatim>
 
----+++ !IP Ranges
+---+++ IP Ranges
 Allows automatically logging in a user based on their IP address. This makes it
 possible to grant restricted, guest-like access based on a user's location.
 
 *Note* %BR%
 This authentication provider can be configured multiple times.
 
-%RED% *Note* %BR%
-This provider is currently not supported and requires further development!
-%ENDCOLOR%
-
 | *Preference* | *Description* |
-| ip_range | A comma separated list of IPs.%BR%Each value is either an IP address range (e.g. '192.168.1.0-192.168.1.255') or a netblock in CIDR notation.%BR%Both IPv4 and IPv6 are supported.|
-| exclude_ip_range | If set, similar to =ip_range= but prevents these addresses from getting authenticated even if they match one of the IP ranges given in =ip_range= |
-| user_id | The user ID (of an existing !UnifiedAuth user) which this auth provider authenticates. Anyone logging in from one of the addresses in =ip_range= is automatically assigned this user ID |
-
-If you want to automatically create the user in question, include the following
-fields, too. Since the user will only be created once, these fields have no
-effect afterwards.
-
-| *Preference* | *Description* |
-| wiki_name | The !WikiName assigned to the user |
-| display_name | The display name |
-| email | Optionally, assign an e-mail address |
+| =allow= | Configure allowed ips here; see [[%WEB%.%TOPIC%#Common_Configuration][Common Configuration]] |
+| =deny= | Configure denied ips here; see [[%WEB%.%TOPIC%#Common_Configuration][Common Configuration]] |
+| =user_id= | The user ID which this auth provider authenticates; see identityProvider. Anyone logging in from one of the addresses in =ip_range= is automatically assigned this user ID |
+| =identityProvider= | =ID= of a configured (Ldap) provider which shall be used to fetch user information, use =_all_= to use all configured providers |
 
 *Example configuration*
 <verbatim>
 {UnifiedAuth}{Providers} = {
    'range1' => {
       'config' => {
-         'ip_range' => '10.10.10.0/24',
-         'user_id' => 'guest'
+         'allow' => '10.10.10.0/24',
+         'user_id' => 'guest',
+         'identityProvider' => '__baseuser'
       },
       'module' => 'IpRange'
    },
    'range2' => {
       'config' => {
-         'ip_range' => '10.10.20.0/24',
-         'wiki_name' => 'ProductionUser',
-         'display_name' => 'Production Plant 2',
-         'email' => 'noreply@example.com'
+         'allow' => '10.10.20.0/24',
+         'user_id' => 'terminal_user',
+         'identityProvider' => 'my_ldap'
+      },
+      'module' => 'IpRange'
+   }
+   'range3' => {
+      'config' => {
+         'allow' => '10.10.30.1/32',
+         'user_id' => 'terminal_user_2',
+         'identityProvider' => '_all_'
       },
       'module' => 'IpRange'
    }
