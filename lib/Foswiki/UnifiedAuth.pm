@@ -407,6 +407,15 @@ sub handleScript {
     # TODO
 }
 
+sub getProviderForUser {
+    my ($this, $user) = @_;
+
+    my $db = $this->db();
+    my @row = $db->selectrow_array("SELECT name, pid FROM users NATURAL JOIN providers WHERE (login_name=? OR wiki_name=?)", {}, $user, $user);
+
+    return @row;
+}
+
 sub authProvider {
     my ($this, $session, $id) = @_;
 

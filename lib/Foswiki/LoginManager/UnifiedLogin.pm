@@ -289,7 +289,12 @@ sub processProviderLogin {
     eval {
         $loginResult = $provider->processLogin();
         if ($loginResult && $provider->{config}->{identityProvider}) {
-            my $identity = $this->_authProvider($provider->{config}->{identityProvider});
+            my $id_provider = $provider->{config}->{identityProvider};
+            if ($id_provider eq '_all_') {
+                $this->{uac} = Foswiki::UnifiedAuth->new unless $this->{uac};
+                ($id_provider) = $this->{uac}->getProviderForUser($loginResult);
+            }
+            my $identity = $this->_authProvider($id_provider);
             if ($identity->isa('Foswiki::UnifiedAuth::IdentityProvider')) {
                 $loginResult = $identity->identify($loginResult);
             } else {

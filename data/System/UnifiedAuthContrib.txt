@@ -240,7 +240,7 @@ Make sure to set proper ACLs in =SitePreferences= and/or =WebPreferences= when
 disabling authentication on web server basis.
 
 | *Preference* | *Description* |
-| identityProvider | ID of a configured Ldap provider which shall be used to fetch user information |
+| identityProvider | ID of a configured Ldap provider which shall be used to fetch user information; use =_all_= for all configures providers. |
 | keytab | Path to a valid Kerberos keytab file |
 | realm | The domain realm |
 | serviceName | Service principal name |
@@ -302,7 +302,7 @@ This authentication provider should *not* be configured multiple times.
 
 | *Preference* | *Description* |
 | =casUrl= | Url of your _CAS_ provider |
-| =identityProvider= | =ID= of a configured (Ldap) provider which shall be used to fetch user information, omit to use _all_ providers |
+| =identityProvider= | =ID= of a configured (Ldap) provider which shall be used to fetch user information, use =_all_= to use all configured providers |
 | =AllowLoginUsingEmailAddress= | If your provider returns the email instead of a user name, set this to =1= and foswiki will search for a fitting user |
 | =LogoutFromCAS= | If set to perl-true, foswiki will redirect to the logout page of your _CAS_, when the user presses 'Logout'. Otherwise it will just deactivate sso for this browser session (you will get a login page). |
 
