@@ -254,6 +254,83 @@ sub update_user {
     return $this->db->do("UPDATE users SET display_name=?, email=?, deactivated=?, password=? WHERE cuid=?", {}, $display_name, $email, $deactivated, $password, $cuid);
 }
 
+sub update_wikiname {
+    my ($this, $actions, $provider) = @_;
+
+    my $db = $this->db();
+
+    my $pid = $db->selectrow_array("SELECT pid FROM providers WHERE name=?", {}, $provider);
+    return { error => 'unknown provider' } unless defined $pid;
+
+    $db->begin_work();
+
+    my @report = ();
+    my %clashes = ();
+    my %resolved_clashes = ();
+    my $errors = 0;
+    my $updated = 0;
+    my $successes = 0;
+    foreach my $action (@$actions) {
+        my $new_wiki_name = $action->{wiki_name};
+        my %cuids = ();
+
+        if($action->{login_name}) {
+            foreach my $c ( @{$db->selectcol_arrayref("SELECT cuid FROM users WHERE login_name=? and pid=?", {}, $action->{login_name}, $pid)} ) {
+                $cuids{$c} = 1;
+            }
+        }
+
+        my @cuid_array = keys %cuids;
+        if(scalar @cuid_array > 1) {
+            push @report, { error => 'ambiguous', cuids => \@cuid_array, action => $action };
+            $errors++;
+            next;
+        }
+        if(scalar @cuid_array != 1) {
+            push @report, { error => 'not found', action => $action };
+            $errors++;
+            next;
+        }
+        my $cuid = $cuid_array[0];
+
+        my $result = {};
+
+        # clashes
+        my $inUse = $db->selectcol_arrayref("SELECT cuid FROM users WHERE wiki_name=?", {}, $new_wiki_name);
+        if(scalar @$inUse == 1 && $inUse->[0] eq $cuid) {
+            push @report, { success => 'no action', cuid => $cuid };
+            $successes++;
+            next;
+        }
+
+        foreach my $c (@$inUse) {
+            my $count = 1;
+            my $moved;
+            do {
+                $moved = $new_wiki_name . $count;
+                $count++;
+            } while ($db->selectrow_array("SELECT COUNT(cuid) FROM users WHERE wiki_name=?", {}, $moved));
+
+            $db->do("UPDATE users SET wiki_name=? where cuid=?", {}, $moved, $c);
+            $clashes{$c} = 1;
+        }
+
+        $db->do("UPDATE users SET wiki_name=? where cuid=?", {}, $new_wiki_name, $cuid);
+        $updated++;
+        if($clashes{$cuid}) {
+            delete $clashes{$cuid};
+            $resolved_clashes{$cuid} = 1;
+        }
+
+        push @report, { success => 'updated', cuid => $cuid };
+        $successes++;
+    }
+
+    $db->commit();
+
+    return { success => 'done', report => \@report, clashes => [keys %clashes], resolved_clases => [keys %resolved_clashes], updated => $updated, errors => $errors, successes => $successes };
+}
+
 # Mockup for retrieval of users by search term.
 # Does not yet support different fiels (login, email, ...).
 sub queryUser {

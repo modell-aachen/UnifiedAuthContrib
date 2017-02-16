@@ -362,6 +362,14 @@ parameters:
 | !WikiGroupsBackoff | Flag indicating wether we fallback to !WikiGroups. | 1 |
 | !WikiNameAttributes | The user's wiki name attribute. This is the attribute to generate the !WikiName from. | givenName,sn |
 
+If you migrate from an existing LdapContrib configuration, you can import the old WikiNames using =tools/synchronize_ldap_to_uac=. Copy the old _cache.db_ to the appropriate place in your =work_area= and execute the tool with the provider id as parameter.
+<verbatim>
+cp /backups/wiki/working/work_areas/LdapContrib /var/www/wiki/working/work_areas -rp;
+cd /var/www/wiki/tools
+sudo -u www-data ./synchronize_ldap_to_uac ldap_provider
+</verbatim>
+%X% *ATTENTION*: This will suffix clashing WikiNames with a number!
+
 *Example configuration*
 <verbatim>
 {UnifiedAuth}{Providers} = {
