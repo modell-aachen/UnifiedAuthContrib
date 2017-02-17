@@ -29,3 +29,4 @@ tools/convert_ua_users.pl 0754 Converter tool to migrate cUIDs
 tools/export_ldap_config.pl 0754 Tool to export LdapContrib settings
 tools/synchronize_ldap_to_uac 0754 Tool to import WikiNames from LdapContrib
 tools/ldaptest_ua.pl 0754 Ldap connection test tool
+tools/set_denyweb.pl 0754 set denywebview
