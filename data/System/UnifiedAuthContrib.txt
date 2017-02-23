@@ -76,6 +76,14 @@ sudo -u www-data perl convert_ua_users.pl host=all
 sudo -u www-data perl convert_ua_users.pl host=myvhc.example.com
 </verbatim>
 
+---+++ Access Controll
+Another thing that needs to be considered is that access controll is now
+fully managed by UnifiedAuth. Additional authorization by the Web Server is not provided. Therefore it is important that all Webs/Topics
+that should only be accessible by logged in users need to set DENYWEBVIEW, DENYWEBCHANGE, etc.
+to WikiGuest. To ease the migration a tool is provided which automatically sets appropriate
+access rights on all WebPreferences. It is located under =$FOSWIKI_ROOT/tools/set_denyweb.pl=.
+Just run it without any arguments to see its help text.
+
 ---++ Anatomy of a provider configuration
 
 Auth providers are configured in ={UnifiedAuth}{Providers}=. You can set up the
