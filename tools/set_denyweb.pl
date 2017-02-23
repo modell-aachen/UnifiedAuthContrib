@@ -2,15 +2,6 @@
 use strict;
 use warnings;
 
-# Set/Add user in DENYWEBVIEW
-# Parameter:
-#   - logging={0|1} default 0
-#   - exclude={comma separated list of excluded webs}
-#   - user={user or group to insert in DENYWEBVIEW}
-#   - deny={comma separated list of DENYWEBVIEW,DENYWEBCHANGE,... default DENYWEBVIEW,DENYWEBCHANGE}
-#   - dry={0|1} default 0, set if you do not want to change just to see what will be changed
-#
-
 do '../bin/setlib.cfg';
 require Foswiki;
 Foswiki->new('admin');
@@ -19,7 +10,18 @@ my $exclude = '';
 my $logging = 0;
 my $user = 'WikiGuest';
 my @deny = ('DENYWEBVIEW','DENYWEBCHANGE');
-my $dry = 0;
+my $dry = 1;
+
+unless(@ARGV){
+  print "Automatically set/add users to ACL preferences\n";
+  print "This tool does not do anything unless at least one of the following arguments is provided\n";
+  print "\t- nodry={0|1} default 0, set to 1 if you want to save all changes, by default nothing is saved\n";
+  print "\t- logging={0|1} default 0\n";
+  print "\t- exclude={comma separated list of excluded webs}\n";
+  print "\t- user={user or group to insert in DENYWEBVIEW}\n";
+  print "\t- deny={comma separated list of DENYWEBVIEW,DENYWEBCHANGE,... default DENYWEBVIEW,DENYWEBCHANGE}\n";
+  exit;
+}
 
 foreach(@ARGV){
   my $ARG = $_;
@@ -31,12 +33,12 @@ foreach(@ARGV){
     $user = $1 if $1 ne '';
   }elsif($ARG =~ m/^deny=(.*)/){
     @deny = split(/,/,$1) if $1 ne'';
-  }elsif($ARG =~ m/^dry=(.*)/){
-    $dry = 1 if $1;
+  }elsif($ARG =~ m/^nodry=(.*)/){
+    $dry = 0 if $1;
   }
 }
 
-print "DRY: The PrefTopic will not be changed!" if $logging && $dry;
+print "DRY: The PrefTopic will not be changed!\n" if $logging && $dry;
 
 my $regex = "(";
 my @excludeWebs = split(/,/,$exclude);
@@ -57,22 +59,19 @@ foreach(@webs){
 }
 1;
 
-
-#set wikiguest to DENYWEBVIEW
 sub _setDENY{
-  my $dir = shift;
+  my $web = shift;
   my $denyvar = shift;
-  #get WebPref
-#  $dir =~ s/$dataDir//;
-  $dir =~ s/^\///;
-  $dir =~ s/\//./g;
 
-  if($exclude ne '' && $dir =~ m/^$regex/){
-    print "Exclude $dir\r\n" if $logging;
+  $web =~ s/^\///;
+  $web =~ s/\//./g;
+
+  if($exclude ne '' && $web =~ m/^$regex/){
+    print "Exclude $web\r\n" if $logging;
     return;
   }
-  my ($mainMeta, $mainText) = Foswiki::Func::readTopic($dir, $Foswiki::cfg{WebPrefsTopicName});
-  print "$dir.$Foswiki::cfg{WebPrefsTopicName}: " if $logging;
+  my ($mainMeta, $mainText) = Foswiki::Func::readTopic($web, $Foswiki::cfg{WebPrefsTopicName});
+  print "$web.$Foswiki::cfg{WebPrefsTopicName}: " if $logging;
   if(defined $mainText && $mainText ne ''){
       if ($mainText =~ m/Set $denyvar\s*=(.*)$/m) {
         my $deny = $1;
@@ -95,8 +94,8 @@ sub _setDENY{
     }
     #save modified WebPref
     unless($dry){
-      Foswiki::Func::saveTopic($dir, $Foswiki::cfg{WebPrefsTopicName}, $mainMeta, $mainText);
-      print "Save Topic $dir.$Foswiki::cfg{WebPrefsTopicName}\r\n" if $logging;
+      Foswiki::Func::saveTopic($web, $Foswiki::cfg{WebPrefsTopicName}, $mainMeta, $mainText);
+      print "Save Topic $web.$Foswiki::cfg{WebPrefsTopicName}\r\n" if $logging;
     }
   }
 }
