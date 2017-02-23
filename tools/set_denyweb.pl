@@ -85,7 +85,7 @@ sub _setDENY{
             $mainText =~ s/Set $denyvar\s*=\s*/Set $denyvar = $user,/g;
             print "Add User to $denyvar\r\n" if $logging;
           }else{
-            $mainText =~ s/Set $denyvar\s*=\s*/Set $denyvar = $user/g;
+            $mainText =~ s/Set $denyvar\s*=\s*?\n/Set $denyvar = $user\n/g;
             print "Add User to $denyvar\r\n" if $logging;
           }
         }
