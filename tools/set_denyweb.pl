@@ -66,7 +66,7 @@ sub _setDENY{
   $web =~ s/^\///;
   $web =~ s/\//./g;
 
-  if($exclude ne '' && $web =~ m/^$regex/){
+  if($exclude ne '' && $web =~ m/^$regex$/){
     print "Exclude $web\r\n" if $logging;
     return;
   }
