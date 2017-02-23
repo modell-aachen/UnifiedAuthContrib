@@ -9,7 +9,7 @@ Foswiki->new('admin');
 my $exclude = '';
 my $logging = 0;
 my $user = 'WikiGuest';
-my @deny = ('DENYWEBVIEW','DENYWEBCHANGE');
+my @deny = ('DENYWEBVIEW','DENYWEBCHANGE','DENYWEBRENAME');
 my $dry = 1;
 
 unless(@ARGV){
@@ -19,7 +19,7 @@ unless(@ARGV){
   print "\t- logging={0|1} default 0\n";
   print "\t- exclude={comma separated list of excluded webs}\n";
   print "\t- user={user or group to insert in DENYWEBVIEW}\n";
-  print "\t- deny={comma separated list of DENYWEBVIEW,DENYWEBCHANGE,... default DENYWEBVIEW,DENYWEBCHANGE}\n";
+  print "\t- deny={comma separated list of DENYWEBVIEW,DENYWEBCHANGE,... default DENYWEBVIEW,DENYWEBCHANGE,DENYWEBRENAME}\n";
   exit;
 }
 
