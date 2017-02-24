@@ -227,6 +227,9 @@ sub add_user {
     $this->{db}->do("INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email, deactivated, password) VALUES(?,?,?,?,?,?,?,?)", {},
         $cuid, $authdomainid, $login_name, $wiki_name, $display_name, $email, $deactivated, $password
     );
+
+    $this->{db}->do("INSERT INTO merged_users (primary_cuid, mapped_cuid, primary_provider, mapped_provider) VALUES(?,?,?,?)", {},
+        $cuid, $cuid, $authdomainid, $authdomainid);
     return $cuid;
 }
 

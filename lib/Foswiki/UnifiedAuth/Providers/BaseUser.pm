@@ -50,7 +50,14 @@ my @schema_updates = (
                 ('$CUIDs{BaseUserMapping_222}', '%pid%', '$bu->{BaseUserMapping_222}{login}', '$bu->{BaseUserMapping_222}{wikiname}', 'Registration Agent', ''),
                 ('$CUIDs{BaseUserMapping_333}', '%pid%', '$bu->{BaseUserMapping_333}{login}', '$bu->{BaseUserMapping_333}{wikiname}', 'Internal Admin User', '$bu->{BaseUserMapping_333}{email}'),
                 ('$CUIDs{BaseUserMapping_666}', '%pid%', '$bu->{BaseUserMapping_666}{login}', '$bu->{BaseUserMapping_666}{wikiname}', 'Guest User', ''),
-                ('$CUIDs{BaseUserMapping_999}', '%pid%', '$bu->{BaseUserMapping_999}{login}', '$bu->{BaseUserMapping_999}{wikiname}', 'Unknown User', '')"
+                ('$CUIDs{BaseUserMapping_999}', '%pid%', '$bu->{BaseUserMapping_999}{login}', '$bu->{BaseUserMapping_999}{wikiname}', 'Unknown User', '')",
+        "INSERT INTO merged_users (primary_cuid, mapped_cuid, primary_provider, mapped_provider)
+            VALUES
+                ('$CUIDs{BaseUserMapping_111}', '$CUIDs{BaseUserMapping_111}', '%pid%', '%pid%'),
+                ('$CUIDs{BaseUserMapping_222}', '$CUIDs{BaseUserMapping_222}', '%pid%', '%pid%'),
+                ('$CUIDs{BaseUserMapping_333}', '$CUIDs{BaseUserMapping_333}', '%pid%', '%pid%'),
+                ('$CUIDs{BaseUserMapping_666}', '$CUIDs{BaseUserMapping_666}', '%pid%', '%pid%'),
+                ('$CUIDs{BaseUserMapping_999}', '$CUIDs{BaseUserMapping_999}', '%pid%', '%pid%')"
     ]
 );
 
