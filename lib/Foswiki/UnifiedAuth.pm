@@ -16,7 +16,9 @@ my @schema_updates = (
         "INSERT INTO meta (type, version) VALUES('core', 0)",
         "CREATE TABLE IF NOT EXISTS providers (
             pid SERIAL,
-            name TEXT NOT NULL
+            name TEXT NOT NULL,
+            enabled INTEGER DEFAULT 1,
+            invisible INTEGER DEFAULT 0
         )",
         "CREATE TABLE IF NOT EXISTS users (
             cuid UUID NOT NULL PRIMARY KEY,
