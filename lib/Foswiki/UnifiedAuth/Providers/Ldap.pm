@@ -1070,9 +1070,9 @@ sub cacheUserFromEntry {
     # fake upsert
     $db->begin_work;
     my $oldData = $db->selectall_arrayref("SELECT dn, info FROM users_ldap WHERE pid=? AND login=?", undef, $pid, $loginName);
-    my $row = @$oldData["0"];
+    my $row = $oldData->[0];
     if($row && @$row) {
-        if(@$row["dn"] ne $dn || @$row["info"] ne $info) {
+        if($row->[0] ne $dn || $row->[1] ne $info) {
             $db->do("UPDATE users_ldap SET dn=?, cuid=?, info=? where pid=? AND login=?", {}, $dn, $cuid, $info, $pid, $loginName);
         }
     } else {
