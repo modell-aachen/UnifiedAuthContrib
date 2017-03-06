@@ -594,6 +594,10 @@ login name, wikiname or cUID. Just fill the textbox and submit the form.
 $percentRENDERUSER{\"%URLPARAM{"cuid"}%\" convert=\"1\" format=\"| $cUID | $wikiName | $loginName | $displayName | $email |\"}$percent
 "}%
 
+---++ Backups
+
+By default the database will be dumped into to working-dir of foswiki after each refresh. Any backup-solution should have no trouble picking this up. There are _expert_ options in configure to disable/customize this behaviour.
+
 ---++ Contrib Info
 
 |  Author(s): | Foswiki:Main.JanKrueger, Foswiki:Main.SvenMeyer, Foswiki:Main.StephanOsthold |

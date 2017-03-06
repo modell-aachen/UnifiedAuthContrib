@@ -258,6 +258,20 @@ sub loadSession {
             my $provider = $this->_authProvider($refresh);
             $provider->refresh() if $provider;
         }
+        # dump the db for backup solutions
+        unless ( $Foswiki::cfg{UnifiedAuth}{NoDump} ) {
+            my $dumpcmd = $Foswiki::cfg{UnifiedAuth}{DumpCommand} || 'pg_dump foswiki_users';
+            my ($output, $exit, $stderr) = Foswiki::Sandbox->sysCommand(
+                $dumpcmd
+            );
+            if($exit) {
+                $stderr = '' unless defined $stderr;
+                Foswiki::Func::writeWarning("Error while dumping foswiki_users: $exit\n$output\n$stderr");
+            } else {
+                my $dir = Foswiki::Func::getWorkArea('UnifiedAuth');
+                Foswiki::Func::saveFile("$dir/foswiki_users.dump", $output);
+            }
+        }
     }
 
     if ($cgis && $cgis->param('force_set_pw') && $req) {

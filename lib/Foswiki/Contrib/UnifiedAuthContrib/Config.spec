@@ -25,6 +25,14 @@ $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider} = '';
 
 $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider} = '';
 
+# **BOOLEAN EXPERT**
+# If enabled, foswiki will *not* create backups of the users database.
+$Foswiki::cfg{UnifiedAuth}{NoDump} = 0;
+
+# **STRING EXPERT**
+# Use this command to create backups of the users database. The output of this command will be saved to =<em>foswiki_root</em>/working/workareas/UnifiedAuth/foswiki_users.dump=. Defaults to =pg_dump foswiki_users=.
+$Foswiki::cfg{UnifiedAuth}{DumpCommand} = '';
+
 # ---+++ ID/name mapping
 # UnifiedAuthPlugin assigns a unique ID (cUID) to each user. These IDs are
 # used to associate entries in revision histories with users, among other
