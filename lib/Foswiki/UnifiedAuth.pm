@@ -365,6 +365,10 @@ sub queryUser {
     my $count;
     my $offset = $maxrows * $page;
 
+    my $u_join = ''; # this will hold the join clause and 'ON' condition for
+                     # users when the 'ingroup' option is active.
+    my $ingroup = $this->getGroupAndParents(map {$_ =~ s#^\s+##r =~ s#\s+$##r} split(',', $opts->{ingroup})) if $opts->{ingroup};
+
     unless ($type eq 'group') {
         my @params;
         @{$fields} = map {
@@ -379,6 +383,7 @@ sub queryUser {
         } @$fields;
 
         my $u_condition = join(' OR ', @parts);
+
         if($basemapping eq 'skip') {
             my $session = $Foswiki::Plugins::SESSION;
             $u_condition = "($u_condition) AND pid!='" . $this->authProvider($session, '__baseuser')->getPid() . "'";
@@ -395,6 +400,23 @@ sub queryUser {
             "name ILIKE ?"
         } @terms) if $type eq 'any';
 
+        if($ingroup) {
+            unless (scalar @$ingroup) {
+                # group not found, make this a query that can not deliver any
+                # results
+                $u_join = " join group_members ON (pid=-1 AND pid=-2)";
+                $g_condition = 'pid=-1 AND pid=-2' if $g_condition;
+            } else {
+                $u_join = " join group_members ON users.cuid=group_members.u_cuid AND (".join(' OR ', map{ "group_members.g_cuid=?" } @$ingroup).")";
+                unshift @params, @$ingroup;
+                if($g_condition) {
+                    $g_condition .= " AND cuid IN (".(join(',', map{"?"} @$ingroup)).")";
+                    push @params, @$ingroup;
+                }
+            }
+        }
+
+
         my $statement;
         my $statement_count;
         if ($type eq 'any') {
@@ -406,7 +428,7 @@ SELECT
     wiki_name as wikiName,
     display_name AS displayName,
     email
-    FROM users
+    FROM users $u_join
     WHERE deactivated=0 AND ($u_condition)
 UNION
 SELECT
@@ -427,7 +449,7 @@ SELECT
     FROM (
 SELECT
     cuid
-    FROM users
+    FROM users $u_join
     WHERE deactivated=0 AND ($u_condition)
 UNION
 SELECT
@@ -444,7 +466,7 @@ SELECT
     login_name AS loginName,
     wiki_name as wikiName,
     display_name AS displayName
-FROM users
+FROM users $u_join
 WHERE deactivated=0 AND ($u_condition)
 ORDER BY displayName
 OFFSET $offset
@@ -452,7 +474,7 @@ SQL
             $statement_count = <<SQL;
 SELECT
     count(*)
-FROM users
+FROM users $u_join
 WHERE deactivated=0 AND ($u_condition)
 SQL
         }
@@ -460,7 +482,16 @@ SQL
         $count = $this->db->selectrow_array($statement_count, $options, @params);
     } else {
         my $condition = join(' AND ', map {"name ILIKE ?"} @terms);
-            Foswiki::Func::writeWarning("condition: $condition");
+        if($ingroup) {
+            unless (scalar @$ingroup) {
+                # group not found, make this a query that can not deliver any
+                # results
+                $condition = 'pid=-1 AND pid=-2';
+            } else {
+                $condition .= " AND cuid IN (".(join(',', map{"?"} @$ingroup)).")";
+                push @terms, @$ingroup;
+            }
+        }
         $list = $this->db->selectall_arrayref(<<SQL, $options, @terms);
 SELECT
     'group' AS type,
@@ -480,6 +511,44 @@ SQL
     }
 
     return ($list, $count);
+}
+
+sub _getNestedMemberships {
+    my ($db, $g_cuids, $memberships, $seen) = @_;
+
+    foreach my $grp ( @{$memberships} ) {
+        next if $seen->{$grp};
+        $seen->{$grp} = 1;
+        push @$g_cuids, $grp;
+
+        my $nested = $db->selectcol_arrayref(<<SQL, {}, $grp);
+SELECT nested_groups.child FROM nested_groups WHERE nested_groups.parent=?
+SQL
+
+        _getNestedMemberships($db, $g_cuids, $nested, $seen) if $nested;
+    }
+}
+
+# Retrieve a group (or multiple) and all nested groups.
+#
+# Parameters:
+#    * $this
+#    * anything more will be treated as a group
+#
+# Returns:
+#    * Arrayref of groups, containing the passed in groups and their nested
+#      groups
+sub getGroupAndParents {
+    my $this = shift;
+
+    my @cuids = grep{$_} map{$this->getCUID($_, 1)} @_;
+    my @g_cuids = ();
+    my $db = $this->db();
+
+    # Maybe we should realize this as a stored procedure?
+    _getNestedMemberships($db, \@g_cuids, \@cuids, {}) if scalar @cuids;
+
+    return \@g_cuids;
 }
 
 sub handleScript {
