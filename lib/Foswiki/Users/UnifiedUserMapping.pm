@@ -292,11 +292,13 @@ sub getDisplayName {
     my $cuid = _isCUID($login);
     if ($cuid) {
         return $this->{uac}->db->selectrow_array(
-            "SELECT display_name FROM users WHERE cuid=?", {}, $cuid);
+            "SELECT display_name FROM users WHERE cuid=? UNION SELECT name AS display_name FROM groups WHERE cuid=?", {}, $cuid, $cuid
+        ) || $cuid;
     }
 
     return $this->{uac}->db->selectrow_array(
-        "SELECT display_name FROM users WHERE login_name=?", {}, $login);
+        "SELECT display_name FROM users WHERE login_name=?", {}, $login
+    ) || $login;
 }
 
 sub getDisplayAttributesOfLogin {
