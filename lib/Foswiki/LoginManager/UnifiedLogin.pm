@@ -338,10 +338,7 @@ sub processProviderLogin {
         $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
           if $this->{_cgisession};
         my ( $origurl, $origmethod, $origaction ) = _unpackRequest($provider->origin);
-        my $current_uri = $query->uri;
-        $current_uri =~ s/\?.*$//;
-        my ($origurl_noquery) = ($origurl =~ /^(.*?)(?:\?.*)?$/);
-        if (!$origurl || $origurl_noquery eq $current_uri && $current_uri !~ /bin\/restauth/) {
+        if (!$origurl || $context->{login}) {
             $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
             $session->{request}->delete_all;
         } else {
