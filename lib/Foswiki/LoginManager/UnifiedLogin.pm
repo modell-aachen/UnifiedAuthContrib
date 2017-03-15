@@ -341,7 +341,7 @@ sub processProviderLogin {
         my $current_uri = $query->uri;
         $current_uri =~ s/\?.*$//;
         my ($origurl_noquery) = ($origurl =~ /^(.*?)(?:\?.*)?$/);
-        if (!$origurl || $origurl_noquery eq $current_uri) {
+        if (!$origurl || $origurl_noquery eq $current_uri && $current_uri !~ /bin\/restauth/) {
             $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
             $session->{request}->delete_all;
         } else {
