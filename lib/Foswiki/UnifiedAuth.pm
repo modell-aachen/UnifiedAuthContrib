@@ -63,6 +63,12 @@ my @schema_updates = (
     ]
 );
 
+my $internal_cfg = {
+    '__default' => { config => {}, module => 'Default' },
+    '__baseuser' => { config => {}, module => 'BaseUser' },
+    '__uauth' => { config => {}, module => 'Topic' },
+};
+
 my $singleton;
 
 sub new {
@@ -574,13 +580,8 @@ sub authProvider {
 
     my $cfg = $Foswiki::cfg{UnifiedAuth}{Providers}{$id};
     unless ($cfg) {
-        if($id eq '__default') {
-            $cfg = { config => {}, module => 'Default' };
-        } elsif ($id eq '__baseuser') {
-            $cfg = { config => {}, module => 'BaseUser' };
-        } else {
-            die "Provider not configured: $id";
-        }
+        $cfg = $internal_cfg->{$id};
+        die "Provider not configured: $id" unless $cfg;
     }
 
     if ($cfg->{module} =~ /^Foswiki::Users::/) {

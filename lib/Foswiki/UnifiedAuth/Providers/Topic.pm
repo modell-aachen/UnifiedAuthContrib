@@ -103,6 +103,37 @@ sub refresh {
     my $uauth = Foswiki::UnifiedAuth->new();
     my @addUsers = ();
 
+    # import existing groups
+    # This is not terribly efficient, however those groups should not be
+    # terribly big.
+    if($this->{id} eq '__uauth') {
+        foreach my $topic ( Foswiki::Func::getTopicList($Foswiki::cfg{UsersWebName}) ) {
+            next unless $topic =~ m#Group$#;
+            my ($meta) = Foswiki::Func::readTopic($Foswiki::cfg{UsersWebName}, $topic);
+            my $pref = $meta->get('PREFERENCE', 'GROUP');
+            next unless $pref;
+            my @entries = map{ $_ =~ s#^\s*##r =~ s#\s*$##r } split(/,/, $pref->{value} || '');
+            my @users = ();
+            my @nested = ();
+            foreach my $entry ( @entries ) {
+                my $cuid = $uauth->getCUID($entry);
+                unless($cuid) {
+                    Foswiki::Func::writeWarning("Could not import user $entry to group $topic");
+                    next;
+                }
+                if(Foswiki::Func::isGroup($entry)) {
+                    push @nested, $cuid;
+                } else {
+                    push @users, $cuid;
+                }
+            }
+            $uauth->updateGroup($pid, $topic, \@users, \@nested);
+        }
+
+        # do not import any users into __uauth
+        return;
+    }
+
     # Faking HtPasswdUser, so we get the correct wikiname and email from the
     # UserMapper.
     # XXX: If we do not find the user in WikiUsers, it will simply generate a
@@ -140,7 +171,6 @@ sub refresh {
             Foswiki::Func::writeWarning(shift);
         };
     }
-
 }
 
 sub addUser {
