@@ -559,6 +559,8 @@ forced to refresh their cached information by passing a query parameter called
 As value you may specify =all= to refresh all configured auth providers at once
 or a specific provider ID to just refresh that provider.
 
+In order to import group topics, refresh the fake-provider =__uauth=.
+
 *Note* %BR%
 Only wiki administrators are allowed to force a cache update.
 

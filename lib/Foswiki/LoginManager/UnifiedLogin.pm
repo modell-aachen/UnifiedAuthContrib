@@ -254,7 +254,7 @@ sub loadSession {
                     Foswiki::Func::writeWarning(shift);
                 };
             }
-        } elsif (defined $Foswiki::cfg{UnifiedAuth}{Providers}{$refresh}) {
+        } elsif ((defined $Foswiki::cfg{UnifiedAuth}{Providers}{$refresh}) || $refresh eq '__uauth') {
             my $provider = $this->_authProvider($refresh);
             $provider->refresh() if $provider;
         }
