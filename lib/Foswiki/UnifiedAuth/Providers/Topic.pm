@@ -101,12 +101,15 @@ sub refresh {
 
     my $pid = $this->getPid();
     my $uauth = Foswiki::UnifiedAuth->new();
+    my $db = $uauth->db;
     my @addUsers = ();
 
     # import existing groups
     # This is not terribly efficient, however those groups should not be
     # terribly big.
     if($this->{id} eq '__uauth') {
+        my $oldGroups = { map { $_ => 1 } @{ $db->selectcol_arrayref("SELECT name FROM groups WHERE pid=?", {}, $pid) } };
+
         foreach my $topic ( Foswiki::Func::getTopicList($Foswiki::cfg{UsersWebName}) ) {
             next unless $topic =~ m#Group$#;
             my ($meta) = Foswiki::Func::readTopic($Foswiki::cfg{UsersWebName}, $topic);
@@ -128,6 +131,11 @@ sub refresh {
                 }
             }
             $uauth->updateGroup($pid, $topic, \@users, \@nested);
+            delete $oldGroups->{$topic};
+        }
+
+        foreach my $oldGroup ( keys %$oldGroups ) {
+            $uauth->removeGroup( name => $oldGroup, pid => $pid );
         }
 
         # do not import any users into __uauth
@@ -141,7 +149,6 @@ sub refresh {
     {
         local $Foswiki::cfg{PasswordManager} = 'Foswiki::Users::HtPasswdUser';
         my $topicMapping = Foswiki::Users::TopicUserMapping->new($this->{session});
-        my $db = $uauth->db;
 
         my $topicPwManager = Foswiki::Users::HtPasswdUser->new($this->{session});
         if( $topicPwManager->canFetchUsers() ) {
