@@ -23,6 +23,16 @@ $Foswiki::cfg{UnifiedAuth}{DefaultPasswordManager} = 'none';
 # Leave this blank to present a list of options to the user.
 $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider} = '';
 
+$Foswiki::cfg{UnifiedAuth}{AddUsersToProvider} = '';
+
+# **BOOLEAN EXPERT**
+# If enabled, foswiki will *not* create backups of the users database.
+$Foswiki::cfg{UnifiedAuth}{NoDump} = 0;
+
+# **STRING EXPERT**
+# Use this command to create backups of the users database. The output of this command will be saved to =<em>foswiki_root</em>/working/workareas/UnifiedAuth/foswiki_users.dump=. Defaults to =pg_dump foswiki_users=.
+$Foswiki::cfg{UnifiedAuth}{DumpCommand} = '';
+
 # ---+++ ID/name mapping
 # UnifiedAuthPlugin assigns a unique ID (cUID) to each user. These IDs are
 # used to associate entries in revision histories with users, among other
@@ -105,15 +115,5 @@ $Foswiki::cfg{UnifiedAuth}{WikiNameNormalizers} = '';
 # list shown to users.
 # </ul>
 $Foswiki::cfg{UnifiedAuth}{Providers} = {};
-
-# ---+++ Google G Suite
-# **BOOLEAN**
-# If enabled <code>UnifiedAuth</code> will decline any user who's not managed
-# by the hosted which may be specified within the Google authentication provider
-# configuration (parameter 'domain').
-# <br>
-# Enabling this preference but not configuring a hosted domain will still grant
-# access to any successfully authenticated Google user.
-$Foswiki::cfg{UnifiedAuth}{EnforceHostedDomainMembership} = 0;
 
 1;

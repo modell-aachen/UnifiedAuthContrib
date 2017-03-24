@@ -1,0 +1,28 @@
+# UnifiedAuthcontrib translations
+msgid ""
+msgstr ""
+"Project-Id-Version: UnifiedAuthContrib $Id\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: 2016-02-02 10:54+0200\n"
+"Last-Translator: Modell Aachen <access@modell-aachen.de>\n"
+"Language-Team: German <http://translate.modell-"
+"aachen.de/projects/unifiedauthcontrib/releasenew-york/de/>\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 1.9\n"
+
+msgid "Your %1 uses a new user administration, please enter a new password:"
+msgstr "Ihr %1 nutzt eine neue Benutzerverwaltung, bitte vergeben Sie hierfür ein neues Passwort:"
+
+msgid "Please set a new password"
+msgstr "Bitte vergeben Sie ein neues Passwort"
+
+msgid "We could not authenticate you. The following error occurred: %1"
+msgstr "Wir konnten Sie nicht authentifizieren. Der folgende Fehler ist aufgetreten: %1"
+
+msgid "Wrong username or password"
+msgstr "Benutzername oder Passwort falsch"

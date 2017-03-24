@@ -7,64 +7,67 @@ use utf8;
 use DBI;
 use Encode;
 
-use Foswiki::Users::BaseUserMapping;
-Foswiki::Users::BaseUserMapping->new($Foswiki::Plugins::SESSION) if $Foswiki::Plugins::SESSION;
-my $bu = \%Foswiki::Users::BaseUserMapping::BASE_USERS;
+use Foswiki::Contrib::PostgreContrib;
+use Data::GUID;
 
 my @schema_updates = (
     [
-        "CREATE TABLE meta (type TEXT NOT NULL UNIQUE, version INT NOT NULL)",
+        "CREATE TABLE IF NOT EXISTS meta (type TEXT NOT NULL UNIQUE, version INT NOT NULL)",
         "INSERT INTO meta (type, version) VALUES('core', 0)",
-        "CREATE TABLE users (
-            user_id TEXT NOT NULL PRIMARY KEY,
+        "CREATE TABLE IF NOT EXISTS providers (
+            pid SERIAL,
+            name TEXT NOT NULL,
+            enabled INTEGER DEFAULT 1,
+            invisible INTEGER DEFAULT 0
+        )",
+        "CREATE TABLE IF NOT EXISTS users (
+            cuid UUID NOT NULL PRIMARY KEY,
+            pid INTEGER NOT NULL,
+            login_name TEXT NOT NULL,
             wiki_name TEXT NOT NULL,
             display_name TEXT NOT NULL,
-            email TEXT NOT NULL
+            email TEXT NOT NULL,
+            password CHAR(135),
+            deactivated INTEGER DEFAULT 0
         )",
-        "INSERT INTO users (user_id, wiki_name, display_name, email)
-            VALUES('BaseUserMapping_111', 'ProjectContributor', 'Project Contributor', ''),
-            ('BaseUserMapping_222', '$bu->{BaseUserMapping_222}{wikiname}', 'Registration Agent', ''),
-            ('BaseUserMapping_333', '$bu->{BaseUserMapping_333}{wikiname}', 'Internal Admin User', '$bu->{BaseUserMapping_333}{email}'),
-            ('BaseUserMapping_666', '$bu->{BaseUserMapping_666}{wikiname}', 'Guest User', ''),
-            ('BaseUserMapping_999', 'UnknownUser', 'Unknown User', '')",
-        "CREATE UNIQUE INDEX users_wiki_name ON users (wiki_name)",
-        "CREATE INDEX users_email ON users (email)",
-        "CREATE TABLE user_mappings (
-            user_id TEXT NOT NULL,
-            mapper_id TEXT NOT NULL,
-            mapped_id TEXT NOT NULL,
-            PRIMARY KEY (user_id, mapper_id, mapped_id),
-            UNIQUE (mapper_id, mapped_id)
+        "CREATE UNIQUE INDEX idx_wiki_name ON users (wiki_name)",
+        "CREATE UNIQUE INDEX idx_cuid ON users (cuid)",
+        "CREATE INDEX idx_login_name ON users (login_name)",
+        "CREATE INDEX idx_email ON users (email)",
+        "CREATE TABLE IF NOT EXISTS merged_users (
+            primary_cuid UUID NOT NULL,
+            mapped_cuid UUID NOT NULL,
+            primary_provider INTEGER NOT NULL,
+            mapped_provider INTEGER NOT NULL
         )",
-        "INSERT INTO user_mappings (user_id, mapper_id, mapped_id)
-            VALUES('BaseUserMapping_111', 'Foswiki::Users::BaseUserMapping', 'ProjectContributor'),
-            ('BaseUserMapping_222', 'Foswiki::Users::BaseUserMapping', '$bu->{BaseUserMapping_222}{login}'),
-            ('BaseUserMapping_333', 'Foswiki::Users::BaseUserMapping', '$bu->{BaseUserMapping_333}{login}'),
-            ('BaseUserMapping_666', 'Foswiki::Users::BaseUserMapping', '$bu->{BaseUserMapping_666}{login}'),
-            ('BaseUserMapping_999', 'Foswiki::Users::BaseUserMapping', 'unknown')",
-        "CREATE TABLE groups (
-            group_id TEXT NOT NULL PRIMARY KEY,
-            description TEXT
+        "CREATE UNIQUE INDEX idx_primary_cuid ON merged_users (primary_cuid)",
+        "CREATE UNIQUE INDEX idx_mapped_cuid ON merged_users (mapped_cuid)",
+        "CREATE TABLE IF NOT EXISTS groups (
+            cuid UUID NOT NULL PRIMARY KEY,
+            name TEXT NOT NULL,
+            pid INTEGER NOT NULL
         )",
-        "CREATE TABLE group_members (
-            group_id TEXT NOT NULL,
-            user_id TEXT NOT NULL,
-            PRIMARY KEY (group_id, user_id)
+        "CREATE INDEX idx_groups ON groups (name)",
+        "CREATE TABLE IF NOT EXISTS group_members (
+            g_cuid UUID NOT NULL,
+            u_cuid UUID NOT NULL,
+            PRIMARY KEY (g_cuid, u_cuid)
         )",
-        "CREATE INDEX group_members_user_id ON group_members (user_id)",
-    ],
-    [
-        "ALTER TABLE groups ADD COLUMN mapper_id TEXT",
-        "ALTER TABLE group_members ADD COLUMN mapper_id TEXT",
-        "CREATE TABLE group_mappings (
-            group_id TEXT NOT NULL,
-            mapper_id TEXT NOT NULL,
-            mapped_id TEXT NOT NULL,
-            PRIMARY KEY (group_id, mapper_id, mapped_id),
-            UNIQUE (mapper_id, mapped_id)
-        )",
-    ],
+        "CREATE INDEX idx_group_cuid ON group_members (g_cuid)",
+        "CREATE INDEX idx_member_cuid ON group_members (u_cuid)",
+        "CREATE TABLE IF NOT EXISTS nested_groups (
+            parent UUID NOT NULL,
+            child UUID NOT NULL,
+            PRIMARY KEY (parent, child)
+        )"
+    ]
 );
+
+my $internal_cfg = {
+    '__default' => { config => {}, module => 'Default' },
+    '__baseuser' => { config => {}, module => 'BaseUser' },
+    '__uauth' => { config => {}, module => 'Topic' },
+};
 
 my $singleton;
 
@@ -77,6 +80,7 @@ sub new {
 }
 
 sub finish {
+    $singleton->{connection}->finish if $singleton->{connection};
     undef $singleton->{db} if $singleton;
     undef $singleton;
 }
@@ -90,19 +94,12 @@ sub db {
 sub connect {
     my $this = shift;
     return $this->{db} if defined $this->{db};
-    my $db = DBI->connect($Foswiki::cfg{UnifiedAuth}{MappingDSN} || "DBI:SQLite:dbname=$Foswiki::cfg{DataDir}/UnifiedAuth.db",
-        $Foswiki::cfg{UnifiedAuth}{MappingDBUsername} || '',
-        $Foswiki::cfg{UnifiedAuth}{MappingDBPassword} || '',
-        {
-            RaiseError => 1,
-            PrintError => 0,
-            AutoCommit => 1,
-        }
-    );
-    $this->{db} = $db;
+    my $connection = Foswiki::Contrib::PostgreContrib::getConnection('foswiki_users');
+    $this->{connection} = $connection;
+    $this->{db} = $connection->{db};
     $this->{schema_versions} = {};
     eval {
-        $this->{schema_versions} = $db->selectall_hashref("SELECT * FROM meta", 'type', {});
+        $this->{schema_versions} = $this->db->selectall_hashref("SELECT * FROM meta", 'type', {});
     };
     $this->apply_schema('core', @schema_updates);
 }
@@ -111,9 +108,11 @@ sub apply_schema {
     my $this = shift;
     my $type = shift;
     my $db = $this->{db};
+
     if (!$this->{schema_versions}{$type}) {
         $this->{schema_versions}{$type} = { version => 0 };
     }
+
     my $v = $this->{schema_versions}{$type}{version};
     return if $v >= @_;
     for my $schema (@_[$v..$#_]) {
@@ -125,6 +124,7 @@ sub apply_schema {
                 $db->do($s);
             }
         }
+
         $db->do("UPDATE meta SET version=? WHERE type=?", {}, ++$v, $type);
         $db->commit;
     }
@@ -144,87 +144,417 @@ my %normalizers = (
     }
 );
 
-sub add_user {
+sub guid {
     my $this = shift;
-    my ($charset, $authdomainid, $loginid, $wikiname, $display_name, $email) = @_;
-    my $orig_loginid = $loginid;
+    Data::GUID->guid;
+}
 
-    _uni($charset, $loginid, $wikiname, $display_name, $email);
+sub getCUID {
+    my ($this, $user, $noUsers, $noGroups) = @_;
 
-    my $existing;
     my $db = $this->db;
 
-    my (%ids, %wikinames);
-    my ($rewrite_id, $rewrite_wn);
+    my $unescapedName = $user =~ s/_2d/-/gr;
+    if(isCUID($unescapedName)) {
+        unless ($noUsers) {
+            my $fromDB = $db->selectrow_array('SELECT cuid FROM users WHERE cuid=?', {}, $unescapedName);
+            return $fromDB if defined $fromDB;
+        }
 
-    $loginid =~ s/([^a-z0-9])/'_'.sprintf('%02x', ord($1))/egi;
+        unless ($noGroups) {
+            my $fromDB = $db->selectrow_array('SELECT cuid FROM groups WHERE cuid=?', {}, $unescapedName);
+            return $fromDB if defined $fromDB;
+        }
+
+        return undef; # not found
+    }
+
+    unless ($noUsers) {
+        my $fromDB = $db->selectrow_array('SELECT cuid FROM users WHERE login_name=? OR wiki_name=?', {}, $user, $user);
+        return $fromDB if defined $fromDB;
+    }
+
+    unless ($noGroups) {
+        my $fromDB = $db->selectrow_array('SELECT cuid FROM groups WHERE name=?', {}, $user);
+
+        return $fromDB if defined $fromDB;
+    }
+
+    return undef;
+}
+
+sub isCUID {
+    my $login = shift;
+
+    return 0 unless defined $login;
+
+    return $login =~ /^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$/;
+}
+
+
+sub add_user {
+    my $this = shift;
+    my ($charset, $authdomainid, $cuid, $email, $login_name, $wiki_name, $display_name, $deactivated, $password) = @_;
+    $deactivated = 0 unless defined $deactivated;
+
+    _uni($charset, $cuid, $wiki_name, $display_name, $email);
+
+    $cuid = $this->guid unless $cuid;
+
     my @normalizers = split(/\s*,\s*/, $Foswiki::cfg{UnifiedAuth}{WikiNameNormalizers} || '');
     foreach my $n (@normalizers) {
         next if $n =~ /^\s*$/;
-        $wikiname = $normalizers{$n}->($wikiname);
+        $wiki_name = $normalizers{$n}->($wiki_name);
     }
-    eval {
-        require Text::Unidecode;
-        $wikiname = Text::Unidecode::unidecode($wikiname);
-    };
-    $wikiname =~ s/([^a-z0-9])//gi;
-    $wikiname =~ s/^([a-z])/uc($1)/e;
 
-    my $rewrite_short = $Foswiki::cfg{UnifiedAuth}{ShortIDs} || 0;
-    my $id_from_wn = $Foswiki::cfg{UnifiedAuth}{WikiNameIDs} || 0;
-    my $id_serial = $Foswiki::cfg{UnifiedAuth}{ShortIDIncrement} || 0;
+    # make sure we have a valid topic name
+    sub unidecode {
+        my $text = shift;
+            eval {
+                require Text::Unidecode;
+                $text = Text::Unidecode::unidecode($text);
+            };
+        return $text;
+    }
+    $wiki_name =~ s/$Foswiki::cfg{NameFilter}/unidecode($_)/gi;
+    $wiki_name =~ s/$Foswiki::cfg{NameFilter}//gi;
 
-    $loginid = $wikiname if $id_from_wn;
-
+    my $db = $this->db;
     my $has = sub {
-        my $id = shift;
-        return $db->selectrow_array("SELECT COUNT(user_id) FROM users WHERE user_id=?", {}, $id);
+        my $name = shift;
+        return $db->selectrow_array("SELECT COUNT(wiki_name) FROM users WHERE wiki_name=?", {}, $name);
     };
-    if (!$rewrite_short || !$id_serial && $has->($loginid)) {
-        $loginid = "${authdomainid}_$loginid";
-    } else {
-        $loginid =~ s/^([^a-z])/x_xx$1/i;
-    }
-    my $fixedid = $loginid;
+
+    my $wn = $wiki_name;
     my $serial = 1;
-    while ($has->($fixedid)) {
-        $fixedid = $loginid . $serial++;
+    while ($has->($wn)) {
+        $wn = $wiki_name . $serial++;
     }
-    $loginid = $fixedid;
+    $wiki_name = $wn;
 
-    $has = sub {
-        my $wn = shift;
-        return $db->selectrow_array("SELECT COUNT(wiki_name) FROM users WHERE wiki_name=?", {}, $wn);
-    };
-    $fixedid = $wikiname;
-    $serial = 1;
-    while ($has->($fixedid)) {
-        $fixedid = $wikiname . $serial++;
-    }
-    $wikiname = $fixedid;
-
-    if (!$loginid || !$wikiname) {
-        die "Could not determine a unique login ID and/or internal name for the $authdomainid account '$loginid'";
-    }
-
-    $this->{db}->do("INSERT INTO users (user_id, wiki_name, display_name, email) VALUES(?,?,?,?)", {},
-        $loginid, $wikiname, $display_name, $email
+    $this->{db}->do("INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email, deactivated, password) VALUES(?,?,?,?,?,?,?,?)", {},
+        $cuid, $authdomainid, $login_name, $wiki_name, $display_name, $email, $deactivated, $password
     );
-    return $loginid;
+
+    $this->{db}->do("INSERT INTO merged_users (primary_cuid, mapped_cuid, primary_provider, mapped_provider) VALUES(?,?,?,?)", {},
+        $cuid, $cuid, $authdomainid, $authdomainid);
+    return $cuid;
+}
+
+sub delete_user {
+    my ($this, $cuid) = @_;
+
+    $this->{db}->do("DELETE FROM users WHERE user_id=?", {}, $cuid);
 }
 
 sub _uni {
     my $charset = shift;
+
+    return unless $charset;
+
     for my $i (@_) {
-        next if utf8::is_utf8($i);
+        next if not defined $i || utf8::is_utf8($i);
         $i = decode($charset, $i);
     }
 }
 
 sub update_user {
-    my ($this, $charset, $loginid, $display_name, $email) = @_;
-    _uni($charset, $loginid, $display_name, $email);
-    return $this->db->do("UPDATE users SET display_name=?, email=? WHERE user_id=?", {}, $display_name, $email, $loginid);
+    my ($this, $charset, $cuid, $email, $display_name, $deactivated, $password) = @_;
+    $deactivated = 0 unless defined $deactivated;
+    _uni($charset, $cuid, $display_name, $email);
+    return $this->db->do("UPDATE users SET display_name=?, email=?, deactivated=?, password=? WHERE cuid=?", {}, $display_name, $email, $deactivated, $password, $cuid);
+}
+
+sub update_wikiname {
+    my ($this, $actions, $provider) = @_;
+
+    my $db = $this->db();
+
+    my $pid = $db->selectrow_array("SELECT pid FROM providers WHERE name=?", {}, $provider);
+    return { error => 'unknown provider' } unless defined $pid;
+
+    $db->begin_work();
+
+    my @report = ();
+    my %clashes = ();
+    my %resolved_clashes = ();
+    my $errors = 0;
+    my $updated = 0;
+    my $successes = 0;
+    foreach my $action (@$actions) {
+        my $new_wiki_name = $action->{wiki_name};
+        my %cuids = ();
+
+        if($action->{login_name}) {
+            foreach my $c ( @{$db->selectcol_arrayref("SELECT cuid FROM users WHERE login_name=? and pid=?", {}, $action->{login_name}, $pid)} ) {
+                $cuids{$c} = 1;
+            }
+        }
+
+        my @cuid_array = keys %cuids;
+        if(scalar @cuid_array > 1) {
+            push @report, { error => 'ambiguous', cuids => \@cuid_array, action => $action };
+            $errors++;
+            next;
+        }
+        if(scalar @cuid_array != 1) {
+            push @report, { error => 'not found', action => $action };
+            $errors++;
+            next;
+        }
+        my $cuid = $cuid_array[0];
+
+        my $result = {};
+
+        # clashes
+        my $inUse = $db->selectcol_arrayref("SELECT cuid FROM users WHERE wiki_name=?", {}, $new_wiki_name);
+        if(scalar @$inUse == 1 && $inUse->[0] eq $cuid) {
+            push @report, { success => 'no action', cuid => $cuid };
+            $successes++;
+            next;
+        }
+
+        foreach my $c (@$inUse) {
+            my $count = 1;
+            my $moved;
+            do {
+                $moved = $new_wiki_name . $count;
+                $count++;
+            } while ($db->selectrow_array("SELECT COUNT(cuid) FROM users WHERE wiki_name=?", {}, $moved));
+
+            $db->do("UPDATE users SET wiki_name=? where cuid=?", {}, $moved, $c);
+            $clashes{$c} = 1;
+        }
+
+        $db->do("UPDATE users SET wiki_name=? where cuid=?", {}, $new_wiki_name, $cuid);
+        $updated++;
+        if($clashes{$cuid}) {
+            delete $clashes{$cuid};
+            $resolved_clashes{$cuid} = 1;
+        }
+
+        push @report, { success => 'updated', cuid => $cuid };
+        $successes++;
+    }
+
+    $db->commit();
+
+    return { success => 'done', report => \@report, clashes => [keys %clashes], resolved_clases => [keys %resolved_clashes], updated => $updated, errors => $errors, successes => $successes };
+}
+
+# Mockup for retrieval of users by search term.
+# Does not yet support different fiels (login, email, ...).
+sub queryUser {
+    my ($this, $opts) = @_;
+    my ($term, $maxrows, $page, $fields, $type, $basemapping) = (
+        $opts->{term},
+        $opts->{limit},
+        $opts->{page},
+        $opts->{searchable_fields},
+        $opts->{type},
+        $opts->{basemapping},
+    );
+
+    my $options = {Slice => {}};
+    $maxrows = 10 unless defined $maxrows;
+    $options->{MaxRows} = $maxrows if $maxrows;
+    $page ||= 0;
+
+    $term = '' unless defined $term;
+    $term =~ s#^\s+##;
+    $term =~ s#\s+$##;
+    my @terms = split(/\s+/, $term);
+    @terms = ('') unless @terms;
+    @terms = map { "\%$_\%" } @terms;
+
+    my $list;
+    my $count;
+    my $offset = $maxrows * $page;
+
+    my $u_join = ''; # this will hold the join clause and 'ON' condition for
+                     # users when the 'ingroup' option is active.
+    my $ingroup = $this->getGroupAndParents(map {$_ =~ s#^\s+##r =~ s#\s+$##r} split(',', $opts->{ingroup})) if $opts->{ingroup};
+
+    unless ($type eq 'group') {
+        my @params;
+        @{$fields} = map {
+            push @params, @terms;
+            $_ =~ s/([A-Z])/'_'.lc($1)/ger =~ s/[^a-z_]//gr
+        } @{$fields};
+
+        my @parts;
+        map {
+            my $f = $_;
+            push @parts, join(' AND ', map {"$f ILIKE ?"} @terms)
+        } @$fields;
+
+        my $u_condition = join(' OR ', @parts);
+
+        if($basemapping eq 'skip') {
+            my $session = $Foswiki::Plugins::SESSION;
+            $u_condition = "($u_condition) AND pid!='" . $this->authProvider($session, '__baseuser')->getPid() . "'";
+        } elsif ($basemapping eq 'adminonly') {
+            my $session = $Foswiki::Plugins::SESSION;
+            my $base = $this->authProvider($session, '__baseuser');
+            my $admin = $base->getAdminCuid();
+            my $pid = $base->getPid();
+            $u_condition = "($u_condition) AND (pid !='$pid' OR cuid='$admin')";
+        }
+
+        my $g_condition = join(' AND ', map {
+            push @params, @terms;
+            "name ILIKE ?"
+        } @terms) if $type eq 'any';
+
+        if($ingroup) {
+            unless (scalar @$ingroup) {
+                # group not found, make this a query that can not deliver any
+                # results
+                $u_join = " join group_members ON (pid=-1 AND pid=-2)";
+                $g_condition = 'pid=-1 AND pid=-2' if $g_condition;
+            } else {
+                $u_join = " join group_members ON users.cuid=group_members.u_cuid AND (".join(' OR ', map{ "group_members.g_cuid=?" } @$ingroup).")";
+                unshift @params, @$ingroup;
+                if($g_condition) {
+                    $g_condition .= " AND cuid IN (".(join(',', map{"?"} @$ingroup)).")";
+                    push @params, @$ingroup;
+                }
+            }
+        }
+
+
+        my $statement;
+        my $statement_count;
+        if ($type eq 'any') {
+            $statement = <<SQL;
+SELECT
+    'user' AS type,
+    cuid AS cUID,
+    login_name AS loginName,
+    wiki_name as wikiName,
+    display_name AS displayName,
+    email
+    FROM users $u_join
+    WHERE deactivated=0 AND ($u_condition)
+UNION
+SELECT
+    'group' AS type,
+    cuid AS cUID,
+    name AS wikiName,
+    name AS displayName,
+    '' AS loginName,
+    '' AS email
+    FROM groups
+    WHERE ($g_condition)
+ORDER BY displayName
+OFFSET $offset
+SQL
+            $statement_count = <<SQL;
+SELECT
+    COUNT(*)
+    FROM (
+SELECT
+    cuid
+    FROM users $u_join
+    WHERE deactivated=0 AND ($u_condition)
+UNION
+SELECT
+    cuid
+    FROM groups
+    WHERE ($g_condition)
+) AS gu
+SQL
+        } else {
+            $statement = <<SQL;
+SELECT
+    'user' AS type,
+    cuid AS cUID,
+    login_name AS loginName,
+    wiki_name as wikiName,
+    display_name AS displayName
+FROM users $u_join
+WHERE deactivated=0 AND ($u_condition)
+ORDER BY displayName
+OFFSET $offset
+SQL
+            $statement_count = <<SQL;
+SELECT
+    count(*)
+FROM users $u_join
+WHERE deactivated=0 AND ($u_condition)
+SQL
+        }
+        $list = $this->db->selectall_arrayref($statement, $options, @params);
+        $count = $this->db->selectrow_array($statement_count, $options, @params);
+    } else {
+        my $condition = join(' AND ', map {"name ILIKE ?"} @terms);
+        if($ingroup) {
+            unless (scalar @$ingroup) {
+                # group not found, make this a query that can not deliver any
+                # results
+                $condition = 'pid=-1 AND pid=-2';
+            } else {
+                $condition .= " AND cuid IN (".(join(',', map{"?"} @$ingroup)).")";
+                push @terms, @$ingroup;
+            }
+        }
+        $list = $this->db->selectall_arrayref(<<SQL, $options, @terms);
+SELECT
+    'group' AS type,
+    cuid AS cUID,
+    name AS wikiName
+FROM groups
+WHERE ($condition)
+ORDER BY wikiName
+OFFSET $offset
+SQL
+        $count = $this->db->selectrow_array(<<SQL, $options, @terms);
+SELECT
+    COUNT(*)
+FROM groups
+WHERE ($condition)
+SQL
+    }
+
+    return ($list, $count);
+}
+
+sub _getNestedMemberships {
+    my ($db, $g_cuids, $memberships, $seen) = @_;
+
+    foreach my $grp ( @{$memberships} ) {
+        next if $seen->{$grp};
+        $seen->{$grp} = 1;
+        push @$g_cuids, $grp;
+
+        my $nested = $db->selectcol_arrayref(<<SQL, {}, $grp);
+SELECT nested_groups.child FROM nested_groups WHERE nested_groups.parent=?
+SQL
+
+        _getNestedMemberships($db, $g_cuids, $nested, $seen) if $nested;
+    }
+}
+
+# Retrieve a group (or multiple) and all nested groups.
+#
+# Parameters:
+#    * $this
+#    * anything more will be treated as a group
+#
+# Returns:
+#    * Arrayref of groups, containing the passed in groups and their nested
+#      groups
+sub getGroupAndParents {
+    my $this = shift;
+
+    my @cuids = grep{$_} map{$this->getCUID($_, 1)} @_;
+    my @g_cuids = ();
+    my $db = $this->db();
+
+    # Maybe we should realize this as a stored procedure?
+    _getNestedMemberships($db, \@g_cuids, \@cuids, {}) if scalar @cuids;
+
+    return \@g_cuids;
 }
 
 sub handleScript {
@@ -232,6 +562,194 @@ sub handleScript {
 
     my $req = $session->{request};
     # TODO
+}
+
+sub getProviderForUser {
+    my ($this, $user) = @_;
+
+    my $db = $this->db();
+    my @row = $db->selectrow_array("SELECT name, pid FROM users NATURAL JOIN providers WHERE (login_name=? OR wiki_name=?)", {}, $user, $user);
+
+    return @row;
+}
+
+sub authProvider {
+    my ($this, $session, $id) = @_;
+
+    return $this->{providers}->{$id} if $this->{providers}->{$id};
+
+    my $cfg = $Foswiki::cfg{UnifiedAuth}{Providers}{$id};
+    unless ($cfg) {
+        $cfg = $internal_cfg->{$id};
+        die "Provider not configured: $id" unless $cfg;
+    }
+
+    if ($cfg->{module} =~ /^Foswiki::Users::/) {
+        die("Auth providers based on Foswiki password managers are not supported yet");
+        #return Foswiki::UnifiedAuth::Providers::Passthrough->new($this->{session}, $id, $cfg);
+    }
+
+    my $package = "Foswiki::UnifiedAuth::Providers::$cfg->{module}";
+    eval "require $package"; ## no critic (ProhibitStringyEval);
+    if ($@ ne '') {
+        use Carp qw(confess); confess("Failed loading auth: $id with $@");
+        die "Failed loading auth provider: $@";
+    }
+    my $authProvider = $package->new($session, $id, $cfg->{config});
+
+    $this->{providers}->{$id} = $authProvider;
+    return $authProvider;
+}
+
+sub getPid {
+    my ($this, $id) = @_;
+
+    my $db = $this->db;
+    my $pid = $db->selectrow_array("SELECT pid FROM providers WHERE name=?", {}, $id);
+
+    return $pid if($pid);
+
+    Foswiki::Func::writeWarning("Could not get pid of $id; creating a new one...");
+    $db->do("INSERT INTO providers (name) VALUES(?)", {}, $id);
+    return $this->getPid($id);
+}
+
+sub getOrCreateGroup {
+    my ($this, $grpName, $pid) = @_;
+
+    my $db = $this->{db};
+
+    my $cuid = $db->selectrow_array(
+        'SELECT cuid FROM groups WHERE name=? and pid=?', {}, $grpName, $pid);
+    return $cuid if $cuid;
+
+    $cuid = Data::GUID->guid;
+
+    $db->begin_work;
+    $db->do(
+        'INSERT INTO groups (cuid, name, pid) VALUES(?, ?, ?)',
+        {}, $cuid, $grpName, $pid);
+    $db->commit;
+
+    return $cuid;
+}
+
+sub removeGroup {
+    my ($this, %group) = @_;
+
+    # TODO: retain cuids and nestings in case the group re-appears (eg. malfunctioning ldap)
+
+    my $db = $this->{db};
+
+    my $cuid;
+    if($group{cuid}) {
+        $cuid = $group{cuid};
+    } else {
+        my $name = $group{name};
+        my $pid = $group{pid};
+
+        die unless $name && defined $pid; # XXX
+        $cuid = $db->selectrow_array('SELECT cuid FROM groups WHERE name=? AND pid=?',
+            {}, $name, $pid);
+    }
+    die unless $cuid; # XXX
+
+    $db->begin_work;
+    $db->do(
+        'DELETE FROM groups WHERE cuid=?',
+        {}, $cuid);
+    $db->do(
+        'DELETE FROM group_members WHERE g_cuid=?',
+        {}, $cuid);
+    $db->do(
+        'DELETE FROM nested_groups WHERE parent=? OR child=?',
+        {}, $cuid, $cuid);
+    $db->commit;
+}
+
+sub updateGroup {
+    my ($this, $pid, $group, $members, $nested) = @_;
+
+    my $db = $this->{db};
+
+    my $cuid = $this->getOrCreateGroup($group, $pid);
+
+    my $currentMembers = {};
+    my $currentGroups = {};
+
+    # get current users
+    { # scope
+        my $fromDb = $db->selectcol_arrayref('SELECT u_cuid FROM group_members WHERE g_cuid=?', {}, $cuid);
+        foreach my $item ( @$fromDb ) {
+            $currentMembers->{$item} = 0;
+        }
+    }
+    # get current nested groups
+    { # scope
+        my $fromDb = $db->selectcol_arrayref('SELECT child FROM nested_groups WHERE parent=?', {}, $cuid);
+        foreach my $item ( @$fromDb ) {
+            $currentGroups->{$item} = 0;
+        }
+    }
+
+    $db->begin_work;
+    # add users / groups
+    foreach my $item ( @$members ) {
+        unless(defined $currentMembers->{$item}) {
+            $db->do('INSERT INTO group_members (g_cuid, u_cuid) VALUES(?,?)', {}, $cuid, $item);
+        }
+        $currentMembers->{$item} = 1;
+    }
+    foreach my $item ( @$nested ) {
+        unless(defined $currentGroups->{$item}) {
+            $db->do('INSERT INTO nested_groups (parent, child) VALUES(?,?)', {}, $cuid, $item);
+        }
+        $currentGroups->{$item} = 1;
+    }
+
+    # remove users/groups no longer present
+    foreach my $item ( keys %$currentMembers ) {
+        unless ($currentMembers->{$item}) {
+            $db->do('DELETE FROM group_members WHERE g_cuid=? AND u_cuid=?', {}, $cuid, $item);
+        }
+    }
+    foreach my $item ( keys %$currentGroups ) {
+        unless ($currentGroups->{$item}) {
+            $db->do('DELETE FROM nested_groups WHERE parent=? AND child=?', {}, $cuid, $item);
+        }
+    }
+    $db->commit();
+}
+
+sub checkPassword {
+    my ( $this, $session, $login, $password ) = @_;
+
+    my $db = $this->db();
+    my $providers = $db->selectcol_arrayref(
+        'SELECT p.name FROM users as u, providers as p WHERE u.pid = p.pid AND login_name=? ORDER BY p.name', {}, $login) || [];
+    foreach my $provider_id (@$providers) {
+        my $provider = $this->authProvider($session, $provider_id);
+        next unless $provider->can('checkPassword');
+        return 1 if $provider->checkPassword($login, $password);
+    }
+
+    return undef;
+}
+
+sub setPassword {
+    my ( $this, $session, $login, $newUserPassword, $oldUserPassword ) = @_;
+
+    my $passwordChanged;
+    my $db = $this->db();
+    my $providers = $db->selectcol_arrayref(
+        'SELECT p.name FROM users as u, providers as p WHERE u.pid = p.pid AND login_name=? ORDER BY p.name', {}, $login) || [];
+    foreach my $provider_id (@$providers) {
+        my $provider = $this->authProvider($session, $provider_id);
+        next unless $provider->can('setPassword');
+        $passwordChanged = 1 if $provider->setPassword($login, $newUserPassword, $oldUserPassword);
+    }
+
+    return $passwordChanged;
 }
 
 1;

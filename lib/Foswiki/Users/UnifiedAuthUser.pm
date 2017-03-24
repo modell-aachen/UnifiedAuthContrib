@@ -2,13 +2,13 @@
 
 =begin TML
 
----+ package Foswiki::Users::UnifiedPasswdUser
+---+ package Foswiki::Users::UnifiedAuthUser
 
 Unified password manager that can draw from multiple sources.
 
 =cut
 
-package Foswiki::Users::UnifiedPasswdUser;
+package Foswiki::Users::UnifiedAuthUser;
 use strict;
 use warnings;
 
@@ -17,7 +17,6 @@ our @ISA = ('Foswiki::Users::Password');
 
 use Assert;
 use Error qw( :try );
-use Fcntl qw( :DEFAULT :flock );
 
 sub new {
     my ( $class, $session ) = @_;
@@ -40,22 +39,53 @@ sub readOnly {
 }
 
 sub canFetchUsers {
-    # TODO make dynamic
-    return 0;
+    return 1;
+}
+
+sub getUAC {
+    my ($this) = @_;
+    $this->{uac} = Foswiki::UnifiedAuth->new() unless $this->{uac};
+    return $this->{uac};
+}
+
+sub fetchUsers {
+    my ($this) = @_;
+
+    my $uauth = $this->getUAC();
+    my $list = $uauth->db->selectcol_arrayref(
+        "SELECT DISTINCT login_name FROM users"
+    );
+    return new Foswiki::ListIterator($list);
 }
 
 sub fetchPass {
     my ( $this, $login ) = @_;
-    # TODO
-    $this->{error} = "Can't fetch password information in this implementation";
-    return;
+    my $ret = 0;
+    my $enc = '';
+    my $userinfo;
+
+    if( $login ) {
+        my $uauth = $this->getUAC();
+        my $db = $uauth->db;
+        $db = $uauth->db;
+
+        my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name, password FROM users WHERE users.login_name=?", {}, $login);
+        if( $userinfo ) {
+            $ret = $userinfo->{password};
+        } else {
+            $this->{error} = "Login $login invalid";
+            $ret = undef;
+        }
+    } else {
+        $this->{error} = 'No user';
+    }
+    return (wantarray) ? ( $ret, $userinfo ) : $ret;
 }
 
 sub setPassword {
     my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
-    # TODO
-    $this->{error} = "Can't change passwords in this implementation";
-    return;
+
+    return $this->{uac}->setPassword($this->{session}, $login, $newUserPassword, $oldUserPassword);
 }
 
 sub removeUser {
@@ -67,9 +97,8 @@ sub removeUser {
 
 sub checkPassword {
     my ( $this, $login, $password ) = @_;
-    # TODO
-    $this->{error} = "Cannot check passwords in this implementation";
-    return;
+
+    return $this->{uac}->checkPassword($this->{session}, $login, $password);
 }
 
 sub isManagingEmails {

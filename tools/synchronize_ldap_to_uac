@@ -1,0 +1,65 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+BEGIN {
+  if (-e './setlib.cfg') {
+    unshift @INC, '.';
+  } elsif (-e '../bin/setlib.cfg') {
+    unshift @INC, '../bin';
+  }
+  require 'setlib.cfg';
+}
+
+use Foswiki ();
+use Foswiki::UnifiedAuth;
+use DB_File;
+use DB_File::Lock;
+use Foswiki::Contrib::LdapContrib::DBFileLockConvert;
+
+Foswiki->new('admin');
+
+my $uauth = Foswiki::UnifiedAuth->new();
+
+my $session = $Foswiki::Plugins::SESSION;
+my $workArea = $session->{store}->getWorkArea('LdapContrib');
+my $cacheFile = $workArea . '/cache.db';
+die "Cache does not exist: $cacheFile" unless -e $cacheFile;
+
+my $provider = $ARGV[0];
+die "Please specify provider as first parameter" unless defined $provider;
+
+my %db_hash;
+tie %db_hash, $Foswiki::UNICODE ? 'Foswiki::Contrib::LdapContrib::DBFileLockConvert' : 'DB_File::Lock', $cacheFile, O_RDONLY, 0664, $DB_HASH, 'read' or die "Error tieing cache file $cacheFile: $!";
+
+my $actions = [];
+foreach my $login (split(',', $db_hash{LOGINNAMES})) {
+    my $wikiname = $db_hash{"U2W::$login"};
+    unless ($wikiname) {
+        print "cache corrupt for $login: no WikiName\n";
+        next;
+    }
+
+    push @$actions, {login_name => $login, wiki_name => $wikiname};
+}
+
+my $report = $uauth->update_wikiname($actions, $provider);
+if($report->{error}) {
+    print "Error: $report->{error}\n";
+} else {
+    print "Successfully processed $report->{successes} records.\nUpdated: $report->{updated}\n";
+    if($report->{errors}) {
+        print "ATTENTION! There were $report->{errors} errors.\n";
+        use Data::Dumper;
+        $Data::Dumper::Terse = 1;
+        foreach my $e (@{$report->{report}}) {
+            print Dumper($e) if $e->{error};
+        }
+    }
+    if($report->{clashes} && scalar @{$report->{clashes}}) {
+        print "ATTENTION! There were name-clashes with these cuids: ".join(', ', @{$report->{clashes}})."\n";
+    }
+}
+
+untie(%db_hash);

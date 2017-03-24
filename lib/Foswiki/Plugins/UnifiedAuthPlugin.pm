@@ -5,22 +5,73 @@ package Foswiki::Plugins::UnifiedAuthPlugin;
 use strict;
 use warnings;
 
+use Foswiki::Func;
+use Foswiki::Contrib::PostgreContrib;
+use Foswiki::UnifiedAuth;
+
 our $VERSION = '1.0';
 our $RELEASE = "1.0";
 our $SHORTDESCRIPTION = 'Handlers for UnifiedAuthContrib';
 
+our $connection;
+
 sub initPlugin {
-    Foswiki::Func::registerTagHandler(
-        'AUTHPROVIDERS',
-        \&_AUTHPROVIDERS
-    );
+    Foswiki::Func::registerTagHandler('AUTHPROVIDERS',\&_AUTHPROVIDERS);
+    Foswiki::Func::registerTagHandler('TOTALUSERS', \&_TOTALUSERS);
     return 1;
 }
 
 sub _AUTHPROVIDERS {
     my ( $session, $attrs, $topic, $web ) = @_;
-    # TODO
-    return "AUTHPROVIDERS: not implemented yet";
+
+    my $providers = $Foswiki::cfg{UnifiedAuth}{Providers};
+    return '' unless defined $providers;
+
+    my $choose = 0;
+    my $ctx = Foswiki::Func::getContext();
+    my $auth = Foswiki::UnifiedAuth->new();
+
+    while (my ($id, $hash) = each %$providers) {
+      next unless $hash->{module} =~ /Google|Facebook|Steam/;
+      my $provider = $auth->authProvider($session, $id);
+      next unless $provider->enabled;
+      $ctx->{'UA_'.uc($id)} = 1;
+      $ctx->{'UA_CHOOSE'} = 1;
+    }
+
+    my $path = '%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib';
+    Foswiki::Func::addToZone(
+      'head',
+      'uauth:css',
+      "<link rel=\"stylesheet\" type=\"text/css\" media=\"all\" href=\"$path/css/uauth.css?version=$RELEASE\" />"
+    );
+
+    if ($ctx->{'UA_CHOOSE'}) {
+      Foswiki::Func::addToZone(
+        'script',
+        'uauth:js',
+        "<script type=\"text/javascript\" src=\"$path/js/uauth.js?version=$RELEASE\"></script>",
+        'JQUERYPLUGIN::FOSWIKI::PREFERENCES'
+      );
+    }
+
+    return '';
+}
+
+sub _TOTALUSERS {
+  my($session, $params, $topic, $web, $topicObject) = @_;
+  my $db = _getConnection();
+  $db->selectrow_array("SELECT COUNT(cuid) FROM users", {});
+}
+
+sub finishPlugin {
+  $connection->finish if $connection;
+}
+
+sub _getConnection {
+  return $connection if $connection && !$connection->{finished};
+  $connection = Foswiki::Contrib::PostgreContrib::getConnection('foswiki_users');
+  $connection->{db};
 }
 
 1;
