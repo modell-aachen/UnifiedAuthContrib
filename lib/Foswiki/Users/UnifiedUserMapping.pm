@@ -164,6 +164,24 @@ sub getLoginName {
 
 =begin TML
 
+---++ ObjectMethod loginOrGroup2cUID ($login) -> cUID
+
+Converts a login or group name to a cUID.
+(undef on failure)
+
+Not official foswiki API, but very useful to check acls.
+
+=cut
+
+sub loginOrGroup2cUID {
+    my ( $this, $login ) = @_;
+    ASSERT($login) if DEBUG;
+
+    return $this->{uac}->getCUID($login);
+}
+
+=begin TML
+
 ---++ ObjectMethod addUser ($login, $wikiname, $password, $emails) -> $cUID
 
 Add a user to the persistent mapping that maps from usernames to wikinames
@@ -641,6 +659,48 @@ sub eachMembership {
     my ($this, $user) = @_;
 
     return new Foswiki::ListIterator($this->getMemberships($user));
+}
+
+=begin TML
+
+---++ ObjectMethod getMemebershipsCUID($user) -> \@groups
+
+Return a list of the cUIDs, of which the user is a member of.
+
+Not official foswiki API, but useful for checking acls.
+
+=cut
+
+sub getMembershipsCUID {
+    my ($this, $user) = @_;
+    my $cuid = $this->_userToCUID($user);
+    my %grpCuids = ();
+    my @groups = ();
+
+    my $doCheck;
+    $doCheck = sub {
+        foreach my $grp ( @{$_[0]} ) {
+            next if $grpCuids{$grp->[1]};
+            $grpCuids{$grp->[1]} = 1;
+            push @groups, $grp->[1];
+
+            my $nested = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $grp->[1]);
+SELECT groups.name, groups.cuid FROM nested_groups JOIN groups ON nested_groups.parent=groups.cuid WHERE nested_groups.child=?
+SQL
+
+            &$doCheck($nested) if $nested;
+        }
+    };
+
+    my $directMemberships = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $cuid);
+SELECT name, cuid FROM groups AS g
+JOIN group_members AS m ON g.cuid=m.g_cuid
+WHERE m.u_cuid=?
+SQL
+
+    &$doCheck($directMemberships);
+
+    return \@groups;
 }
 
 sub getMemberships {
