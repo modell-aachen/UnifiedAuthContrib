@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#! /usr/bin/env perl
 # Converter that rewrites user info to GUID based cUIDs:
 # - Form fields
 # - Workflow info (LASTPROCESSOR, LEAVING, WRKFLWCONTRIBUTORS)
@@ -79,6 +79,7 @@ sub convert {
         }
 
         $users{$login} = $cuid;
+        $users{$login =~ s/([^a-zA-Z0-9])/'_'.sprintf('%02x', ord($1))/ger} = $cuid;
         $usercount++;
     }
     print STDERR "Loaded information about $usercount users.\n";
