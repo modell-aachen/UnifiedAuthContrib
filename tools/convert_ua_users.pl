@@ -104,6 +104,9 @@ sub convert {
             next unless $res;
             my $f;
             while ($haspfv and $f = readdir($pfvh)) {
+                if($f =~ m/^\d+\.m$/) {
+                    treatMetaFile($web, "$pfvdir/$f");
+                }
                 next unless $f =~ /^\d+$/;
                 print STDERR "($f)";
                 $res = treatFile($web, "$pfvdir/$f");
@@ -116,6 +119,26 @@ sub convert {
     if (!$keepmsg) {
         print STDERR "\033[F\033[K";
     }
+}
+
+# Rewrite history meta file (.m)
+sub treatMetaFile {
+    my ($web, $filename) = @_;
+
+    open(my $tfh, '<:utf8', $filename) or warn("Can't open $filename: $!") && return;
+    local $/;
+
+    my $l = <$tfh>;
+    close($tfh);
+    my $origL = $l;
+
+    $l =~ s/^(\S+)/_mapUser($1)/e;
+    return 1 if $l eq $origL;
+    open($tfh, '>:utf8', $filename) or warn("Can't open $filename for writing: $!") && return;
+    print $tfh $l;
+    close($tfh);
+    print STDERR "*";
+    2;
 }
 
 # Rewrite a file (.txt or PFS version file)
