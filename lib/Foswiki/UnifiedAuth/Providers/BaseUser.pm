@@ -70,6 +70,10 @@ sub isAdminUser {
     return 0;
 }
 
+sub getBaseUserCUID {
+    return $CUIDs{shift};
+}
+
 sub getAdminCuid {
     return $CUIDs{BaseUserMapping_333};
 }

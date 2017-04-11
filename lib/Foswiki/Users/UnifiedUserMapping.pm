@@ -136,6 +136,8 @@ sub login2cUID {
     my $cCUID = $this->{uac}->getCUID($login, 0, 1);
     return $cCUID if defined $cCUID;
 
+    return $this->{base_cuids}->{$login} if defined $this->{base_cuids}->{$login};
+
     return $login if $dontcheck;
     return undef;
 }
@@ -321,6 +323,8 @@ sub getDisplayName {
 
 sub getDisplayAttributesOfLogin {
     my ($this, $login, $data) = @_;
+
+    # Note: BaseUserMapping_XXX is not a login name
 
     my $db = $this->{uac}->db;
 
@@ -957,6 +961,8 @@ sub isInGroup {
         # other members will be detected below
     }
 
+    $user = $this->{base_cuids}->{$user} if defined $this->{base_cuids}->{$user};
+
     # TODO: BaseGroup
 
     # NobodyGroup will simply return no g_cUID
@@ -1109,6 +1115,9 @@ sub _isCUID {
     my $login = shift;
 
     return 0 unless defined $login;
+
+    my $base = Foswiki::UnifiedAuth::Providers::BaseUser::getBaseUserCUID($login);
+    return $base if defined $base;
 
     $login =~ s/_2d/-/g;
     return $login if Foswiki::UnifiedAuth::isCUID($login);
