@@ -469,6 +469,7 @@ sub refreshGroupsCache {
     my $oldGroups = $db->selectcol_arrayref('SELECT name FROM groups WHERE pid=?', {}, $pid);
 
     $this->_processGroups($groupsCache, $groupsCacheDN, $users);
+    $this->_processVirtualGroups($groupsCache, $users);
 
     # kick removed groups
     foreach my $oldName ( @$oldGroups ) {
@@ -581,6 +582,38 @@ sub _processGroups {
     }
 }
 
+sub _processVirtualGroups {
+    my ($this, $groupsCache, $users) = @_;
+    # prepare search
+    foreach my $virtualGroup (@{$this->{config}->{VirtualGroups}}){
+        my $groupName = $virtualGroup->{name};
+        if($groupsCache->{$groupName}){
+            writeDebug("Error while creating virtual group '$groupName'. A group with the same name already exists. Skipping.");
+            next;
+        }
+        my %args = (
+            filter => $virtualGroup->{memberQuery},
+            deref => "always",
+            attrs => []
+        );
+
+        my ($fromLdap, $gotError, $nrRecords) = $this->getData(%args);
+        if($gotError){
+            writeDebug("Error while querying members for virtual group '$groupName'. Skipping.");
+            next;
+        }
+        my @members;
+        foreach my $entry ( @$fromLdap ) {
+            my $userDn = $entry->dn();
+            if($users->{$userDn}){
+                push @members, $users->{$userDn}->{cuid};
+            }
+        }
+        $this->{uauth}->updateGroup($this->getPid(), $groupName, \@members);
+        $groupsCache->{$groupName} = 1;
+    }
+}
+
 sub search {
     my ($this, %args) = @_;
 
@@ -602,8 +635,9 @@ sub search {
             # follow references
             if ($entry->isa("Net::LDAP::Reference")) {
                 foreach my $link ($entry->references) {
-                    writeDebug("following reference $link");
-                    $this->_followLink($link, %args);
+                    #TODO: This method is not implemented!
+                    #writeDebug("following reference $link");
+                    #$this->_followLink($link, %args);
                 }
             } else {
                 # call the orig callback

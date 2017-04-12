@@ -478,6 +478,39 @@ sudo -u www-data ./synchronize_ldap_to_uac ldap_provider
 }
 </verbatim>
 
+*Virtual groups* %BR%
+The Ldap provider allows to define additional groups based on an Ldap query. These groups are referred to as virtual groups.
+They are defined in the provider config. Here is an example:
+
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'ldap' => {
+      'config' => {
+         ...
+         'VirtualGroups' => [
+           {
+             'memberQuery' => '&(objectClass=User)(sn=Fernandez)',
+             'name' => 'fernandez_group'
+           },
+           {
+             'memberQuery' => '&(objectClass=User)(sn=Smith)',
+             'name' => 'smith_group'
+           }
+         ],
+      },
+      'module' => 'Ldap'
+   }
+}
+</verbatim>
+
+Each virtual group is defined by its name and a member query which has to deliver all the users that should be members of the group.
+Two things need to be kept in mind when virtual groups are used:
+   * The query should define a subset of users which are already imported by the provider (set via the UserBase preference).
+     This means that it is not possible to import additional users via this query. Additional users resulting from this query are not imported and will not be part of the group.
+   * The group name should be unique. E.g. if there already exists an imported Ldap group with the same name then the virtual group will
+     not be created.
+
+In order for the group to appear the provider needs to be refreshed (see section below).
 
 ---+++ Google and Google G Suite
 This provider delegates authentication to Google allowing users to sign in
