@@ -28,7 +28,19 @@ my $cacheFile = $workArea . '/cache.db';
 die "Cache does not exist: $cacheFile" unless -e $cacheFile;
 
 my $provider = $ARGV[0];
-die "Please specify provider as first parameter" unless defined $provider;
+if(!$provider){
+    print "Usage: perl synchronize_ldap_to_uac <providerName> [nodry]\n";
+    print "\tThe first parameter is the name of the ldap provider\n";
+    print "\tThe second parameter needs to be set to 'nodry' if you want the script to save changes to the database.\n\n";
+
+    print "This script imports the ldap mappings 'login name => wiki name' that were present in LdapContrib installations.\n";
+    print "It only needs to be executed if you are migrating from an existing LdapContrib installation to UnifiedAuth.\n\n";
+
+    print "Before you run this script make sure that UnifiedAuth has an ldap provider configured that corresponds to the old LdapContrib configuration.\n";
+    print "Also make sure that all users have been imported by refreshing the provider.\n";
+    print "By default it will perform a dry run. If you want to save the changes call the script with 'nodry' as second parameter.\n";
+    exit;
+}
 
 #Perform a dry run per default
 my $isDry =  !($ARGV[1] && ($ARGV[1] eq 'nodry'));
