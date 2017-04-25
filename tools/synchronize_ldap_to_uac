@@ -30,6 +30,9 @@ die "Cache does not exist: $cacheFile" unless -e $cacheFile;
 my $provider = $ARGV[0];
 die "Please specify provider as first parameter" unless defined $provider;
 
+#Perform a dry run per default
+my $isDry =  !($ARGV[1] && ($ARGV[1] eq 'nodry'));
+
 my %db_hash;
 tie %db_hash, $Foswiki::UNICODE ? 'Foswiki::Contrib::LdapContrib::DBFileLockConvert' : 'DB_File::Lock', $cacheFile, O_RDONLY, 0664, $DB_HASH, 'read' or die "Error tieing cache file $cacheFile: $!";
 
@@ -44,7 +47,11 @@ foreach my $login (split(',', $db_hash{LOGINNAMES})) {
     push @$actions, {login_name => $login, wiki_name => $wikiname};
 }
 
-my $report = $uauth->update_wikiname($actions, $provider);
+if($isDry){
+    print "Performing a dry run: Nothing is saved!\n";
+    print "Run the script with 'nodry' as second argument to save changes.\n";
+}
+my $report = $uauth->update_wikiname($actions, $provider, $isDry);
 if($report->{error}) {
     print "Error: $report->{error}\n";
 } else {
