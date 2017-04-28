@@ -173,7 +173,7 @@ sub login {
 
     foreach my $p (@enabledProvider) {
         $provider = $p;
-        if ($provider->isMyLogin) {
+        if (!$provider->isEarlyLogin && $provider->isMyLogin) {
             my $result = $this->processProviderLogin($query, $session, $provider);
             return $result if $result;
         }
