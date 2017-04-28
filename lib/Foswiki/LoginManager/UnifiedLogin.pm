@@ -322,7 +322,7 @@ sub processProviderLogin {
             } else {
                 if($provider->{config}->{debug}) {
                     Foswiki::Func::writeWarning("Login '$loginResult' supplied by '$provider->{id}' could not be found in identity provider '$provider->{config}->{identityProvider}'"); # do not use $id_provider, because it might have been _all_
-                    $error = $session->i18n->maketext("Your browser supplied a login that is not imported into the wiki.");
+                    $error = $session->i18n->maketext("Your user account is not configured for the authentication with this wiki. Please contact your administrator for further assistance.");
                 }
                 undef $loginResult;
             }

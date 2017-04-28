@@ -107,7 +107,7 @@ sub processLogin {
         $res->header(-status => 401);
 
         Foswiki::Func::writeWarning("Client attempted authorization with a NTLM token. Please add wiki to 'Local intranet'.") if $cfg->{debug};
-        my $error = $session->i18n->maketext("Your browser is not configured to use Kerberos. Please add this site to your 'local sites'.");
+        my $error = $session->i18n->maketext("Your browser is not correctly configured for the authentication with this wiki. Please add this site to your 'local intranet'. Please contact your administrator for further assistance.");
         $res->deleteHeader('WWW-Authenticate');
         throw Error::Simple($error);
     }
@@ -148,7 +148,7 @@ sub processLogin {
                 }
             }
             $cgis->param('uauth_kerberos_failed', 1);
-            my $error = $session->i18n->maketext("Kerberos authentication did not succeed.");
+            my $error = $session->i18n->maketext("The authentication failed (Kerberos error). Please contact your administrator for further assistance.");
             throw Error::Simple($error);
         }
 
