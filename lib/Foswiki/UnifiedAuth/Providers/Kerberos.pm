@@ -31,6 +31,7 @@ sub isMyLogin {
         Foswiki::Func::writeWarning("Please specify realm and keytab in configure") if $cfg->{debug};
         return 0;
     }
+    $cfg->{identityProvider} ||= '_all_';
     return 1;
 }
 

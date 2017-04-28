@@ -167,7 +167,6 @@ is only granted to clients from an external network, e.g. the Internet.
    'sso' => {
       'config' => {
          'allow' => '10.10.10.0/24',
-         'identityProvider' => 'ldap'
       },
       'module' => 'Kerberos'
    },
@@ -249,7 +248,7 @@ Make sure to set proper ACLs in =SitePreferences= and/or =WebPreferences= when
 disabling authentication on web server basis.
 
 | *Preference* | *Description* |
-| identityProvider | ID of a configured Ldap provider which shall be used to fetch user information; use =_all_= for all configures providers. |
+| identityProvider | ID of a configured Ldap provider which shall be used to fetch user information; use =_all_= for all configured providers. Defaults to =_all_=. |
 | keytab | Path to a valid Kerberos keytab file |
 | realm | The domain realm |
 | serviceName | Service principal name |
