@@ -307,6 +307,7 @@ sub processProviderLogin {
             if ($id_provider eq '_all_') {
                 $this->{uac} = Foswiki::UnifiedAuth->new unless $this->{uac};
                 ($id_provider) = $this->{uac}->getProviderForUser($loginResult);
+                $id_provider ||= '__default';
             }
             my $identity = $this->_authProvider($id_provider);
             if ($identity->isa('Foswiki::UnifiedAuth::IdentityProvider')) {
