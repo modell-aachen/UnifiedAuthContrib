@@ -26,3 +26,12 @@ msgstr "Wir konnten Sie nicht authentifizieren. Der folgende Fehler ist aufgetre
 
 msgid "Wrong username or password"
 msgstr "Benutzername oder Passwort falsch"
+
+msgid "Your browser is not configured to use Kerberos. Please add this site to your 'local sites'."
+msgstr "Ihr Browser ist nicht für Kerberos konfiguriert. Bitte fügen Sie diese Seite zu 'Lokales Internet' hinzu."
+
+msgid "Your browser supplied a login that is not imported into the wiki."
+msgstr "Ihr Browser hat Sie mit einem Nutzer authentifiziert, welcher nicht vom Wiki importiert wird."
+
+msgid "Kerberos authentication did not succeed."
+msgstr "Kerberos Authentifizierung fehlgeschlagen."

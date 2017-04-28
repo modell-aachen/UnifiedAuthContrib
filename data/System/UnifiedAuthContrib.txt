@@ -137,6 +137,7 @@ which are shared across all providers.
 | enabled | Boolean value indicating whether this provider is enabled | 1 |
 | allow | Comma separated list of IPs | |
 | deny | Comma separated list of IPs | |
+| debug | Set to =1= for debug output in error logs and =verbose= for even _more_ debug output. | |
 
 Any authentication provider may be disabled by setting its =enabled= attribute
 to a falsely value (0).%BR%
