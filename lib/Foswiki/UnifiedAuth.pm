@@ -407,10 +407,11 @@ sub queryUser {
             $u_condition = "($u_condition) AND (pid !='$pid' OR cuid='$admin')";
         }
 
-        my $g_condition = join(' AND ', map {
+        my $g_condition;
+        if($type eq 'any') {
+            $g_condition = join(' AND ', map { "name ILIKE ?" } @terms);
             push @params, @terms;
-            "name ILIKE ?"
-        } @terms) if $type eq 'any';
+        }
 
         if($ingroup) {
             unless (scalar @$ingroup) {
