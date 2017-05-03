@@ -303,7 +303,7 @@ sub processProviderLogin {
     eval {
         $loginResult = $provider->processLogin();
         if ($loginResult && $loginResult eq 'wait for next step') { # XXX it would be better to return a hash with a status
-            Foswiki::Func::writeWarning("Waiting for client to get back to us.") if $provider->{config}->{debug} eq 'verbose';
+            Foswiki::Func::writeWarning("Waiting for client to get back to us.") if defined $provider->{config}->{debug} && $provider->{config}->{debug} eq 'verbose';
             undef $loginResult;
         } elsif ($loginResult && $provider->{config}->{identityProvider}) {
             my $id_provider = $provider->{config}->{identityProvider};
