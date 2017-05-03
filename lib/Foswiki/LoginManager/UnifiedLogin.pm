@@ -350,7 +350,7 @@ sub processProviderLogin {
         $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
           if $this->{_cgisession};
         my ( $origurl, $origmethod, $origaction ) = _unpackRequest($provider->origin);
-        if (!$origurl || $context->{login}) {
+        if (!$origurl || $origaction eq 'login') {
             $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
             $session->{request}->delete_all;
         } else {
