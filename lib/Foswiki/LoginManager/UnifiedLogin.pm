@@ -31,6 +31,10 @@ sub new {
         $session->enterContext('can_remember_login');
     }
 
+    # re-registering these, so we use our own methods.
+    Foswiki::registerTagHandler( 'LOGOUT',           \&_LOGOUT );
+    Foswiki::registerTagHandler( 'LOGOUTURL',        \&_LOGOUTURL );
+
     return $this;
 }
 
@@ -398,6 +402,42 @@ sub processProviderLogin {
     $session->{prefs}->setSessionPreferences(UAUTH_AUTH_FAILURE_MESSAGE => $error, BANNER => $banner);
 
     return undef;
+}
+
+# Like the super method, but checks if the topic exists (to avoid dead links).
+sub _LOGOUTURL {
+    my ( $session, $params, $topic, $web ) = @_;
+    my $this = $session->getLoginManager();
+
+    my $logoutWeb = $session->{prefs}->getPreference('BASEWEB');
+    my $logoutTopic = $session->{prefs}->getPreference('BASETOPIC');
+    unless(Foswiki::Func::topicExists($logoutWeb, $logoutTopic)) {
+        $logoutWeb = $Foswiki::cfg{UsersWebName};
+        $logoutTopic = $Foswiki::cfg{HomeTopicName};
+    }
+
+    return $session->getScriptUrl(
+        0, 'view',
+        $logoutWeb,
+        $logoutTopic,
+        'logout' => 1
+    );
+}
+
+# Unmodified from super method, however we need to copy it, so we can use the
+# modified _LOGOUTURL.
+sub _LOGOUT {
+    my ( $session, $params, $topic, $web ) = @_;
+    my $this = $session->getLoginManager();
+
+    return '' unless $session->inContext('authenticated');
+
+    my $url = _LOGOUTURL(@_);
+    if ($url) {
+        my $text = $session->templates->expandTemplate('LOG_OUT');
+        return CGI::a( { href => $url }, $text );
+    }
+    return '';
 }
 
 1;
