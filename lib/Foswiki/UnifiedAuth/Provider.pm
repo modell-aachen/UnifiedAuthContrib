@@ -43,7 +43,7 @@ sub initiateLogin {
 
     my $csrf = sha1_base64(rand(). "$$ $0");
     my $state = "$csrf,uauth,$origin";
-    $cgis->param('uauth_state', $state) unless $cgis->param('uauth_state');
+    $cgis->param('uauth_state', $state);
     $cgis->param('uauth_provider', $this->{id});
     $cgis->flush;
     die $cgis->errstr if $cgis->errstr;

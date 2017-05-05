@@ -17,18 +17,25 @@ use Foswiki::UnifiedAuth;
 use DB_File;
 use DB_File::Lock;
 use Foswiki::Contrib::LdapContrib::DBFileLockConvert;
+use Getopt::Long;
+use Pod::Usage;
 
 Foswiki->new('admin');
 
 my $uauth = Foswiki::UnifiedAuth->new();
 
+my %params = ();
+GetOptions (\%params, 'provider|p=s', 'help|h', 'man', 'nodry|n') or pod2usage(2);
+
+pod2usage(1) if exists $params{help};
+pod2usage(-verbose => 4) if exists $params{man};
+if(!exists $params{provider}){
+    pod2usage(-verbose => 0, -message => "$0: parameter for the provider is mandatory");
+}
+
 my $session = $Foswiki::Plugins::SESSION;
 my $workArea = $session->{store}->getWorkArea('LdapContrib');
 my $cacheFile = $workArea . '/cache.db';
-die "Cache does not exist: $cacheFile" unless -e $cacheFile;
-
-my $provider = $ARGV[0];
-die "Please specify provider as first parameter" unless defined $provider;
 
 my %db_hash;
 tie %db_hash, $Foswiki::UNICODE ? 'Foswiki::Contrib::LdapContrib::DBFileLockConvert' : 'DB_File::Lock', $cacheFile, O_RDONLY, 0664, $DB_HASH, 'read' or die "Error tieing cache file $cacheFile: $!";
@@ -44,7 +51,11 @@ foreach my $login (split(',', $db_hash{LOGINNAMES})) {
     push @$actions, {login_name => $login, wiki_name => $wikiname};
 }
 
-my $report = $uauth->update_wikiname($actions, $provider);
+if(!exists $params{nodry}){
+    print "Performing a dry run: Nothing is saved!\n";
+    print "Run the script with '--nodry' to save changes.\n";
+}
+my $report = $uauth->update_wikiname($actions, $params{provider}, !exists $params{nodry});
 if($report->{error}) {
     print "Error: $report->{error}\n";
 } else {
@@ -63,3 +74,52 @@ if($report->{error}) {
 }
 
 untie(%db_hash);
+
+__END__
+
+=head1 NAME
+
+synchronize_ldap_to_uac - imports ldap mappings (login name => wiki name).
+
+=head1 SYNOPSIS
+
+perl synchronize_ldap_to_uac -p <providerName> [options]
+
+    Options:
+     -provider|p    name of provider
+     -nodry|n         nodry run
+     -help|h          help
+     -man           print documentation
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-provider|p>
+
+Provide the name of the Ldap-Provider e.g. -p ldap
+
+=item B<-nodry|n>
+
+Run the actual program and does not only simulate.
+
+=item B<-help|h>
+
+Prints a brief help message and exits.
+
+=item B<-man>
+
+Prints the manual page and exits.
+
+=back
+
+=head1 DESCRIPTION
+
+B<This script> imports the ldap mappings 'login name => wiki name' that were present in LdapContrib installations.
+It only needs to be executed if you are migrating from an existing LdapContrib installation to UnifiedAuth.
+
+Before you run this script make sure that UnifiedAuth has an ldap provider configured that corresponds to the old LdapContrib configuration.
+Also make sure that all users have been imported by refreshing the provider.
+By default it will perform a dry run. If you want to save the changes call the script with '--nodry'.
+
+=cut

@@ -137,6 +137,7 @@ which are shared across all providers.
 | enabled | Boolean value indicating whether this provider is enabled | 1 |
 | allow | Comma separated list of IPs | |
 | deny | Comma separated list of IPs | |
+| debug | Set to =1= for debug output in error logs and =verbose= for even _more_ debug output. | |
 
 Any authentication provider may be disabled by setting its =enabled= attribute
 to a falsely value (0).%BR%
@@ -166,7 +167,6 @@ is only granted to clients from an external network, e.g. the Internet.
    'sso' => {
       'config' => {
          'allow' => '10.10.10.0/24',
-         'identityProvider' => 'ldap'
       },
       'module' => 'Kerberos'
    },
@@ -248,7 +248,7 @@ Make sure to set proper ACLs in =SitePreferences= and/or =WebPreferences= when
 disabling authentication on web server basis.
 
 | *Preference* | *Description* |
-| identityProvider | ID of a configured Ldap provider which shall be used to fetch user information; use =_all_= for all configures providers. |
+| identityProvider | ID of a configured Ldap provider which shall be used to fetch user information; use =_all_= for all configured providers. Defaults to =_all_=. |
 | keytab | Path to a valid Kerberos keytab file |
 | realm | The domain realm |
 | serviceName | Service principal name |
@@ -370,11 +370,11 @@ parameters:
 | !WikiGroupsBackoff | Flag indicating wether we fallback to !WikiGroups. | 1 |
 | !WikiNameAttributes | The user's wiki name attribute. This is the attribute to generate the !WikiName from. | givenName,sn |
 
-If you migrate from an existing LdapContrib configuration, you can import the old WikiNames using =tools/synchronize_ldap_to_uac=. Copy the old _cache.db_ to the appropriate place in your =work_area= and execute the tool with the provider id as parameter.
+If you migrate from an existing LdapContrib configuration, you can import the old WikiNames using =tools/synchronize_ldap_to_uac=. Copy the old _cache.db_ to the appropriate place in your =work_area= and execute the tool with the provider id as parameter '--provider'. By default the script performs a dryrun. To save the changes run it with '--nodry'.
 <verbatim>
 cp /backups/wiki/working/work_areas/LdapContrib /var/www/wiki/working/work_areas -rp;
 cd /var/www/wiki/tools
-sudo -u www-data ./synchronize_ldap_to_uac ldap_provider
+sudo -u www-data ./synchronize_ldap_to_uac --provider ldap_provider
 </verbatim>
 %X% *ATTENTION*: This will suffix clashing WikiNames with a number!
 
@@ -478,6 +478,39 @@ sudo -u www-data ./synchronize_ldap_to_uac ldap_provider
 }
 </verbatim>
 
+*Virtual groups* %BR%
+The Ldap provider allows to define additional groups based on an Ldap query. These groups are referred to as virtual groups.
+They are defined in the provider config. Here is an example:
+
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'ldap' => {
+      'config' => {
+         ...
+         'VirtualGroups' => [
+           {
+             'memberQuery' => '&(objectClass=User)(sn=Fernandez)',
+             'name' => 'fernandez_group'
+           },
+           {
+             'memberQuery' => '&(objectClass=User)(sn=Smith)',
+             'name' => 'smith_group'
+           }
+         ],
+      },
+      'module' => 'Ldap'
+   }
+}
+</verbatim>
+
+Each virtual group is defined by its name and a member query which has to deliver all the users that should be members of the group.
+Two things need to be kept in mind when virtual groups are used:
+   * The query should define a subset of users which are already imported by the provider (set via the UserBase preference).
+     This means that it is not possible to import additional users via this query. Additional users resulting from this query are not imported and will not be part of the group.
+   * The group name should be unique. E.g. if there already exists an imported Ldap group with the same name then the virtual group will
+     not be created.
+
+In order for the group to appear the provider needs to be refreshed (see section below).
 
 ---+++ Google and Google G Suite
 This provider delegates authentication to Google allowing users to sign in

@@ -26,3 +26,12 @@ msgstr "Wir konnten Sie nicht authentifizieren. Der folgende Fehler ist aufgetre
 
 msgid "Wrong username or password"
 msgstr "Benutzername oder Passwort falsch"
+
+msgid "Your browser is not correctly configured for the authentication with this wiki. Please add this site to your 'local intranet'. Please contact your administrator for further assistance."
+msgstr "Ihr Browser ist nicht korrekt für die Authentifizierung mit diesem Wiki konfiguriert. Bitte fügen Sie diese Seite zu 'Lokales Intranet' hinzu. Bitte kontaktieren Sie ihren Administrator für weitere Hilfe."
+
+msgid "Your user account is not configured for the authentication with this wiki. Please contact your administrator for further assistance."
+msgstr "Ihr Nutzeraccount ist nicht für die Authentifizierung mit diesem Wiki konfiguriert. Bitte kontaktieren Sie ihren Administrator für weitere Hilfe."
+
+msgid "The authentication failed (Kerberos error). Please contact your administrator for further assistance."
+msgstr "Die Authetifizierung ist fehlgeschlagen (Kerberos fehler). Bitte kontaktieren Sie ihren Administrator für weitere Hilfe."

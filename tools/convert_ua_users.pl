@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#! /usr/bin/env perl
 # Converter that rewrites user info to GUID based cUIDs:
 # - Form fields
 # - Workflow info (LASTPROCESSOR, LEAVING, WRKFLWCONTRIBUTORS)
@@ -32,26 +32,49 @@ BEGIN {
   require 'setlib.cfg';
 }
 
+use Getopt::Long;
+use Pod::Usage;
+use Data::GUID;
+use Foswiki ();
+# XXX It would be nice, if this was a require, so you would not need it when
+# you do not import anything. But how do I import DB_HASH then?
+use DB_File;
+
 my %formcache;
 my $session;
 my %users;
 my $usercount;
 
-my $hostname = $ENV{host};
-unless ($hostname) {
-    foreach my $arg (@ARGV) {
-        if($arg =~ m#(?:--)?host=(\S+)#) {
-            $hostname = $1;
-        }
-    }
-}
+my %params = ();
+GetOptions (\%params, 'host=s', 'help|h', 'man', 'ldapcache=s') or pod2usage(2);
 
-use Data::GUID;
-use Foswiki ();
+pod2usage(1) if exists $params{help};
+pod2usage(-verbose => 4) if exists $params{man};
 
+my $hostname = $params{host} || $ENV{host};
 if ($hostname) {
     require Foswiki::Contrib::VirtualHostingContrib;
     require Foswiki::Contrib::VirtualHostingContrib::VirtualHost;
+}
+
+sub readGroupsFromLdap {
+    my ($cacheFile, $users) = @_;
+
+    print STDERR "Importing groups from ldap\n";
+
+    my $count = 0;
+    my %db_hash;
+    tie %db_hash, $Foswiki::UNICODE ? 'Foswiki::Contrib::LdapContrib::DBFileLockConvert' : 'DB_File::Lock', $cacheFile, O_RDONLY, 0664, $DB_HASH, 'read' or die "Error tieing cache file $cacheFile: $!";
+
+    foreach my $group (split(',', $db_hash{GROUPS})) {
+        my $group_escaped = $group =~ s/([^a-zA-Z0-9])/'_'.sprintf('%02x', ord($1))/ger;
+        next if $group eq $group_escaped;
+        $users->{$group} = $group_escaped;
+        $count++;
+    }
+    untie(%db_hash);
+
+    print STDERR "Will rewrite $count groups\n";
 }
 
 sub convert {
@@ -59,6 +82,15 @@ sub convert {
 
     %users = ();
     $usercount = 0;
+
+    my $ldapWorkArea = $session->{store}->getWorkArea('LdapContrib');
+    my $ldapCacheFile = $params{ldapcache} || $ldapWorkArea . '/cache.db';
+    if (-e $ldapCacheFile) {
+        readGroupsFromLdap($ldapCacheFile, \%users);
+    } elsif ($params{ldapcache}) {
+        print STDERR "Ldap cache file '$params{ldapcache}' not found.\n";
+        exit 1;
+    }
 
     my $uit = Foswiki::Func::eachUser();
     while ($uit->hasNext) {
@@ -79,6 +111,7 @@ sub convert {
         }
 
         $users{$login} = $cuid;
+        $users{$login =~ s/([^a-zA-Z0-9])/'_'.sprintf('%02x', ord($1))/ger} = $cuid;
         $usercount++;
     }
     print STDERR "Loaded information about $usercount users.\n";
@@ -103,6 +136,9 @@ sub convert {
             next unless $res;
             my $f;
             while ($haspfv and $f = readdir($pfvh)) {
+                if($f =~ m/^\d+\.m$/) {
+                    treatMetaFile($web, "$pfvdir/$f");
+                }
                 next unless $f =~ /^\d+$/;
                 print STDERR "($f)";
                 $res = treatFile($web, "$pfvdir/$f");
@@ -115,6 +151,26 @@ sub convert {
     if (!$keepmsg) {
         print STDERR "\033[F\033[K";
     }
+}
+
+# Rewrite history meta file (.m)
+sub treatMetaFile {
+    my ($web, $filename) = @_;
+
+    open(my $tfh, '<:utf8', $filename) or warn("Can't open $filename: $!") && return;
+    local $/;
+
+    my $l = <$tfh>;
+    close($tfh);
+    my $origL = $l;
+
+    $l =~ s/^(\S+)/_mapUser($1)/e;
+    return 1 if $l eq $origL;
+    open($tfh, '>:utf8', $filename) or warn("Can't open $filename for writing: $!") && return;
+    print $tfh $l;
+    close($tfh);
+    print STDERR "*";
+    2;
 }
 
 # Rewrite a file (.txt or PFS version file)
@@ -236,3 +292,64 @@ if ($hostname) {
 }
 
 print STDERR "\nDone.\n";
+
+__END__
+
+=head1 NAME
+
+UnifiedAuth convert users.
+
+=head1 SYNOPSIS
+
+perl convert_ua_users [options]
+
+    Options:
+     -host          specify host for VirtualHostingContrib
+     -help|h        help
+     -ldapcache     specify ldap cache file (defaults to working-dir/LdapContrib/cache.db if it exists)
+     -man           print documentation
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-host>
+
+Use VirtualHostingContrib and convert this host only. To convert all hosts use 'all'.
+
+ Examples:
+  convert_ua_users -host=my.host.com
+  convert_ua_users -host=all
+
+You can also set the environment variable 'host'.
+
+ Example:
+ host=my.host.com convert_ua_users
+
+=item B<-ldapcache>
+
+Specifies an ldap cache file, that will be used to convert groups. If this is not specified, the script will look for a cache file in the working dir.
+
+Converting groups is only a 'best effort' solution. Groups will only be identified, if their _name_ is imported exactly as before, meaning if you had any 'rewriteGroups' options, you will need to carry them over exactly as they were.
+
+ Examples:
+ convert_ua_users # no cache specified, try working/workareas/LdacContrib/cache.db
+ convert_ua_users -ldapcache=/backups/cache.db
+
+If you specify this option, the file must exist or the script will terminate.
+
+=item B<-help|h>
+
+Prints a brief help message and exits.
+
+=item B<-man>
+
+Prints the manual page and exits.
+
+=back
+
+=head1 DESCRIPTION
+
+B<This script> converts user lists (ACLs, workflow information, formfields,...) from login names to cuids.
+
+=cut

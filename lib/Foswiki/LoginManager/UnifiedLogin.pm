@@ -31,6 +31,10 @@ sub new {
         $session->enterContext('can_remember_login');
     }
 
+    # re-registering these, so we use our own methods.
+    Foswiki::registerTagHandler( 'LOGOUT',           \&_LOGOUT );
+    Foswiki::registerTagHandler( 'LOGOUTURL',        \&_LOGOUTURL );
+
     return $this;
 }
 
@@ -165,7 +169,7 @@ sub login {
     foreach my $p (@earlyProvider) {
         if ($p->isMyLogin) {
             my $result = $this->processProviderLogin($query, $session, $p);
-            return $result if $result;
+            return $result if defined $result;
         }
     }
 
@@ -173,9 +177,9 @@ sub login {
 
     foreach my $p (@enabledProvider) {
         $provider = $p;
-        if ($provider->isMyLogin) {
+        if (!$provider->isEarlyLogin && $provider->isMyLogin) {
             my $result = $this->processProviderLogin($query, $session, $provider);
-            return $result if $result;
+            return $result if defined $result;
         }
     }
 
@@ -302,17 +306,29 @@ sub processProviderLogin {
     my $error = '';
     eval {
         $loginResult = $provider->processLogin();
-        if ($loginResult && $provider->{config}->{identityProvider}) {
+        if ($loginResult && $loginResult eq 'wait for next step') { # XXX it would be better to return a hash with a status
+            Foswiki::Func::writeWarning("Waiting for client to get back to us.") if defined $provider->{config}->{debug} && $provider->{config}->{debug} eq 'verbose';
+            undef $loginResult;
+        } elsif ($loginResult && $provider->{config}->{identityProvider}) {
             my $id_provider = $provider->{config}->{identityProvider};
+            my $providersResult;
             if ($id_provider eq '_all_') {
                 $this->{uac} = Foswiki::UnifiedAuth->new unless $this->{uac};
                 ($id_provider) = $this->{uac}->getProviderForUser($loginResult);
+                $id_provider ||= '__default';
             }
             my $identity = $this->_authProvider($id_provider);
             if ($identity->isa('Foswiki::UnifiedAuth::IdentityProvider')) {
-                $loginResult = $identity->identify($loginResult);
+                $providersResult = $identity->identify($loginResult);
+            }
+            if($providersResult) {
+                $loginResult = $providersResult;
             } else {
-                $loginResult = 0;
+                if($provider->{config}->{debug}) {
+                    Foswiki::Func::writeWarning("Login '$loginResult' supplied by '$provider->{id}' could not be found in identity provider '$provider->{config}->{identityProvider}'"); # do not use $id_provider, because it might have been _all_
+                    $error = $session->i18n->maketext("Your user account is not configured for the authentication with this wiki. Please contact your administrator for further assistance.");
+                }
+                undef $loginResult;
             }
         }
     };
@@ -338,7 +354,7 @@ sub processProviderLogin {
         $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
           if $this->{_cgisession};
         my ( $origurl, $origmethod, $origaction ) = _unpackRequest($provider->origin);
-        if (!$origurl || $context->{login}) {
+        if (!$origurl || $origaction eq 'login') {
             $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
             $session->{request}->delete_all;
         } else {
@@ -359,7 +375,7 @@ sub processProviderLogin {
         }
         $session->{request}->method($origmethod);
         $session->redirect($origurl, 1);
-        return 1;
+        return $loginResult->{cuid};
     }
 
     if ($Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
@@ -378,14 +394,50 @@ sub processProviderLogin {
 
     my $tmpl = $this->_loadTemplate;
     my $banner = '';
-    $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE') unless $provider->isEarlyLogin;
+    $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE');
 
     if($error eq '') {
-        $error = $session->i18n->maketext("Wrong username or password");
+        $error = $session->i18n->maketext("Wrong username or password"); # XXX this is in many cases not true, it would be better if providers passed down a message
     }
     $session->{prefs}->setSessionPreferences(UAUTH_AUTH_FAILURE_MESSAGE => $error, BANNER => $banner);
 
-    return 0;
+    return undef;
+}
+
+# Like the super method, but checks if the topic exists (to avoid dead links).
+sub _LOGOUTURL {
+    my ( $session, $params, $topic, $web ) = @_;
+    my $this = $session->getLoginManager();
+
+    my $logoutWeb = $session->{prefs}->getPreference('BASEWEB');
+    my $logoutTopic = $session->{prefs}->getPreference('BASETOPIC');
+    unless(Foswiki::Func::topicExists($logoutWeb, $logoutTopic)) {
+        $logoutWeb = $Foswiki::cfg{UsersWebName};
+        $logoutTopic = $Foswiki::cfg{HomeTopicName};
+    }
+
+    return $session->getScriptUrl(
+        0, 'view',
+        $logoutWeb,
+        $logoutTopic,
+        'logout' => 1
+    );
+}
+
+# Unmodified from super method, however we need to copy it, so we can use the
+# modified _LOGOUTURL.
+sub _LOGOUT {
+    my ( $session, $params, $topic, $web ) = @_;
+    my $this = $session->getLoginManager();
+
+    return '' unless $session->inContext('authenticated');
+
+    my $url = _LOGOUTURL(@_);
+    if ($url) {
+        my $text = $session->templates->expandTemplate('LOG_OUT');
+        return CGI::a( { href => $url }, $text );
+    }
+    return '';
 }
 
 1;

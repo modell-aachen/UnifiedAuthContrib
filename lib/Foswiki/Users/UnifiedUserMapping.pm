@@ -136,6 +136,8 @@ sub login2cUID {
     my $cCUID = $this->{uac}->getCUID($login, 0, 1);
     return $cCUID if defined $cCUID;
 
+    return $this->{base_cuids}->{$login} if defined $this->{base_cuids}->{$login};
+
     return $login if $dontcheck;
     return undef;
 }
@@ -160,6 +162,24 @@ sub getLoginName {
     }
 
     return undef;
+}
+
+=begin TML
+
+---++ ObjectMethod loginOrGroup2cUID ($login) -> cUID
+
+Converts a login or group name to a cUID.
+(undef on failure)
+
+Not official foswiki API, but very useful to check acls.
+
+=cut
+
+sub loginOrGroup2cUID {
+    my ( $this, $login ) = @_;
+    ASSERT($login) if DEBUG;
+
+    return $this->{uac}->getCUID($login);
 }
 
 =begin TML
@@ -303,6 +323,8 @@ sub getDisplayName {
 
 sub getDisplayAttributesOfLogin {
     my ($this, $login, $data) = @_;
+
+    # Note: BaseUserMapping_XXX is not a login name
 
     my $db = $this->{uac}->db;
 
@@ -643,6 +665,48 @@ sub eachMembership {
     return new Foswiki::ListIterator($this->getMemberships($user));
 }
 
+=begin TML
+
+---++ ObjectMethod getMemebershipsCUID($user) -> \@groups
+
+Return a list of the cUIDs, of which the user is a member of.
+
+Not official foswiki API, but useful for checking acls.
+
+=cut
+
+sub getMembershipsCUID {
+    my ($this, $user) = @_;
+    my $cuid = $this->_userToCUID($user);
+    my %grpCuids = ();
+    my @groups = ();
+
+    my $doCheck;
+    $doCheck = sub {
+        foreach my $grp ( @{$_[0]} ) {
+            next if $grpCuids{$grp->[1]};
+            $grpCuids{$grp->[1]} = 1;
+            push @groups, $grp->[1];
+
+            my $nested = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $grp->[1]);
+SELECT groups.name, groups.cuid FROM nested_groups JOIN groups ON nested_groups.parent=groups.cuid WHERE nested_groups.child=?
+SQL
+
+            &$doCheck($nested) if $nested;
+        }
+    };
+
+    my $directMemberships = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $cuid);
+SELECT name, cuid FROM groups AS g
+JOIN group_members AS m ON g.cuid=m.g_cuid
+WHERE m.u_cuid=?
+SQL
+
+    &$doCheck($directMemberships);
+
+    return \@groups;
+}
+
 sub getMemberships {
     my ($this, $user) = @_;
     my $cuid = $this->_userToCUID($user);
@@ -897,6 +961,8 @@ sub isInGroup {
         # other members will be detected below
     }
 
+    $user = $this->{base_cuids}->{$user} if defined $this->{base_cuids}->{$user};
+
     # TODO: BaseGroup
 
     # NobodyGroup will simply return no g_cUID
@@ -1049,6 +1115,9 @@ sub _isCUID {
     my $login = shift;
 
     return 0 unless defined $login;
+
+    my $base = Foswiki::UnifiedAuth::Providers::BaseUser::getBaseUserCUID($login);
+    return $base if defined $base;
 
     $login =~ s/_2d/-/g;
     return $login if Foswiki::UnifiedAuth::isCUID($login);

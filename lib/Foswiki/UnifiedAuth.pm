@@ -266,7 +266,7 @@ sub update_user {
 }
 
 sub update_wikiname {
-    my ($this, $actions, $provider) = @_;
+    my ($this, $actions, $provider, $isDry) = @_;
 
     my $db = $this->db();
 
@@ -322,11 +322,15 @@ sub update_wikiname {
                 $count++;
             } while ($db->selectrow_array("SELECT COUNT(cuid) FROM users WHERE wiki_name=?", {}, $moved));
 
-            $db->do("UPDATE users SET wiki_name=? where cuid=?", {}, $moved, $c);
+            unless($isDry){
+                $db->do("UPDATE users SET wiki_name=? where cuid=?", {}, $moved, $c);
+            }
             $clashes{$c} = 1;
         }
 
-        $db->do("UPDATE users SET wiki_name=? where cuid=?", {}, $new_wiki_name, $cuid);
+        unless($isDry){
+            $db->do("UPDATE users SET wiki_name=? where cuid=?", {}, $new_wiki_name, $cuid);
+        }
         $updated++;
         if($clashes{$cuid}) {
             delete $clashes{$cuid};
@@ -337,7 +341,9 @@ sub update_wikiname {
         $successes++;
     }
 
-    $db->commit();
+    unless($isDry) {
+        $db->commit();
+    }
 
     return { success => 'done', report => \@report, clashes => [keys %clashes], resolved_clases => [keys %resolved_clashes], updated => $updated, errors => $errors, successes => $successes };
 }
@@ -401,10 +407,11 @@ sub queryUser {
             $u_condition = "($u_condition) AND (pid !='$pid' OR cuid='$admin')";
         }
 
-        my $g_condition = join(' AND ', map {
+        my $g_condition;
+        if($type eq 'any') {
+            $g_condition = join(' AND ', map { "name ILIKE ?" } @terms);
             push @params, @terms;
-            "name ILIKE ?"
-        } @terms) if $type eq 'any';
+        }
 
         if($ingroup) {
             unless (scalar @$ingroup) {
