@@ -1,0 +1,7 @@
+%TMPL:INCLUDE{"view"}%
+
+%{<verbatim>}%
+%TMPL:DEF{"content"}%
+...todo...
+%TMPL:END%
+%{</verbatim>}%
