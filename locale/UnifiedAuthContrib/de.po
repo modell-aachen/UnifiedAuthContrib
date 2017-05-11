@@ -35,3 +35,6 @@ msgstr "Ihr Nutzeraccount ist nicht für die Authentifizierung mit diesem Wiki k
 
 msgid "The authentication failed (Kerberos error). Please contact your administrator for further assistance."
 msgstr "Die Authetifizierung ist fehlgeschlagen (Kerberos fehler). Bitte kontaktieren Sie ihren Administrator für weitere Hilfe."
+
+msgid "User administration"
+msgstr "Benutzerverwaltung"
