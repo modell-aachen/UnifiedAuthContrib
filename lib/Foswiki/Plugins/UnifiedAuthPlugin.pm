@@ -61,7 +61,9 @@ sub _AUTHPROVIDERS {
 sub _TOTALUSERS {
   my($session, $params, $topic, $web, $topicObject) = @_;
   my $db = _getConnection();
-  $db->selectrow_array("SELECT COUNT(cuid) FROM users", {});
+  my $exclude = $params->{_DEFAULT} || $params->{exclude_deactivated};
+  return $db->selectrow_array("SELECT COUNT(cuid) FROM users", {}) unless Foswiki::isTrue($exclude, 0);
+  $db->selectrow_array("SELECT COUNT(cuid) FROM users WHERE deactivated=0", {});
 }
 
 sub finishPlugin {
