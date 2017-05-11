@@ -34,6 +34,7 @@ my @schema_updates = (
         "CREATE UNIQUE INDEX idx_cuid ON users (cuid)",
         "CREATE INDEX idx_login_name ON users (login_name)",
         "CREATE INDEX idx_email ON users (email)",
+        "CREATE INDEX idx_deactivated ON users (deactivated)",
         "CREATE TABLE IF NOT EXISTS merged_users (
             primary_cuid UUID NOT NULL,
             mapped_cuid UUID NOT NULL,
