@@ -330,6 +330,7 @@ sub refresh {
     $this->makeConfig();
 
     $this->refreshCache(1);
+    return $this->SUPER::refresh();
 }
 
 sub writeDebug {

@@ -108,6 +108,7 @@ sub refresh {
         $a = [ map { $_ =~ s#\%id\%#$this->{id}#gr =~ s#\%pid\%#$pid#gr } @$a];
     }
     $uauth->apply_schema('users_baseuser', @pid_schema_updates);
+    return $this->SUPER::refresh();
 }
 
 sub processLoginData {

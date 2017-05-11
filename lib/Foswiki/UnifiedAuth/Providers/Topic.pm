@@ -139,7 +139,7 @@ sub refresh {
         }
 
         # do not import any users into __uauth
-        return;
+        return $this->SUPER::refresh();
     }
 
     # Faking HtPasswdUser, so we get the correct wikiname and email from the
@@ -178,6 +178,8 @@ sub refresh {
             Foswiki::Func::writeWarning(shift);
         };
     }
+
+    return $this->SUPER::refresh();
 }
 
 sub addUser {
