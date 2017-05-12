@@ -2,6 +2,13 @@
 
 %{<verbatim>}%
 %TMPL:DEF{"content"}%
-...todo...
+%SEARCHGRID{
+  "type:ua_user"
+  headers="Name,Source,Mail,Status"
+  fields="text-field(displayname_s),text-field(providername_s),text-field(email_s),text-field(deactivated_i)"
+  filters="full-text-filter(Name or E-Mail,displayname_s, email_s)"
+  facets="single-select-facet(Deactivated,deactivated_i),multi-select-facet(Provider,providername_s)"
+  resultsPerPage="25"
+}%
 %TMPL:END%
 %{</verbatim>}%

@@ -4,8 +4,10 @@ use JSON;
 use strict;
 use warnings;
 
+use Foswiki::UnifiedAuth;
+
 use Digest::SHA qw(sha1_base64);
-use Error;
+use Error qw( :try );
 use Net::CIDR;
 
 sub new {
@@ -51,7 +53,61 @@ sub initiateLogin {
 }
 
 sub refresh {
-    # my ( $this ) = @_;
+    my ( $this ) = @_;
+
+    return 1 unless $Foswiki::cfg{Plugins}{SolrPlugin}{Enabled};
+
+    require Foswiki::Plugins::SolrPlugin;
+    my $indexer = Foswiki::Plugins::SolrPlugin::getIndexer();
+
+    my $uauth = Foswiki::UnifiedAuth->new();
+    my $db = $uauth->db;
+    my $pid = $this->getPid();
+
+    my $users = $db->selectall_arrayref("SELECT * FROM users WHERE pid=?", {Slice => {}}, $pid);
+    foreach my $user (@$users) {
+        my $groups = $db->selectall_arrayref("SELECT * FROM group_members WHERE u_cuid=?", {Slice => {}}, $user->{cuid});
+        my @memberships = map {$_->{g_cuid}} @$groups;
+
+        my $userdoc = $indexer->newDocument();
+        $userdoc->add_fields(
+          'id' => $user->{cuid},
+          'type' => 'ua_user',
+          'cuid_s' => $user->{cuid},
+          'loginname_s' => $user->{login_name},
+          'wikiname_s' => $user->{wiki_name},
+          'displayname_s' => $user->{display_name},
+          'email_s' => $user->{email} || '',
+          'providername_s' => $this->{id},
+          'providerid_i' => $pid,
+          'deactivated_i' => $user->{deactivated},
+          'groups_lst' => \@memberships,
+          'url' => ''
+        );
+
+        try {
+            $indexer->add($userdoc);
+        } catch Error::Simple with {
+            my $e = shift;
+            $indexer->log("ERROR: $e->{-text}");
+        };
+    }
+
+# members
+
+
+    # my $grpdoc = $indexer->newDocument();
+    # $grpdoc->add_fields(
+    #   'id' => "todo_guid_here",
+    #   'type' => 'ua_grp',
+    # );
+
+    # try {
+    #     $indexer->add($grpdoc);
+    # } catch Error::Simple with {
+    #     my $e = shift;
+    #     $indexer->log("ERROR: ".$e->{-text});
+    # };
 }
 
 sub enabled {
