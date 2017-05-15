@@ -602,7 +602,7 @@ True if the user is an administrator.
 sub isAdmin {
     my ($this, $cuid) = @_;
     return 0 unless defined $cuid;
-    return Foswiki::UnifiedAuth::Providers::BaseUser::isAdminUser($cuid);
+    return (Foswiki::UnifiedAuth::Providers::BaseUser::isAdminUser($cuid) || $this->isInGroup($cuid, $Foswiki::cfg{SuperAdminGroup}));
 }
 
 =begin TML
