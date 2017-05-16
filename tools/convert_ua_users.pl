@@ -111,6 +111,7 @@ sub convert {
         }
 
         $users{$login} = $cuid;
+        $users{$u} = $cuid;
         $users{$login =~ s/([^a-zA-Z0-9])/'_'.sprintf('%02x', ord($1))/ger} = $cuid;
         $usercount++;
     }
