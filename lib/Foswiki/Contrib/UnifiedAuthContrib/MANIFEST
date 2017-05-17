@@ -12,7 +12,7 @@ lib/Foswiki/UnifiedAuth/IdentityProvider.pm 0644 Base module for identity provid
 lib/Foswiki/UnifiedAuth/Providers/BaseUser.pm 0644 BaseUser provider
 lib/Foswiki/UnifiedAuth/Providers/Cas.pm 0644 Cas provider
 lib/Foswiki/UnifiedAuth/Providers/Default.pm 0644 BaseUser provider
-lib/Foswiki/UnifiedAuth/Providers/EnvVar.pm 0644 EnvVar provider
+lib/Foswiki/UnifiedAuth/Providers/EnvVar.pm 0644 HTTP Request Header provider
 lib/Foswiki/UnifiedAuth/Providers/Google.pm 0644 OAuth for Google
 lib/Foswiki/UnifiedAuth/Providers/IpRange.pm 0644
 lib/Foswiki/UnifiedAuth/Providers/Kerberos.pm 0644 TopicUserMapping replacement

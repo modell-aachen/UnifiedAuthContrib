@@ -67,6 +67,9 @@ sub processLogin {
         return 0;
     }
 
+    my $realm = $this->{config}->{realm} || '';
+    $envvar =~ s/\@$realm//;
+
     Foswiki::Func::writeWarning("User '$envvar' logged in by header X-Remote-User.") if $cfg->{debug};
     return $envvar;
 }
