@@ -1,14 +1,28 @@
 %TMPL:INCLUDE{"view"}%
 
+%ADDTOZONE{"script" requires="SEARCHGRID" text="<script class='script' type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/userAdministrationFields.js'></script>"}%
+
 %{<verbatim>}%
 %TMPL:DEF{"content"}%
+<div class="flatskin-wrapped">
+%TABPANE{class="flat"}%
+%TAB{"%MAKETEXT{"Users"}%"}%
+<p>%MAKETEXT{"This site presents an overview of all currently available users in the Wiki. Deactivated users may also be shown."}%<p>
+<strong>%MAKETEXT{"Current number of active users:"}% %TOTALUSERS{"1"}%</strong>
+<p><button class="primary button">%MAKETEXT{"Create new user"}%</button></p>
 %SEARCHGRID{
-  "type:ua_user"
-  headers="Name,Source,Mail,Status"
-  fields="text-field(displayname_s),text-field(providername_s),text-field(email_s),text-field(deactivated_i)"
-  filters="full-text-filter(Name or E-Mail,displayname_s, email_s)"
-  facets="single-select-facet(Deactivated,deactivated_i),multi-select-facet(Provider,providername_s)"
+  "type:ua_user !mainprovidername_s:__*"
+  headers="Name,Source systems,Email address,Status"
+  sortFields="none,none,none,none"
+  fields="text-field(displayname_s),badges-field(providers_lst),text-field(email_s),status-field(deactivated_i)"
+  filters="full-text-filter(Name or email address,displayname_search, email_search)"
+  facets="multi-select-facet(Source systems,mainprovidername_s),multi-select-facet(Status,deactivated_i)"
   resultsPerPage="25"
+  initialSort="displayname_sort,asc"
+  mappings_deactivated_i="0=%MAKETEXT{"Active"}%;1=%MAKETEXT{"Deactivated"}%"
 }%
+%ENDTAB%
+%ENDTABPANE%
+</div>
 %TMPL:END%
 %{</verbatim>}%

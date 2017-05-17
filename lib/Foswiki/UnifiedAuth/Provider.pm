@@ -78,9 +78,11 @@ sub refresh {
           'wikiname_s' => $user->{wiki_name},
           'displayname_s' => $user->{display_name},
           'email_s' => $user->{email} || '',
-          'providername_s' => $this->{id},
+          'mainprovidername_s' => $this->{id},
+          'providers_lst' => [$this->{id}],
           'providerid_i' => $pid,
           'deactivated_i' => $user->{deactivated},
+          'deactivated_s' => $user->{deactivated} eq 0 ? "Active" : "Deactivated",
           'groups_lst' => \@memberships,
           'url' => ''
         );

@@ -62,8 +62,9 @@ sub _TOTALUSERS {
   my($session, $params, $topic, $web, $topicObject) = @_;
   my $db = _getConnection();
   my $exclude = $params->{_DEFAULT} || $params->{exclude_deactivated};
-  return $db->selectrow_array("SELECT COUNT(cuid) FROM users", {}) unless Foswiki::isTrue($exclude, 0);
-  $db->selectrow_array("SELECT COUNT(cuid) FROM users WHERE deactivated=0", {});
+  my $baseQuery = "SELECT COUNT(DISTINCT users.cuid) FROM users INNER JOIN providers ON (users.pid=providers.pid) WHERE NOT providers.name ~ '^__'";
+  return $db->selectrow_array($baseQuery, {}) unless Foswiki::isTrue($exclude, 0);
+  $db->selectrow_array("$baseQuery AND users.deactivated=0", {});
 }
 
 sub finishPlugin {

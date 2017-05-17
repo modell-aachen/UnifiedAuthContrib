@@ -38,3 +38,24 @@ msgstr "Die Authetifizierung ist fehlgeschlagen (Kerberos fehler). Bitte kontakt
 
 msgid "User administration"
 msgstr "Benutzerverwaltung"
+
+msgid "This site presents an overview of all currently available users in the Wiki. Deactivated users may also be shown."
+msgstr "Diese Übersichtsseite zeigt alle Benutzer an, die derzeit im Wiki hinterlegt sind. Es können auch deaktivierte Nutzer angezeigt werden."
+
+msgid "Current number of active users:"
+msgstr "Aktuelle Anzahl akiver Benutzer:"
+
+msgid "Create new user"
+msgstr "Neuen Nutzer anlegen"
+
+msgid "Source systems"
+msgstr "Quellsysteme"
+
+msgid "Email address"
+msgstr "Email Adresse"
+
+msgid "Name or email address"
+msgstr "Name oder Email Adresse"
+
+msgid "Active"
+msgstr "Aktiv"
