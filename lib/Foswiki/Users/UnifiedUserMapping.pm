@@ -19,6 +19,7 @@ use Foswiki::UserMapping ();
 our @ISA = ('Foswiki::UserMapping');
 
 use Assert;
+use Encode;
 use Error qw( :try );
 
 use Foswiki::Func;
@@ -310,15 +311,22 @@ sub getDisplayName {
     my ($this, $login) = @_;
 
     my $cuid = _isCUID($login);
+    my $dn;
     if ($cuid) {
-        return $this->{uac}->db->selectrow_array(
+        $dn = $this->{uac}->db->selectrow_array(
             "SELECT display_name FROM users WHERE cuid=? UNION SELECT name AS display_name FROM groups WHERE cuid=?", {}, $cuid, $cuid
-        ) || $cuid;
+        );
+
+        return $cuid unless $dn;
+        return Encode::decode('UTF-8', $dn);
     }
 
-    return $this->{uac}->db->selectrow_array(
+    $dn = $this->{uac}->db->selectrow_array(
         "SELECT display_name FROM users WHERE login_name=?", {}, $login
-    ) || $login;
+    );
+
+    return $login unless $dn;
+    return Encode::decode('UTF-8', $dn);
 }
 
 sub getDisplayAttributesOfLogin {
