@@ -162,6 +162,10 @@ sub refresh {
                     $cuid = $topicMapping->login2cUID($login);
                     my $wikiname = $topicMapping->getWikiName($cuid);
                     my @emails = $topicPwManager->getEmails($login);
+                    if($Foswiki::UNICODE) {
+                        $wikiname = Foswiki::encode_utf8($wikiname);
+                        @emails = map {Foswiki::encode_utf8($_)} @emails;
+                    }
                     if($wikiname && @emails) {
                         push @addUsers, [$login, $wikiname, \@emails];
                     } else {
