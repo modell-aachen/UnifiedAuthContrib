@@ -563,23 +563,55 @@ sub _processGroups {
 
         # fetch all members of this group
         my $memberVals = $entry->get_value($this->{memberAttribute}, alloptions => 1);
-        my $members = [];
+        my @members = (defined($memberVals) && exists($memberVals->{''})) ? @{$memberVals->{''}} : ();
         my $nested = [];
-        if ($memberVals) {
-            foreach my $member ( @{$memberVals->{''} || []} ) {
-            $member = $this->fromLdapCharSet($member);
-                if ($groupsDN->{$member}) {
-                    $member = $groupsDN->{$member};
-                }
-                if ($groups->{$member}) {
-                    push @$nested, $uauth->getOrCreateGroup($member, $this->getPid());
-                } elsif ($users->{$member}) {
-                    push @$members, $users->{$member}->{cuid};
-                }
+        if (! scalar(@members)) {
+            while(1) {
+                my ($rangeEnd, $range_members);
+                foreach my $k (keys %$memberVals) {
+                    next if $k !~ /^;range=(?:\d+)-(\*|\d+)$/o;
+                    ($rangeEnd, $range_members) = ($1, $memberVals->{$k});
+                    last;
+              }
+
+              last if !defined $rangeEnd;
+              push @members, @$range_members;
+              last if $rangeEnd eq '*';
+              $rangeEnd++;
+
+              # Apparently there are more members, so iterate
+              # Apparently we need a dummy filter to make this work#
+              my $dn = $this->fromLdapCharSet($entry->dn());
+              my $newRes = $this->search(filter => 'objectClass=*', base => $dn, scope => 'base', attrs => ["member;range=$rangeEnd-*"]);
+              unless ($newRes) {
+                writeDebug("error fetching more members for $dn: " . $this->getError());
+                last;
+              }
+
+              my $newEntry = $newRes->pop_entry();
+              if (!defined $newEntry) {
+                writeDebug("no result when doing member;range=$rangeEnd-* search for $dn\n");
+                last;
+              }
+
+              $memberVals = $newEntry->get_value($this->{memberAttribute}, alloptions => 1);
             }
         }
 
-        $uauth->updateGroup($this->getPid(), $groupName, $members, $nested);
+        my $ua_members = [];
+        foreach my $member ( @members ) {
+            $member = $this->fromLdapCharSet($member);
+            if ($groupsDN->{$member}) {
+                $member = $groupsDN->{$member};
+            }
+            if ($groups->{$member}) {
+                push @$nested, $uauth->getOrCreateGroup($member, $this->getPid());
+            } elsif ($users->{$member}) {
+                push @$ua_members, $users->{$member}->{cuid};
+            }
+        }
+
+        $uauth->updateGroup($this->getPid(), $groupName, $ua_members, $nested);
     }
 }
 
