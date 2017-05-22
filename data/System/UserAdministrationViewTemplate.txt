@@ -1,6 +1,6 @@
 %TMPL:INCLUDE{"view"}%
 
-%ADDTOZONE{"script" requires="SEARCHGRID" text="<script class='script' type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/userAdministrationFields.js'></script>"}%
+%ADDTOZONE{"script" requires="SEARCHGRID" text="<script class='script' type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/userAdministration.js'></script>"}%
 
 %{<verbatim>}%
 %TMPL:DEF{"content"}%
@@ -9,7 +9,7 @@
 %TAB{"%MAKETEXT{"Users"}%"}%
 <p>%MAKETEXT{"This site presents an overview of all currently available users in the Wiki. Deactivated users may also be shown."}%<p>
 <strong>%MAKETEXT{"Current number of active users:"}% %TOTALUSERS{"1"}%</strong>
-<p><button class="primary button">%MAKETEXT{"Create new user"}%</button></p>
+<p id="userRegistration"><button v-on:click="openUserRegistration" class="primary button">%MAKETEXT{"Create new user"}%</button></p>
 %SEARCHGRID{
   "type:ua_user !mainprovidername_s:__*"
   headers="Name,Source systems,Email address,Status"
@@ -20,6 +20,7 @@
   resultsPerPage="25"
   initialSort="displayname_sort,asc"
   mappings_deactivated_i="0=%MAKETEXT{"Active"}%;1=%MAKETEXT{"Deactivated"}%"
+  addons="user-selector"
 }%
 %ENDTAB%
 %ENDTABPANE%

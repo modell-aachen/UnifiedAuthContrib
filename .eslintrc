@@ -1,0 +1,16 @@
+{
+	extends: ["eslint:recommended"],
+	plugins: ["html"],
+	parser: "babel-eslint",
+	env: {
+		"browser": true,
+		"node": true,
+		"commonjs": true,
+		"es6": true,
+		"jasmine": true
+	},
+	rules: {
+		"linebreak-style": ["error", "unix"],
+		"no-console": "warn"
+	}
+}

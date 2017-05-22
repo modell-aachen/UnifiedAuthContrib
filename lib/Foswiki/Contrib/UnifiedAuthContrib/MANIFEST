@@ -27,9 +27,10 @@ pub/System/UnifiedAuthContrib/facebook.png 0444
 pub/System/UnifiedAuthContrib/google.png 0444
 pub/System/UnifiedAuthContrib/css/uauth.css 0444
 pub/System/UnifiedAuthContrib/js/uauth.js 0444
-pub/System/UnifiedAuthContrib/js/userAdministrationFields.js 0444
+pub/System/UnifiedAuthContrib/js/userAdministration.js 0444
 templates/uauth.tmpl 0644 Template file
 templates/oopsresetpassword.tmpl 0644 Template file
+templates/uauth_registernotify.tmpl 0644 Template file
 tools/convert_ua_users.pl 0754 Converter tool to migrate cUIDs
 tools/export_ldap_config.pl 0754 Tool to export LdapContrib settings
 tools/fix_missing_userform.pl 0754 Toool to fix user topics

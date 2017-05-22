@@ -8,6 +8,10 @@ use warnings;
 use Foswiki::Func;
 use Foswiki::Contrib::PostgreContrib;
 use Foswiki::UnifiedAuth;
+use Foswiki::Contrib::MailTemplatesContrib;
+use JSON;
+
+require Foswiki::Users;
 
 our $VERSION = '1.0';
 our $RELEASE = "1.0";
@@ -18,6 +22,27 @@ our $connection;
 sub initPlugin {
     Foswiki::Func::registerTagHandler('AUTHPROVIDERS',\&_AUTHPROVIDERS);
     Foswiki::Func::registerTagHandler('TOTALUSERS', \&_TOTALUSERS);
+
+    Foswiki::Func::registerRESTHandler( 'registerUser',
+                                        \&_registerUser,
+                                        authenticate => 0,
+                                        validate => 0,
+                                        http_allow => 'POST',
+                                      );
+
+    Foswiki::Func::registerRESTHandler( 'users',
+                                        \&_RESTusers,
+                                        authenticate => 0,
+                                        validate => 0,
+                                        http_allow => 'POST',
+                                      );
+
+    Foswiki::Func::registerRESTHandler( 'groups',
+                                        \&_RESTgroups,
+                                        authenticate => 0,
+                                        validate => 0,
+                                        http_allow => 'GET',
+                                      );
     return 1;
 }
 
@@ -65,6 +90,106 @@ sub _TOTALUSERS {
   my $baseQuery = "SELECT COUNT(DISTINCT users.cuid) FROM users INNER JOIN providers ON (users.pid=providers.pid) WHERE NOT providers.name ~ '^__'";
   return $db->selectrow_array($baseQuery, {}) unless Foswiki::isTrue($exclude, 0);
   $db->selectrow_array("$baseQuery AND users.deactivated=0", {});
+}
+
+sub _registerUser {
+  my ($session, $subject, $verb, $response) = @_;
+  my $q = $session->{request};
+  my $auth = Foswiki::UnifiedAuth->new();
+
+  my $loginName = $q->param("loginName");
+  my $wikiName = $q->param("wikiName");
+  my $password = $q->param("password");
+  my $email = $q->param("email");
+
+  unless ($loginName and $wikiName and $email){
+    $response->header(-status => 400);
+    return to_json({error => "Missing params"});
+  }
+
+  unless($password){
+    $password = Foswiki::Users::randomPassword();
+  }
+
+  my %providers = %{$Foswiki::cfg{UnifiedAuth}{Providers}};
+  my $topicProvider;
+  while (my ($id, $hash) = each %providers) {
+    next unless $hash->{module} =~ /^Topic$/;
+    $topicProvider = $auth->authProvider($session, $id);
+    last;
+  }
+
+  unless($topicProvider){
+    $response->header(-status => 404);
+    return to_json({error => "Topic provider not configured"});
+  }
+
+  unless($topicProvider->enabled){
+    $response->header(-status => 404);
+    return to_json({error => "Topic provider not enabled"});
+  }
+
+  my $cuid;
+  eval {
+    $cuid = $topicProvider->addUser($loginName, $wikiName, $password, $email);
+  };
+
+  if($@){
+    $response->header(-status => 404);
+    return to_json({error => "User could not be created. Maybe it already exists."});
+  }
+
+  my $mailPreferences = {
+    REGISTRATION_MAIL => $email,
+    REGISTRATION_WIKINAME => $wikiName,
+    REGISTRATION_PASSWORD => $password
+  };
+
+  Foswiki::Contrib::MailTemplatesContrib::sendMail("uauth_registernotify", {GenerateInAdvance => 1}, $mailPreferences, 1);
+  
+  $topicProvider->indexUser($cuid);
+
+  return to_json({status => "ok"});
+}
+
+
+sub _RESTusers {
+  my ($session, $subject, $verb, $response) = @_;
+  my $q = $session->{request};
+  my $auth = Foswiki::UnifiedAuth->new();
+
+  $q->{path_info} =~ /$subject\/$verb\/?(.*?)\/?$/;
+  my $entity = $1;
+  if($entity){
+    #TODO: Get/modify user entity
+  }
+  else{
+    # TODO: Create user/get users
+  }
+
+
+  my $id = $q->param("id");
+}
+
+sub _RESTgroups {
+  my ($session, $subject, $verb, $response) = @_;
+  my $q = $session->{request};
+  my $auth = Foswiki::UnifiedAuth->new();
+
+  $q->{path_info} =~ /$subject\/$verb\/?(.*?)\/?$/;
+  my $entity = $1;
+  if($entity){
+    #TODO: Get/modifiy group entity
+  }
+  else{
+    my $db = _getConnection();
+    my $baseQuery = "select groups.name as name,groups.cuid as id from groups inner join providers on (groups.pid=providers.pid) where providers.name='__uauth'";
+    my $groups =  $db->selectall_arrayref($baseQuery, {Slice => {}});
+    return to_json($groups);
+  }
+
+
+  my $id = $q->param("id");
 }
 
 sub finishPlugin {

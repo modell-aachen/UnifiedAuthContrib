@@ -1,0 +1,35 @@
+%TMPL:INCLUDE{"mailtemplatescontrib"}%
+
+%TMPL:DEF{"ModacMailFrom"}%%TMPL:P{"ModacNoReply"}%%TMPL:END%
+
+%TMPL:DEF{"ModacMailTo"}%%REGISTRATION_MAIL%%TMPL:END%
+
+%TMPL:DEF{"ModacMailSubject"}%%{
+}%%MAKETEXT{"[_1] - Registration for [_2] ([_3])" arg1="%WIKITOOLNAME%" arg2="%REGISTRATION_WIKINAME%" arg3="%REGISTRATION_MAIL%"}%%{
+}%%TMPL:END%
+
+%TMPL:DEF{"ModacMailContents"}%%{
+}%%SWITCHTEXT{"%LANGUAGE%" defaultTo="en" en="Welcome to Q.wiki. Please find your login details below:" de="Herzlich Willkommen bei Q.wiki. Hiermit erhalten Sie Ihre Zugangsdaten:"}%
+
+   * Email: %REGISTRATION_MAIL%
+   * Password: %REGISTRATION_PASSWORD%
+   * WikiName: %REGISTRATION_WIKINAME%
+
+%SWITCHTEXT{"%LANGUAGE%" defaultTo="en" en="You can now log in at %SCRIPTURL{"view"}%." de="Sie können sich mit diesen Daten nun unter %SCRIPTURL{"view"}% anmelden."}%
+
+%SWITCHTEXT{"%LANGUAGE%" defaultTo="en" en="Please note:
+1) Please pay attention to the exact spelling of the login details (upper and lower case, no space characters, ...). Please also attend to hidden space characters at the beginning or end of the data when using copy and paste.
+2) If you receive this e-mail by mistake, please contact us at support@modell-aachen.de for your own safety. In this case some unauthorized third party may have given out your information.
+3) Please save this e-mail for future reference.
+
+Best regards,
+The team at Modell Aachen GmbH"
+de="Hinweis:
+1) Bitte beachten Sie bei der Anmeldung die genaue Schreibweise Ihrer Nutzerdaten (Groß-/ Kleinschreibung, keine Leerzeichen,...). Bitte achten Sie bei Copy & Paste auf versteckte Leerzeichen am Anfang oder Ende der Daten.
+2) Bitte setzen Sie sich zu Ihrem eigenen Schutz mit support@modell-aachen.de in Verbindung, falls Sie diese E-Mail irrtümlichlicherweise erhalten haben. Ihre E-Mail-Adresse wurde vermutlich von einer fremden Person verwendet.
+3) Bitte speichern Sie diese E-Mail als zukünftige Referenz.
+
+Mit freundlichen Grüßen,
+Ihre Modell Aachen GmbH"
+}%%{
+}%%TMPL:END%

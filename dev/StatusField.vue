@@ -1,5 +1,9 @@
-var StatusField = Vue.extend({
-    template: "<td><i v-bind:class='status' aria-hidden='true'></i></td>",
+<template>
+    <td><i v-bind:class="status" aria-hidden="true"></i></td>
+</template>
+
+<script>
+export default {
     props: ['doc','params'],
     computed: {
         status: function() {
@@ -12,6 +16,5 @@ var StatusField = Vue.extend({
             }
         }
     }
-});
-
-SearchGridPlugin.registerField("StatusField", StatusField);
+}
+</script>

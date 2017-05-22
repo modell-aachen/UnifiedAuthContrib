@@ -52,8 +52,14 @@ sub initiateLogin {
     return $state;
 }
 
+sub indexUser {
+    my ( $this, $cuid ) = @_;
+
+    $this->refresh($cuid);
+}
+
 sub refresh {
-    my ( $this ) = @_;
+    my ( $this, $cuid ) = @_;
 
     return 1 unless $Foswiki::cfg{Plugins}{SolrPlugin}{Enabled};
 
@@ -64,10 +70,20 @@ sub refresh {
     my $db = $uauth->db;
     my $pid = $this->getPid();
 
-    my $users = $db->selectall_arrayref("SELECT * FROM users WHERE pid=?", {Slice => {}}, $pid);
+    my $userQuery;
+    if($cuid){
+        $userQuery = "SELECT * FROM users WHERE cuid='$cuid' pid=?";
+    }
+    else{
+        $userQuery = "SELECT * FROM users WHERE pid=?";
+    }
+
+    my $users = $db->selectall_arrayref($userQuery, {Slice => {}}, $pid);
     foreach my $user (@$users) {
-        my $groups = $db->selectall_arrayref("SELECT * FROM group_members WHERE u_cuid=?", {Slice => {}}, $user->{cuid});
-        my @memberships = map {$_->{g_cuid}} @$groups;
+        my $groups = $db->selectall_arrayref("select group_members.g_cuid,providers.name as provider_name,groups.name as group_name from group_members inner join groups on (group_members.g_cuid=groups.cuid) inner join providers on (groups.pid=providers.pid) WHERE u_cuid=?", {Slice => {}}, $user->{cuid});
+        my @groupIds = map { $_->{g_cuid} } @$groups;
+        my @groupNames = map { $_->{group_name} } @$groups;
+        my @groupProviders = map { $_->{provider_name} } @$groups;
 
         my $userdoc = $indexer->newDocument();
         $userdoc->add_fields(
@@ -82,8 +98,9 @@ sub refresh {
           'providers_lst' => [$this->{id}],
           'providerid_i' => $pid,
           'deactivated_i' => $user->{deactivated},
-          'deactivated_s' => $user->{deactivated} eq 0 ? "Active" : "Deactivated",
-          'groups_lst' => \@memberships,
+          'groupids_lst' => \@groupIds,
+          'groupnames_lst' => \@groupNames,
+          'groupproviders_lst' => \@groupProviders,
           'url' => ''
         );
 
