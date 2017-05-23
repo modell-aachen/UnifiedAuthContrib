@@ -12,27 +12,18 @@ Vue.component("UserViewComponent", UserViewComponent);
 Vue.component("UserCreateComponent", UserCreateComponent);
 
 $(function(){
-    new Vue({
+    var vm = new Vue({
         el: "#userRegistration",
         methods: {
             openUserRegistration() {
+                self = this;
                 var o = {
-        contentComponent: { name: "user-create-component", propsData: {}},
-        header: {
-        },
-        footer: {
-          right: [
-            {
-              type: 'button',
-              color: 'alert',
-              text: 'Close sidebar',
-              callback: function() {sidebar.hide();}
-            }
-          ]
-        }
-      };
+                    contentComponent: { name: "user-create-component", propsData: {}},
+                    header: {
+                    }
+                };
 
-      sidebar.showContent(o);
+                sidebar.showContent(o);
             }
         }
     });
