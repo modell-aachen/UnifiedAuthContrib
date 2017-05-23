@@ -28,6 +28,7 @@ pub/System/UnifiedAuthContrib/google.png 0444
 pub/System/UnifiedAuthContrib/css/uauth.css 0444
 pub/System/UnifiedAuthContrib/js/uauth.js 0444
 pub/System/UnifiedAuthContrib/js/userAdministration.js 0444
+pub/System/UnifiedAuthContrib/js/jsi18n.UnifiedAuth.de.js 0444
 templates/uauth.tmpl 0644 Template file
 templates/oopsresetpassword.tmpl 0644 Template file
 templates/uauth_registernotify.tmpl 0644 Template file

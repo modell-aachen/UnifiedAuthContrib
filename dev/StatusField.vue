@@ -1,5 +1,5 @@
 <template>
-    <td><i v-bind:class="status" aria-hidden="true"></i></td>
+    <td>{{status}}</td>
 </template>
 
 <script>
@@ -9,10 +9,10 @@ export default {
         status: function() {
             var value = this.doc[this.params[0]];
             if(value == 0){
-                return "fa fa-2x fa-check-circle";
+                return foswiki.jsi18n.get('UnifiedAuth',"Active");
             }
             else{
-                return "fa fa-2x fa-times-circle";
+                return foswiki.jsi18n.get('UnifiedAuth',"Deactivated");
             }
         }
     }

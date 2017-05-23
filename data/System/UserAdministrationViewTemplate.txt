@@ -1,6 +1,7 @@
-%TMPL:INCLUDE{"view"}%
+%TMPL:INCLUDE{"HeadingView"}%
 
 %ADDTOZONE{"script" requires="SEARCHGRID" text="<script class='script' type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/userAdministration.js'></script>"}%
+%ADDTOZONE{"script" requires="SEARCHGRID" text="<script class='script' type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/jsi18n.UnifiedAuth.de.js'></script>"}%
 
 %{<verbatim>}%
 %TMPL:DEF{"content"}%
