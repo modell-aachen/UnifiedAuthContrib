@@ -52,13 +52,17 @@ sub initiateLogin {
 }
 
 sub indexUser {
-    my ( $this, $cuid ) = @_;
+    my ($this, $cuid) = @_;
+    return $this->refresh($cuid);
+}
 
-    $this->refresh($cuid);
+sub indexGroup {
+    my ($this, $cuid) = @_;
+    return $this->refresh($cuid);
 }
 
 sub refresh {
-    my ( $this, $cuid ) = @_;
+    my ($this, $cuid) = @_;
 
     return 1 unless $Foswiki::cfg{Plugins}{SolrPlugin}{Enabled};
 
@@ -67,20 +71,33 @@ sub refresh {
 
     my $uauth = Foswiki::UnifiedAuth->new();
     my $db = $uauth->db;
+
+    $this->_indexUsers($db, $indexer, $cuid);
+    $this->_indexGroups($db, $indexer, $cuid);
+    0;
+}
+
+sub _indexUsers {
+    my ($this, $db, $indexer, $cuid) = @_;
+
+    my $provider = $Foswiki::cfg{UnifiedAuth}{Providers}{$this->{id}};
     my $pid = $this->getPid();
 
-    my $userQuery;
-    if($cuid){
-        $userQuery = "SELECT * FROM users WHERE cuid='$cuid' pid=?";
-    }
-    else{
-        $userQuery = "SELECT * FROM users WHERE pid=?";
-    }
+    my $userQuery = 'SELECT * FROM users WHERE pid=?';
+    $userQuery .= " AND cuid='$cuid'" if $cuid;
 
     my $users = $db->selectall_arrayref($userQuery, {Slice => {}}, $pid);
-    my $provider = $Foswiki::cfg{UnifiedAuth}{Providers}{$this->{id}};
     foreach my $user (@$users) {
-        my $groups = $db->selectall_arrayref("select group_members.g_cuid,providers.name as provider_name,groups.name as group_name from group_members inner join groups on (group_members.g_cuid=groups.cuid) inner join providers on (groups.pid=providers.pid) WHERE u_cuid=?", {Slice => {}}, $user->{cuid});
+        my $groups = $db->selectall_arrayref(<<SQL, {Slice => {}}, $user->{cuid});
+SELECT
+  group_members.g_cuid,
+  providers.name AS provider_name,
+  groups.name AS group_name
+FROM group_members
+INNER JOIN groups ON (group_members.g_cuid=groups.cuid)
+INNER JOIN providers ON (groups.pid=providers.pid)
+WHERE u_cuid=?
+SQL
         my @groupIds = map { $_->{g_cuid} } @$groups;
         my @groupNames = map { $_->{group_name} } @$groups;
         my @groupProviders = map { $_->{provider_name} } @$groups;
@@ -113,23 +130,68 @@ sub refresh {
             $indexer->log("ERROR: $e->{-text}");
         };
     }
+};
 
-# members
+sub _indexGroups {
+    my ($this, $db, $indexer, $cuid) = @_;
 
+    my $provider = $Foswiki::cfg{UnifiedAuth}{Providers}{$this->{id}};
+    my $pid = $this->getPid();
 
-    # my $grpdoc = $indexer->newDocument();
-    # $grpdoc->add_fields(
-    #   'id' => "todo_guid_here",
-    #   'type' => 'ua_grp',
-    # );
+    my $groupQuery = 'SELECT * FROM groups WHERE pid=?';
+    $groupQuery .= " AND cuid='$cuid'" if $cuid;
 
-    # try {
-    #     $indexer->add($grpdoc);
-    # } catch Error::Simple with {
-    #     my $e = shift;
-    #     $indexer->log("ERROR: ".$e->{-text});
-    # };
-}
+    my $groups = $db->selectall_arrayref($groupQuery, {Slice => {}}, $pid);
+    foreach my $group (@$groups) {
+        my $members = $db->selectall_arrayref(<<SQL, {Slice => {}}, $group->{cuid});
+SELECT
+    u.cuid, u.login_name, u.wiki_name, u.display_name
+FROM group_members m
+JOIN users u ON m.u_cuid=u.cuid
+WHERE m.g_cuid=?;
+SQL
+
+        my (@memberIDs, @memberDNs, @memberWNs, @memberLNs);
+        foreach my $m (@$members) {
+            push @memberIDs, $m->{cuid};
+            push @memberDNs, $m->{display_name};
+            push @memberLNs, $m->{login_name};
+            push @memberWNs, $m->{wiki_name};
+        }
+
+        my $active = $db->selectrow_array(<<SQL, {}, $group->{cuid});
+SELECT COUNT(u.cuid)
+FROM group_members m
+JOIN users u ON m.u_cuid=u.cuid
+WHERE u.deactivated=0 AND m.g_cuid=?;
+SQL
+        my $grpdoc = $indexer->newDocument();
+        $grpdoc->add_fields(
+          'id' => $group->{cuid},
+          'type' => 'ua_group',
+          'web' => $Foswiki::cfg{UsersWebName},
+          'cuid_s' => $group->{cuid},
+          'groupname_s' => $group->{name},
+          'mainprovidername_s' => $this->{id},
+          'mainproviderdescription_s' => $provider->{description} || $this->{id},
+          'providers_lst' => [$provider->{description} || $this->{id}],
+          'providerid_i' => $pid,
+          'activemembers_i' => $active,
+          'memberids_lst' => \@memberIDs,
+          'memberdisplaynames_lst' => \@memberDNs,
+          'memberwikinames_lst' => \@memberWNs,
+          'memberloginnames_lst' => \@memberLNs,
+          'url' => ''
+        );
+
+        try {
+            $indexer->add($grpdoc);
+        } catch Error::Simple with {
+            my $e = shift;
+            $indexer->log("ERROR: $e->{-text}");
+        };
+    }
+};
 
 sub enabled {
     my $this = shift;

@@ -4,7 +4,7 @@
 %TMPL:DEF{"content"}%<div class="flatskin-wrapped">
 %TABPANE{class="flat"}%
 %TAB{"%MAKETEXT{"Users"}%"}%
-<p>%MAKETEXT{"This site presents an overview of all currently available users in the Wiki. Deactivated users may also be shown."}%<p>
+<p>%MAKETEXT{"This site presents an overview of currently all available users within this wiki. Deactivated users may also be shown."}%<p>
 <strong>%MAKETEXT{"Current number of active users:"}% %TOTALUSERS{exclude_deactivated="1"}%</strong>
 <p id="userRegistration"><button v-on:click="openUserRegistration(%USER_CREATE_LOGINNAME%)" class="primary button">%MAKETEXT{"Create new user"}%</button></p>
 %SEARCHGRID{
@@ -20,7 +20,20 @@
   addons="user-selector"
 }%
 %ENDTAB%
-%TAB{"%MAKETEXT{"Groups"}%"}%%ENDTAB%
+%TAB{"%MAKETEXT{"Groups"}%"}%
+<p>%MAKETEXT{"This site presents an overview of all groups which which are available for access control definitions in [_1]." args="%WIKITOOLNAME%"}%<p>
+<p id="groupRegistration"><button v-on:click="openGroupRegistration" class="primary button">%MAKETEXT{"Create new group"}%</button></p>
+%SEARCHGRID{
+  "type:ua_group"
+  headers="Group name,Active,Source systems,Users"
+  sortFields="none,none,none,none"
+  fields="text-field(groupname_s),text-field(activemembers_i),badges-field(providers_lst),list-field(memberdisplaynames_lst, 1, $comma, 10)"
+  filters="full-text-filter(Name, groupname_search)"
+  facets="multi-select-facet(Source systems,mainproviderdescription_s)"
+  resultsPerPage="25"
+  initialSort="groupname_sort,asc"
+}%
+%ENDTAB%
 %ENDTABPANE%
 %ADDTOZONE{"script" requires="SEARCHGRID" text="<script class='script' type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/userAdministration.js'></script>"}%
 %ADDTOZONE{"script" requires="SEARCHGRID" text="<script class='script' type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/jsi18n.UnifiedAuth.de.js'></script>"}%
