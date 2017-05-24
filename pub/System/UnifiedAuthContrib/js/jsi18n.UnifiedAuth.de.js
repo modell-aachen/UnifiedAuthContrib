@@ -14,5 +14,9 @@ jsi18n.add('UnifiedAuth', {
       "Password": "Passwort",
       "Confirm password": "Passwort bestätigen",
       "Register user": "Nutzer anlegen",
-      "Close sidebar": "Sidebar schließen"
+      "Close sidebar": "Sidebar schließen",
+      "Add to Group": "Zur Gruppe hinzufügen",
+      "Add [_1] to an existing group.": "[_1] einer bestehenden Gruppe zuordnen.",
+      "Source system": "Quellsystem",
+      "Name": "Name"
 });

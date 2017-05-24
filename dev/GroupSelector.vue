@@ -1,6 +1,6 @@
 <template>
 <div>
-<vue-select v-model="selectedValues" :options="options" :on-search="onSearch":get-option-label="getOptionLabel" :on-open="onOpen" :prevent-search-filter="true"></vue></vue-select>
+<vue-select v-model="selectedValues" :options="options" :on-search="onSearch":get-option-label="getOptionLabel" :on-open="onOpen" :prevent-search-filter="true"></vue-select>
 </div>
 </template>
 
@@ -34,6 +34,9 @@ export default {
         },
         getOptionLabel(option){
             return option.name;
+        },
+        getSelectedValues() {
+            return this.selectedValues;
         }
     }
 }

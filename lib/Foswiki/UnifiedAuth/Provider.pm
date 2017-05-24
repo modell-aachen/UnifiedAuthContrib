@@ -26,7 +26,6 @@ sub handleLogout {
     # Static method
     # Called by UnifiedLoading::loadSession when the user logged out
 }
-
 # Add user to provider.
 # Return cuid if successful, perl-false otherwise.
 sub addUser {

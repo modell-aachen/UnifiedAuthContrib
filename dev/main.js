@@ -15,10 +15,10 @@ $(function(){
     var vm = new Vue({
         el: "#userRegistration",
         methods: {
-            openUserRegistration() {
+            openUserRegistration(showUserLoginName) {
                 self = this;
                 var o = {
-                    contentComponent: { name: "user-create-component", propsData: {}},
+                    contentComponent: { name: "user-create-component", propsData: {showUserLoginName: showUserLoginName}},
                     header: {
                     }
                 };

@@ -1,32 +1,39 @@
 <template>
     <div>
-        <h1 class="primary">{{gettext('Register new user')}}</h1>
-        <p>{{gettext('Here you can register a new wiki user. The user will get a confirmation e-mail with the login data after the registration.')}}</p>
+        <h1 class="primary">{{maketext('Register new user')}}</h1>
+        <p>{{maketext('Here you can register a new wiki user. The user will get a confirmation e-mail with the login data after the registration.')}}</p>
     <form>
-        <input v-model="userData.firstName" type="text" name="firstName" :placeholder="gettext('First name')">
-        <input v-model="userData.lastName" type="text" name="lastName" :placeholder="gettext('Last name')">
-        <input v-model="userData.email" type="text" name="email" :placeholder="gettext('Email address')" aria-describedby="emailHelpText">
-        <p class="help-text" id="emailHelpText"><strong>{{gettext('Notice:')}}</strong> {{gettext('Your Email address will not be published.')}}</p>
+        <input v-model="userData.firstName" type="text" name="firstName" :placeholder="maketext('First name')">
+        <input v-model="userData.lastName" type="text" name="lastName" :placeholder="maketext('Last name')">
+        <input v-model="userData.email" type="text" name="email" :placeholder="maketext('Email address')" aria-describedby="emailHelpText">
+        <p class="help-text" id="emailHelpText"><strong>{{maketext('Notice:')}}</strong> {{maketext('Your Email address will not be published.')}}</p>
         <br/>
-        <input v-model="userData.loginName" :value="loginName" type="text" name="loginName" :placeholder="gettext('LoginName')" aria-describedby="wikiNameHelpText">
-        <input v-model="userData.wikiName" :value="wikiName" type="text" name="wikiName" :placeholder="gettext('WikiName')" aria-describedby="wikiNameHelpText">
-        <p class="help-text" id="wikiNameHelpText"><strong>{{gettext("Notice:")}}</strong> <span v-html="getLink()"></span></p>
+        <template v-if="propsData.showUserLoginName">
+            <input v-model="userData.loginName" :value="loginName" type="text" name="loginName" :placeholder="maketext('LoginName')" aria-describedby="wikiNameHelpText">
+        </template>
+        <input v-model="userData.wikiName" :value="wikiName" type="text" name="wikiName" :placeholder="maketext('WikiName')" aria-describedby="wikiNameHelpText">
+        <p class="help-text" id="wikiNameHelpText"><strong>{{maketext("Notice:")}}</strong> <span v-html="getLink()"></span></p>
         <br/>
         <input v-model="generatePassword" id="generatePasswordCheckbox" type ="checkbox">
         <label for="generatePasswordCheckbox" class="checkbox-label">
-            {{gettext('Generate password')}}
+            {{maketext('Generate password')}}
         </label>
         <div v-show="!generatePassword">
-            <input v-model="userData.password" type="password" name="password" :placeholder="gettext('Password')">
-            <input v-model="userData.passwordConfirmation" type="password" name="passwordConfirmation" :placeholder="gettext('Confirm password')">
+            <input v-model="userData.password" type="password" name="password" :placeholder="maketext('Password')">
+            <input v-model="userData.passwordConfirmation" type="password" name="passwordConfirmation" :placeholder="maketext('Confirm password')">
         </div>
-        <button type="button" v-on:click="registerUser" class="primary button small pull-right">{{gettext('Register user')}}</button>
+        <button type="button" v-on:click="registerUser" class="primary button small pull-right">{{maketext('Register user')}}</button>
     </form>
     </div>
 </template>
 
 <script>
+/*global $ */
+import MaketextMixin from './MaketextMixin.vue'
+
 export default {
+    mixins: [MaketextMixin],
+    props: ['propsData'],
     data() {
         return {
             generatePassword: false,
@@ -63,11 +70,8 @@ export default {
     },
     methods: {
         getLink() {
-            var local_name = this.gettext("unique name");
-            return this.gettext("Your name that is visible in Q.wiki. This has to be a [_1].", "<a href='" + this.wikiNameLink + "' target='_blank'>" + local_name + "</a>");
-        },
-        gettext(text, param) {
-            return foswiki.jsi18n.get('UnifiedAuth', text, param);
+            var local_name = this.maketext("unique name");
+            return this.maketext("Your name that is visible in Q.wiki. This has to be a [_1].", ["<a href='" + this.wikiNameLink + "' target='_blank'>" + local_name + "</a>"]);
         },
         registerUser() {
             let params = {
@@ -98,7 +102,7 @@ export default {
                 {
                     type: 'button',
                     color: 'primary',
-                    text: self.gettext('Register user'),
+                    text: self.maketext('Register user'),
                     callback: function() {self.registerUser();}
                 }
             ]

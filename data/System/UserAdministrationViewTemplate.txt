@@ -10,7 +10,7 @@
 %TAB{"%MAKETEXT{"Users"}%"}%
 <p>%MAKETEXT{"This site presents an overview of all currently available users in the Wiki. Deactivated users may also be shown."}%<p>
 <strong>%MAKETEXT{"Current number of active users:"}% %TOTALUSERS{"1"}%</strong>
-<p id="userRegistration"><button v-on:click="openUserRegistration" class="primary button">%MAKETEXT{"Create new user"}%</button></p>
+<p id="userRegistration"><button v-on:click="openUserRegistration(%USER_CREATE_LOGINNAME%)" class="primary button">%MAKETEXT{"Create new user"}%</button></p>
 %SEARCHGRID{
   "type:ua_user !mainprovidername_s:__*"
   headers="Name,Source systems,Email address,Status"

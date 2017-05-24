@@ -635,6 +635,14 @@ Only wiki administrators are allowed to force a cache update.
 </pre>
 
 
+---++ User Administration
+To administrate the user in this Wiki us the [[UserAdministration]] site.
+
+---+++ Configuration
+WikiPreferences:
+| *Name* | *Values* | *Default* | *Description* |
+| USER_CREATE_LOGINNAME | 0/1 | 0 | Set if the LoginName can be set while creating a new user |
+
 ---++ Query User Information
 The following form provides a convinient way to print user information by his
 login name, wikiname or cUID. Just fill the textbox and submit the form.

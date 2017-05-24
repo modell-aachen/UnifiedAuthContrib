@@ -43,6 +43,12 @@ sub initPlugin {
                                         validate => 0,
                                         http_allow => 'GET',
                                       );
+    Foswiki::Func::registerRESTHandler( 'addUsersToGroup',
+                                        \&_RESTaddUsersToGroup,
+                                        authenticate => 0,
+                                        validate => 0,
+                                        http_allow => 'POST',
+                                      );
     return 1;
 }
 
@@ -146,7 +152,7 @@ sub _registerUser {
   };
 
   Foswiki::Contrib::MailTemplatesContrib::sendMail("uauth_registernotify", {GenerateInAdvance => 1}, $mailPreferences, 1);
-  
+
   $topicProvider->indexUser($cuid);
 
   return to_json({status => "ok"});
@@ -192,6 +198,37 @@ sub _RESTgroups {
   my $id = $q->param("id");
 }
 
+sub _RESTaddUsersToGroup {
+  my ($session, $subject, $verb, $response) = @_;
+  my $q = $session->{request};
+  my $auth = Foswiki::UnifiedAuth->new();
+
+  my $group = $q->param("group[name]");
+  #TODO: use more then one cuid
+  my $cuids = $q->param("cuids");
+  #TODO: also need more then one wikiName
+  my $wikiName = $q->param("wikiName");
+  my $provider = $q->param("provider");
+
+  unless ($group and $cuids){
+    $response->header(-status => 400);
+    return to_json({error => "Missing params"});
+  }
+
+  eval {
+      my $userMapping = Foswiki::Users::UnifiedUserMapping->new($session);
+      $userMapping->addUserToGroup($cuids, $group);
+      my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiName));
+      $indexProvider->indexUser($cuids);
+  };
+  if($@){
+    $response->header(-status => 404);
+    Foswiki::Func::writeWarning($@);
+    return to_json({error => "User ($cuids) could not be added to group."});
+  }
+
+  return to_json({status => "ok"});
+}
 sub finishPlugin {
   $connection->finish if $connection;
 }
