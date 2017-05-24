@@ -57,7 +57,25 @@ export default {
               entries: [
                 {
                   text: jsi18n.get('UnifiedAuth', 'Reset password'),
-                  callback: () => console.log('Clicked entry 1')
+                  callback: () => {
+                    sidebar.makeModal({
+                        title: "Reset password",
+                        content: "bla bla bla",
+                        buttons: {
+                            cancel: {
+                                text: 'Abort',
+                                callback: function() { sidebar.hideModal(); }
+                            },
+                            confirm: {
+                                text: 'Reset password',
+                                callback: function() {
+                                    console.log(sidebar.$vm.contentComponent.propsData.user.id);
+                                    sidebar.hideModal();
+                                }
+                            },
+                        }
+                    });
+                  }
                 },
                 {
                   text: jsi18n.get('UnifiedAuth', 'Change email address'),

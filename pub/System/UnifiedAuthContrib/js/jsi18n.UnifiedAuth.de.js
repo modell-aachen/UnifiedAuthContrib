@@ -27,7 +27,7 @@ jsi18n.add('UnifiedAuth', {
       "Add to group": "Zu Gruppe hinzufügen",
       "Source": "Quellsystem",
       "Remove user from group": "Benutzter aus Gruppe entfernen",
-      "Add [_1] to an existing group": "[_1] einer bestehenden Gruppe hinzufügen",
+      "Add [_1] to an existing group.": "[_1] einer bestehenden Gruppe hinzufügen.",
       "Name": "Name",
       "Field password cannot be empty": "Passwort-Feld darf nicht leer sein",
       "Password mismatch": "Passwörter stimmen nicht überein",

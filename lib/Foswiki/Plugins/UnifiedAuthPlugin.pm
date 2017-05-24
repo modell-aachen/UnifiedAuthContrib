@@ -55,6 +55,12 @@ sub initPlugin {
                                         validate => 0,
                                         http_allow => 'POST',
                                       );
+    Foswiki::Func::registerRESTHandler( 'resetPassword',
+                                        \&_resetPassword,
+                                        authenticate => 0,
+                                        validate => 0,
+                                        http_allow => 'POST',
+                                      );
     return 1;
 }
 
@@ -268,6 +274,25 @@ sub _removeUserFromGroup {
 
   return to_json({status => "ok"});
 }
+
+sub _resetPassword {
+  my ($session, $subject, $verb, $response) = @_;
+  my $q = $session->{request};
+  my $auth = Foswiki::UnifiedAuth->new();
+
+  my $cuid = $q->param("cuid");
+  my $wikiName = $q->param("wikiName");
+
+  #TODO: Check if topic user
+  unless ($wikiName and $cuids){
+    $response->header(-status => 400);
+    return to_json({status=> 'error', msg => "Missing params"});
+  }
+  #TODO: Send Mail with reset link.
+
+  return to_json({status => "ok"});
+}
+
 sub finishPlugin {
   $connection->finish if $connection;
 }
