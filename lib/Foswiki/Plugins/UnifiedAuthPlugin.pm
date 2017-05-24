@@ -45,19 +45,19 @@ sub initPlugin {
                                       );
     Foswiki::Func::registerRESTHandler( 'addUsersToGroup',
                                         \&_addUsersToGroup,
-                                        authenticate => 0,
+                                        authenticate => 1,
                                         validate => 0,
                                         http_allow => 'POST',
                                       );
     Foswiki::Func::registerRESTHandler( 'removeUserFromGroup',
                                         \&_removeUserFromGroup,
-                                        authenticate => 0,
+                                        authenticate => 1,
                                         validate => 0,
                                         http_allow => 'POST',
                                       );
     Foswiki::Func::registerRESTHandler( 'resetPassword',
                                         \&_resetPassword,
-                                        authenticate => 0,
+                                        authenticate => 1,
                                         validate => 0,
                                         http_allow => 'POST',
                                       );
@@ -267,7 +267,7 @@ sub _removeUserFromGroup {
       $indexProvider->indexUser($cuids);
   };
   if($@){
-    $response->header(-status => 404);
+    $response->header(-status => 500);
     Foswiki::Func::writeWarning($@);
     return to_json({status => 'error', msg => "User could not be removed from group."});
   }
@@ -284,9 +284,9 @@ sub _resetPassword {
   my $wikiName = $q->param("wikiName");
 
   #TODO: Check if topic user
-  unless ($wikiName and $cuids){
+  unless ($wikiName && $cuid) {
     $response->header(-status => 400);
-    return to_json({status=> 'error', msg => "Missing params"});
+    return to_json({status => 'error', msg => "Missing params"});
   }
   #TODO: Send Mail with reset link.
 
