@@ -20,13 +20,13 @@
 
         <table class="ma-table ma-data-table">
         <thead>
-            <tr><th>{{maketext('Name')}}</th><th>{maketext('Source')}}</th><th></th></tr>
+            <tr><th>{{maketext('Name')}}</th><th>{{maketext('Source')}}</th><th></th></tr>
         </thead>
         <tbody>
             <tr v-for="group in user.groups">
                 <td :title="group.name">{{group.name}}</td>
                 <td :title="group.provider">{{group.provider}}</td>
-                <td title="{{gettext('Remove user from group')}}"><i class="fa fa-trash fa-2x" aria-hidden="true"></i></td>
+                <td :title="maketext('Remove user from group')"><i class="fa fa-trash fa-2x" aria-hidden="true"></i></td>
             </tr>
         </tbody>
         </table>
