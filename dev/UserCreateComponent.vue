@@ -36,7 +36,7 @@ var makeToast = function(type, msg) {
     sidebar.makeToast({
         closetime: 5000,
         color: type,
-        text: this.gettext(msg)
+        text: this.maketext(msg)
     });
 };
 export default {
