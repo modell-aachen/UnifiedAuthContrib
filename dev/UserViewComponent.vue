@@ -26,7 +26,7 @@
             <tr v-for="group in user.groups">
                 <td :title="group.name">{{group.name}}</td>
                 <td :title="group.provider">{{group.provider}}</td>
-                <td :title="maketext('Remove user from group')"><i @click="removeUserFromGroup(group)" class="fa fa-trash fa-2x" aria-hidden="true"></i></td>
+                <td :title="maketext('Remove user from group')"><i @click="removeUserFromGroup(group)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
             </tr>
         </tbody>
         </table>
@@ -117,7 +117,9 @@ export default {
         text-overflow: ellipsis;
     }
 }
-
+i.click:hover{
+    color: #525960;
+}
 .columns.title {
     color: #97938b;
 }
