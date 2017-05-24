@@ -79,7 +79,29 @@ export default {
                 },
                 {
                   text: jsi18n.get('UnifiedAuth', 'Change email address'),
-                  callback: () => console.log('Clicked entry 2')
+                  callback: () => {
+                      sidebar.makeModal({
+                          title: "Change Email address",
+                          content: "bla bla bla",
+                          buttons: {
+                              cancel: {
+                                  text: 'Abort',
+                                  callback: function() { sidebar.hideModal(); }
+                              },
+                              confirm: {
+                                  text: 'Change Email address',
+                                  callback: function() {
+                                      let params = {
+                                          cuid: sidebar.$vm.contentComponent.propsData.user.id,
+                                          email: this.email
+                                      }
+                                      $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/updateEmail", params)
+                                      sidebar.hideModal();
+                                  }
+                              },
+                          }
+                      });
+                  }
                 },
                 {
                   text: jsi18n.get('UnifiedAuth', 'Link user accounts'),
