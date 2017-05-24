@@ -1,29 +1,33 @@
 <template>
     <div>
-        <h1 class="primary">{{user.displayName}}</h1>
-        <div class="row align-middle details">
-            <div class="columns title">{{maketext('WikiName')}}:</div>
-            <div class="columns small-7">{{user.wikiName}}</div>
+        <span class="section-title">{{user.displayName}}</span>
+        <div class="row align-middle collapse">
+            <div class="columns small-4 title">{{maketext('WikiName')}}:</div>
+            <div class="columns">{{user.wikiName}}</div>
         </div>
-        <div class="row align-middle details">
-            <div class="columns title">{{maketext('UID')}}:</div>
-            <div class="columns small-7">{{user.id}}</div>
+        <div class="row align-middle collapse">
+            <div class="columns small-4 title">{{maketext('UID')}}:</div>
+            <div class="columns">{{user.id}}</div>
         </div>
-        <div class="row align-middle details">
-            <div class="columns title">{{maketext('Email')}}:</div>
-            <div class="columns small-7">{{user.email}}</div>
+        <div class="row align-middle collapse">
+            <div class="columns small-4 title">{{maketext('Email')}}</div>
+            <div class="columns">{{user.email}}</div>
         </div>
-        <h1>Membership in Groups</h1>
-        <span v-html="maketext(strings.addUserToGroup, ['<b>'+user.displayName+'</b>'])"></span>
+        <span class="section-title">{{maketext('Group memberships')}}</span>
+        <p v-html="maketext(strings.addUserToGroup, ['<b>'+user.displayName+'</b>'])"></p>
         <group-selector ref="groupSelector"></group-selector>
-        <button class="primary button small pull-right" @click="addUserToGroup">{{maketext('Add to Group')}}</button>
+        <button class="primary button small pull-right" @click="addUserToGroup">{{maketext('Add to group')}}</button>
 
         <table class="ma-table ma-data-table">
         <thead>
-            <tr><th>{{maketext('Name')}}</th><th>{{maketext('Source system')}}</th><th></th></tr>
+            <tr><th>{{maketext('Name')}}</th><th>{maketext('Source')}}</th><th></th></tr>
         </thead>
         <tbody>
-            <tr v-for="group in user.groups"><td>{{group.name}}</td><td>{{group.provider}}</td><td><i class="fa fa-trash fa-2x" aria-hidden="true"></i></td></tr>
+            <tr v-for="group in user.groups">
+                <td :title="group.name">{{group.name}}</td>
+                <td :title="group.provider">{{group.provider}}</td>
+                <td title="{{gettext('Remove user from group')}}"><i class="fa fa-trash fa-2x" aria-hidden="true"></i></td>
+            </tr>
         </tbody>
         </table>
     </div>
@@ -73,3 +77,20 @@ export default {
     }
 }
 </script>
+
+<style lang="sass">
+.ma-data-table tr {
+    th:first-child,
+    td:first-child, {
+        width: 225px;
+        max-width: 225px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+.columns.title {
+    color: #97938b;
+}
+</style>
