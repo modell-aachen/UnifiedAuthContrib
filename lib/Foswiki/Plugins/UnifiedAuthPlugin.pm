@@ -44,7 +44,13 @@ sub initPlugin {
                                         http_allow => 'GET',
                                       );
     Foswiki::Func::registerRESTHandler( 'addUsersToGroup',
-                                        \&_RESTaddUsersToGroup,
+                                        \&_addUsersToGroup,
+                                        authenticate => 0,
+                                        validate => 0,
+                                        http_allow => 'POST',
+                                      );
+    Foswiki::Func::registerRESTHandler( 'removeUserFromGroup',
+                                        \&_removeUserFromGroup,
                                         authenticate => 0,
                                         validate => 0,
                                         http_allow => 'POST',
@@ -201,7 +207,7 @@ sub _RESTgroups {
   my $id = $q->param("id");
 }
 
-sub _RESTaddUsersToGroup {
+sub _addUsersToGroup {
   my ($session, $subject, $verb, $response) = @_;
   my $q = $session->{request};
   my $auth = Foswiki::UnifiedAuth->new();
@@ -211,11 +217,10 @@ sub _RESTaddUsersToGroup {
   my $cuids = $q->param("cuids");
   #TODO: also need more then one wikiName
   my $wikiName = $q->param("wikiName");
-  my $provider = $q->param("provider");
 
   unless ($group and $cuids){
     $response->header(-status => 400);
-    return to_json({error => "Missing params"});
+    return to_json({status=> 'error', msg => "Missing params"});
   }
 
   eval {
@@ -227,7 +232,38 @@ sub _RESTaddUsersToGroup {
   if($@){
     $response->header(-status => 404);
     Foswiki::Func::writeWarning($@);
-    return to_json({error => "User ($cuids) could not be added to group."});
+    return to_json({status => 'error', msg => "User could not be added to group."});
+  }
+
+  return to_json({status => "ok"});
+}
+
+sub _removeUserFromGroup {
+  my ($session, $subject, $verb, $response) = @_;
+  my $q = $session->{request};
+  my $auth = Foswiki::UnifiedAuth->new();
+
+  my $group = $q->param("group");
+  #TODO: use more then one cuid
+  my $cuids = $q->param("cuids");
+  #TODO: also need more then one wikiName
+  my $wikiName = $q->param("wikiName");
+
+  unless ($group and $cuids){
+    $response->header(-status => 400);
+    return to_json({status=> 'error', msg => "Missing params"});
+  }
+
+  eval {
+      my $userMapping = Foswiki::Users::UnifiedUserMapping->new($session);
+      $userMapping->removeUserFromGroup($cuids, $group);
+      my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiName));
+      $indexProvider->indexUser($cuids);
+  };
+  if($@){
+    $response->header(-status => 404);
+    Foswiki::Func::writeWarning($@);
+    return to_json({status => 'error', msg => "User could not be removed from group."});
   }
 
   return to_json({status => "ok"});

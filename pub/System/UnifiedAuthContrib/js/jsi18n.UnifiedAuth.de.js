@@ -17,8 +17,6 @@ jsi18n.add('UnifiedAuth', {
       "Register user": "Nutzer anlegen",
       "Close sidebar": "Sidebar schließen",
       "Add to Group": "Zur Gruppe hinzufügen",
-      "Add [_1] to an existing group.": "[_1] einer bestehenden Gruppe zuordnen.",
-      "Source system": "Quellsystem",
       "Name": "Name",
       "Close": "Schließen",
       "Deactivate user": "Benutzer deaktivieren",
@@ -40,5 +38,8 @@ jsi18n.add('UnifiedAuth', {
       "User already exists": "Benutzter existiert bereits",
       "Field WikiName is required": "Feld WikiName ist erforderlich",
       "Field email is required": "Feld E-Mail ist erforderlich",
-      "Invalid email address": "Ungültige E-Mail-Adresse"
+      "Invalid email address": "Ungültige E-Mail-Adresse",
+      "User could not be added to group.": "Benutzer konnte nicht der Gruppe hinzugefügt werden.",
+      "Add User to Group successfull": "Benutzer erfolgreich zur Gruppe hinzugefügt",
+      "Removed User from Group successfull": "Benutzer erfolgreich aus der Gruppe entfernt"
 });

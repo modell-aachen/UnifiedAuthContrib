@@ -37,6 +37,9 @@ export default {
         },
         getSelectedValues() {
             return this.selectedValues;
+        },
+        clearSelectedValues(){
+            this.selectedValues = null;
         }
     }
 }

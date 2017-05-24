@@ -26,7 +26,7 @@
             <tr v-for="group in user.groups">
                 <td :title="group.name">{{group.name}}</td>
                 <td :title="group.provider">{{group.provider}}</td>
-                <td :title="maketext('Remove user from group')"><i class="fa fa-trash fa-2x" aria-hidden="true"></i></td>
+                <td :title="maketext('Remove user from group')"><i @click="removeUserFromGroup(group)" class="fa fa-trash fa-2x" aria-hidden="true"></i></td>
             </tr>
         </tbody>
         </table>
@@ -37,6 +37,13 @@
 import MaketextMixin from './MaketextMixin.vue'
 import GroupSelector from './GroupSelector';
 
+var makeToast = function(type, msg) {
+    sidebar.makeToast({
+        closetime: 5000,
+        color: type,
+        text: this.maketext(msg)
+    });
+};
 export default {
     mixins: [MaketextMixin],
     props: ['propsData'],
@@ -60,6 +67,7 @@ export default {
     methods: {
         addUserToGroup() {
             let selectedValues = this.$refs.groupSelector.getSelectedValues();
+            let self = this
             let params = {
                 cuids: this.user.id,
                 group: selectedValues[0],
@@ -67,11 +75,31 @@ export default {
             }
             $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/addUsersToGroup", params)
             .done((result) => {
-                sidebar.makeToast({
-                    closetime: 2000,
-                    color: "success",
-                    text: "Add User to Group successfull"
-                });
+                makeToast.call(self, 'success', this.maketext("Add User to Group successfull"));
+                self.user.groups.push({name: selectedValues[0].name, provider: ''});
+                self.$refs.groupSelector.clearSelectedValues();
+            })
+            .fail((xhr) => {
+                var response = JSON.parse(xhr.responseText);
+                makeToast.call(self, 'alert', response.msg);
+            })
+        },
+        removeUserFromGroup(group) {
+            let self = this
+            let params = {
+                cuids: this.user.id,
+                group: group.name,
+                wikiName: this.user.wikiName
+            }
+            $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/removeUserFromGroup", params)
+            .done((result) => {
+                makeToast.call(self, 'success', this.maketext("Removed User from Group successfull"));
+                let index = self.user.groups.indexOf(group);
+                self.user.groups.splice(index, 1);
+            })
+            .fail((xhr) => {
+                var response = JSON.parse(xhr.responseText);
+                makeToast.call(self, 'alert', response.msg);
             })
         }
     }
