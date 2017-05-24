@@ -79,6 +79,7 @@ sub refresh {
     }
 
     my $users = $db->selectall_arrayref($userQuery, {Slice => {}}, $pid);
+    my $provider = $Foswiki::cfg{UnifiedAuth}{Providers}{$this->{id}};
     foreach my $user (@$users) {
         my $groups = $db->selectall_arrayref("select group_members.g_cuid,providers.name as provider_name,groups.name as group_name from group_members inner join groups on (group_members.g_cuid=groups.cuid) inner join providers on (groups.pid=providers.pid) WHERE u_cuid=?", {Slice => {}}, $user->{cuid});
         my @groupIds = map { $_->{g_cuid} } @$groups;
@@ -89,13 +90,15 @@ sub refresh {
         $userdoc->add_fields(
           'id' => $user->{cuid},
           'type' => 'ua_user',
+          'web' => $Foswiki::cfg{UsersWebName},
           'cuid_s' => $user->{cuid},
           'loginname_s' => $user->{login_name},
           'wikiname_s' => $user->{wiki_name},
           'displayname_s' => $user->{display_name},
           'email_s' => $user->{email} || '',
           'mainprovidername_s' => $this->{id},
-          'providers_lst' => [$this->{id}],
+          'mainproviderdescription_s' => $provider->{description} || $this->{id},
+          'providers_lst' => [$provider->{description} || $this->{id}],
           'providerid_i' => $pid,
           'deactivated_i' => $user->{deactivated},
           'groupids_lst' => \@groupIds,
