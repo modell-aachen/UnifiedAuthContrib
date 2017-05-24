@@ -1,28 +1,33 @@
 <template>
     <div>
-        <h1>{{user.displayName}}</h1>
-        <div class="row align-middle details">
-            <div class="columns title">WikiName:</div>
-            <div class="columns small-7">{{user.wikiName}}</div>
+        <span class="section-title">{{user.displayName}}</span>
+        <div class="row align-middle collapse">
+            <div class="columns small-4 title">WikiName:</div>
+            <div class="columns">{{user.wikiName}}</div>
         </div>
-        <div class="row align-middle details">
-            <div class="columns title">UID:</div>
-            <div class="columns small-7">{{user.id}}</div>
+        <div class="row align-middle collapse">
+            <div class="columns small-4 title">cUID:</div>
+            <div class="columns">{{user.id}}</div>
         </div>
-        <div class="row align-middle details">
-            <div class="columns title">Email:</div>
-            <div class="columns small-7">{{user.email}}</div>
+        <div class="row align-middle collapse">
+            <div class="columns small-4 title">{{gettext('Email')}}</div>
+            <div class="columns">{{user.email}}</div>
         </div>
-        <h1>Gruppen</h1>
+        <span class="section-title">{{gettext('Group memberships')}}</span>
+        <p>{{gettext("Add [_1] to an existing group", user.displayName)}}</p>
         <group-selector></group-selector>
-        <button class="primary button small pull-right">Zu Gruppe hinzufügen</button>
+        <button class="primary button small pull-right">{{gettext('Add to group')}}</button>
 
         <table class="ma-table ma-data-table">
         <thead>
-            <tr><th>Name</th><th>Quellsystem</th><th></th></tr>
+            <tr><th>{{gettext('Name')}}</th><th>{{gettext('Source')}}</th><th></th></tr>
         </thead>
         <tbody>
-            <tr v-for="group in user.groups"><td>{{group.name}}</td><td>{{group.provider}}</td><td><i class="fa fa-trash fa-2x" aria-hidden="true"></i></td></tr>
+            <tr v-for="group in user.groups">
+                <td :title="group.name">{{group.name}}</td>
+                <td :title="group.provider">{{group.provider}}</td>
+                <td title="{{gettext('Remove user from group')}}"><i class="fa fa-trash fa-2x" aria-hidden="true"></i></td>
+            </tr>
         </tbody>
         </table>
     </div>
@@ -41,6 +46,28 @@ export default {
                 return this.propsData.user;
             }
         }
+    },
+    methods: {
+        gettext(text, param) {
+            return foswiki.jsi18n.get('UnifiedAuth', text, param);
+        },
     }
 }
 </script>
+
+<style lang="sass">
+.ma-data-table tr {
+    th:first-child,
+    td:first-child, {
+        width: 225px;
+        max-width: 225px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+.columns.title {
+    color: #97938b;
+}
+</style>

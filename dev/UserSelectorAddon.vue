@@ -37,25 +37,47 @@ export default {
         leftLabels.push({
           type: 'label',
           color: doc.deactivated_i == 0 ? 'success' : 'alert',
-          text: doc.deactivated_i == 0 ? 'Active' : 'Deactivated',
+          text: jsi18n.get('UnifiedAuth', doc.deactivated_i == 0 ? 'Active' : 'Deactivated'),
         });
 
         var o = {
-        content: JSON.stringify(doc),
-        contentComponent: { name: "user-view-component", propsData: {user: userObject}},
-        header: {
-          left: leftLabels,
-        },
-        footer: {
-          right: [
-            {
+          content: JSON.stringify(doc),
+          contentComponent: { name: "user-view-component", propsData: {user: userObject}},
+          header: {
+            left: leftLabels,
+            right: [{
               type: 'button',
-              color: 'alert',
-              text: 'Close sidebar',
-              callback: function() {sidebar.hide();}
-            }
-          ]
-        }
+              color: 'primary',
+              text: jsi18n.get('UnifiedAuth', 'Deactivate user'),
+              callback: () => {}
+            }, {
+              type: 'dropdown',
+              color: 'primary',
+              tooltip: jsi18n.get('UnifiedAuth', 'more'),
+              entries: [
+                {
+                  text: jsi18n.get('UnifiedAuth', 'Reset password'),
+                  callback: () => console.log('Clicked entry 1')
+                },
+                {
+                  text: jsi18n.get('UnifiedAuth', 'Change email address'),
+                  callback: () => console.log('Clicked entry 2')
+                },
+                {
+                  text: jsi18n.get('UnifiedAuth', 'Link user accounts'),
+                  callback: () => console.log('Clicked entry 3')
+                },
+              ]
+            }]
+          },
+          footer: {
+            right: [{
+                type: 'button',
+                color: 'secondary',
+                text: jsi18n.get('UnifiedAuth', 'Close'),
+                callback: function() {sidebar.hide();}
+            }]
+          }
       };
 
       sidebar.showContent(o);

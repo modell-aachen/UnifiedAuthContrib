@@ -1,12 +1,13 @@
 <template>
     <div>
-        <h1 class="primary">{{gettext('Register new user')}}</h1>
-        <p>{{gettext('Here you can register a new wiki user. The user will get a confirmation e-mail with the login data after the registration.')}}</p>
+        <div class="section-title">
+            <span>{{gettext('Register new user')}}</span>
+            <p class="sub">{{gettext('Here you can register a new wiki user. The user will get a confirmation e-mail with the login data after the registration.')}}</p>
+        </div>
     <form>
         <input v-model="userData.firstName" type="text" name="firstName" :placeholder="gettext('First name')">
         <input v-model="userData.lastName" type="text" name="lastName" :placeholder="gettext('Last name')">
         <input v-model="userData.email" type="text" name="email" :placeholder="gettext('Email address')" aria-describedby="emailHelpText">
-        <p class="help-text" id="emailHelpText"><strong>{{gettext('Notice:')}}</strong> {{gettext('Your Email address will not be published.')}}</p>
         <br/>
         <input v-model="userData.loginName" :value="loginName" type="text" name="loginName" :placeholder="gettext('LoginName')" aria-describedby="wikiNameHelpText">
         <input v-model="userData.wikiName" :value="wikiName" type="text" name="wikiName" :placeholder="gettext('WikiName')" aria-describedby="wikiNameHelpText">
@@ -26,6 +27,13 @@
 </template>
 
 <script>
+var makeToast = function(type, msg) {
+    sidebar.makeToast({
+        closetime: 5000,
+        color: type,
+        text: this.gettext(msg)
+    });
+};
 export default {
     data() {
         return {
@@ -44,10 +52,18 @@ export default {
     },
     computed: {
         wikiName(){
-            this.userData.wikiName = $.wikiword.wikify(this.userData.firstName + this.userData.lastName, {transliterate: true});
+            var wn = [
+                $.wikiword.wikify(this.userData.firstName, {transliterate: true}),
+                $.wikiword.wikify(this.userData.lastName, {transliterate: true})
+            ].join('');
+            this.userData.wikiName = wn;
         },
         loginName(){
-            this.userData.loginName = $.wikiword.wikify(this.userData.firstName + this.userData.lastName, {transliterate: true});
+            var wn = [
+                $.wikiword.wikify(this.userData.firstName, {transliterate: true}),
+                $.wikiword.wikify(this.userData.lastName, {transliterate: true})
+            ].join('');
+            this.userData.loginName = wn;
         },
         isPasswordCorrect(){
             if(this.userData.password !== this.userData.passwordConfirmation){
@@ -70,25 +86,52 @@ export default {
             return foswiki.jsi18n.get('UnifiedAuth', text, param);
         },
         registerUser() {
+            var self = this;
             let params = {
                 loginName: this.userData.loginName,
                 wikiName: this.userData.wikiName,
                 email: this.userData.email
             }
+
+            if (!params.wikiName || /^\s*$/.test(params.wikiName)) {
+                makeToast.call(self, 'alert', 'Field WikiName is required');
+                return;
+            }
+
+            if (!params.email || /^\s*$/.test(params.wikiName)) {
+                makeToast.call(self, 'alert', 'Field email is required');
+                return;
+            }
+
+            if (!/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i.test(params.email)) {
+                makeToast.call(self, 'alert', 'Invalid email address');
+                return;
+            }
+
             if (params.loginName == ""){
                 params.loginName = this.wikiName;
             }
             if(!this.generatePassword){
+                if (!this.userData.password || /^\s*$/.test(this.userData.password)) {
+                    makeToast.call(self, 'alert', 'Field password cannot be empty');
+                    return;
+                };
+
+                if (this.userData.password !== this.userData.passwordConfirmation) {
+                    makeToast.call(self, 'alert', 'Password mismatch');
+                    return;
+                }
                 params.password = this.userData.password;
             }
+
+            sidebar.makeModal({type: 'spinner', autoclose: false});
             $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/registerUser", params)
             .done((result) => {
-                sidebar.makeToast({
-                    closetime: 2000,
-                    color: "success",
-                    text: "Registration successfull"
-                });
-            })
+                makeToast.call(self, 'success', 'Registration successfull');
+            }).fail((xhr) => {
+                var response = JSON.parse(xhr.responseText);
+                makeToast.call(self, 'alert', response.msg);
+            }).always(() => sidebar.hideModal());
         }
     },
     created: function() {
