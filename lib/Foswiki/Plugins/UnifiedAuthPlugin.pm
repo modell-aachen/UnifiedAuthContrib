@@ -104,7 +104,7 @@ sub _registerUser {
 
   unless ($loginName and $wikiName and $email){
     $response->header(-status => 400);
-    return to_json({error => "Missing params"});
+    return to_json({status => 'error', msg => "Missing mandatory parameters"});
   }
 
   unless($password){
@@ -120,13 +120,13 @@ sub _registerUser {
   }
 
   unless($topicProvider){
-    $response->header(-status => 404);
-    return to_json({error => "Topic provider not configured"});
+    $response->header(-status => 500);
+    return to_json({status => 'error', msg => "User provider (TOPIC) not configured"});
   }
 
   unless($topicProvider->enabled){
-    $response->header(-status => 404);
-    return to_json({error => "Topic provider not enabled"});
+    $response->header(-status => 500);
+    return to_json({status => 'error', msg => "User provider (TOPIC) disabled"});
   }
 
   my $cuid;
@@ -135,8 +135,12 @@ sub _registerUser {
   };
 
   if($@){
-    $response->header(-status => 404);
-    return to_json({error => "User could not be created. Maybe it already exists."});
+    my $err = $@;
+    Foswiki::Func::writeWarning($err);
+    $response->header(-status => 400);
+    my $msg = "Failure while creating user";
+    $msg = "User already exists" if $err =~ /already in use/;
+    return to_json({status => 'error', msg => $msg});
   }
 
   my $mailPreferences = {
@@ -146,7 +150,6 @@ sub _registerUser {
   };
 
   Foswiki::Contrib::MailTemplatesContrib::sendMail("uauth_registernotify", {GenerateInAdvance => 1}, $mailPreferences, 1);
-  
   $topicProvider->indexUser($cuid);
 
   return to_json({status => "ok"});
