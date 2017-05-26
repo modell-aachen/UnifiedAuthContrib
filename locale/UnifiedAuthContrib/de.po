@@ -34,7 +34,7 @@ msgid "Your user account is not configured for the authentication with this wiki
 msgstr "Ihr Nutzeraccount ist nicht für die Authentifizierung mit diesem Wiki konfiguriert. Bitte kontaktieren Sie ihren Administrator für weitere Hilfe."
 
 msgid "The authentication failed (Kerberos error). Please contact your administrator for further assistance."
-msgstr "Die Authetifizierung ist fehlgeschlagen (Kerberos fehler). Bitte kontaktieren Sie ihren Administrator für weitere Hilfe."
+msgstr "Die Authentifizierung ist fehlgeschlagen (Kerberos Fehler). Bitte kontaktieren Sie ihren Administrator für weitere Hilfe."
 
 msgid "User administration"
 msgstr "Benutzerverwaltung"
@@ -46,7 +46,7 @@ msgid "This site presents an overview of all groups which which are available fo
 msgstr "Diese Übersichtsseite zeigt alle Gruppen an, die verwendet werden können, um Zugriffskontrolle im Q.wiki zu definieren"
 
 msgid "Current number of active users:"
-msgstr "Aktuelle Anzahl akiver Benutzer:"
+msgstr "Aktuelle Anzahl aktiver Benutzer:"
 
 msgid "Create new user"
 msgstr "Neuen Nutzer anlegen"
@@ -56,9 +56,6 @@ msgstr "Neuen Gruppe anlegen"
 
 msgid "Source systems"
 msgstr "Quellsysteme"
-
-msgid "Active"
-msgstr "Aktive"
 
 msgid "Email address"
 msgstr "Email Adresse"
