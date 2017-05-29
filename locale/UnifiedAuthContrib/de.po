@@ -48,9 +48,6 @@ msgstr "Diese Übersichtsseite zeigt alle Gruppen an, die verwendet werden könn
 msgid "Current number of active users:"
 msgstr "Aktuelle Anzahl aktiver Benutzer:"
 
-msgid "Create new user"
-msgstr "Neuen Nutzer anlegen"
-
 msgid "Create new group"
 msgstr "Neuen Gruppe anlegen"
 

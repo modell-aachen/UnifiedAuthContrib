@@ -41,5 +41,6 @@ jsi18n.add('UnifiedAuth', {
       "Invalid email address": "Ungültige E-Mail-Adresse",
       "User could not be added to group.": "Benutzer konnte nicht der Gruppe hinzugefügt werden.",
       "Add User to Group successfull": "Benutzer erfolgreich zur Gruppe hinzugefügt",
-      "Removed User from Group successfull": "Benutzer erfolgreich aus der Gruppe entfernt"
+      "Removed User from Group successfull": "Benutzer erfolgreich aus der Gruppe entfernt",
+      "Create new user": "Neuen Nutzer anlegen"
 });

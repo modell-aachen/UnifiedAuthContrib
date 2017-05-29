@@ -6,7 +6,7 @@
 %TAB{"%MAKETEXT{"Users"}%"}%
 <p>%MAKETEXT{"This site presents an overview of currently all available users within this wiki. Deactivated users may also be shown."}%<p>
 <strong>%MAKETEXT{"Current number of active users:"}% %TOTALUSERS{exclude_deactivated="1"}%</strong>
-<p id="userRegistration"><button v-on:click="openUserRegistration(%USER_CREATE_LOGINNAME%)" class="primary button">%MAKETEXT{"Create new user"}%</button></p>
+<p id="userRegistration"><user-registration show-user-loginname="%USER_CREATE_ALLOW_CHANGE_LOGINNAME%"></user-registration></p>
 %SEARCHGRID{
   "type:ua_user !mainprovidername_s:__*"
   headers="Name,Source systems,Email address,Status"
@@ -16,7 +16,6 @@
   facets="multi-select-facet(Source systems,mainproviderdescription_s),multi-select-facet(Status,deactivated_i)"
   resultsPerPage="25"
   initialSort="displayname_sort,asc"
-  mappings_deactivated_i="0=%MAKETEXT{"Active"}%;1=%MAKETEXT{"Deactivated"}%"
   addons="user-selector"
 }%
 %ENDTAB%

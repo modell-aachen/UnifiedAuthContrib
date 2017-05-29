@@ -7,7 +7,12 @@ export default {
     props: ['doc','params'],
     computed: {
         status: function() {
-            var value = this.doc[this.params[0]];
+            var value;
+            if(this.params[0]){
+                value = this.doc[this.params[0]];
+            } else{
+                return '';
+            }
             if(value == 0){
                 return foswiki.jsi18n.get('UnifiedAuth',"Active");
             }
