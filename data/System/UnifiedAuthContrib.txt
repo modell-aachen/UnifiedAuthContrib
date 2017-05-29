@@ -98,10 +98,12 @@ authentication process.
 <verbatim>
 {UnifiedAuth}{Providers} = {
    'provider_id_1' => {
+      'description' => '...',
       'config' => {...},
       'module' => 'auth_provider_1'
    },
    'provider_id_2' => {
+      'description' => '...',
       'config' => {...},
       'module' => 'auth_provider_2'
    }
@@ -139,6 +141,7 @@ which are shared across all providers.
 | allow | Comma separated list of IPs | |
 | deny | Comma separated list of IPs | |
 | debug | Set to =1= for debug output in error logs and =verbose= for even _more_ debug output. | |
+| description | String to define a more user friendly name | |
 
 Any authentication provider may be disabled by setting its =enabled= attribute
 to a falsely value (0).%BR%
@@ -169,12 +172,14 @@ is only granted to clients from an external network, e.g. the Internet.
       'config' => {
          'allow' => '10.10.10.0/24',
       },
+      'description' => 'Single sign-on',
       'module' => 'Kerberos'
    },
    'ldap' => {
       'config' => {
          'allow' => '10.10.10.0/24'
       },
+      'description' => 'Ldap',
       'module' => 'Ldap'
    },
    'google' => {
