@@ -92,7 +92,7 @@ export default {
         registerUser() {
             var self = this;
             let params = {
-                loginName: this.userData.loginName,
+                loginName: this.userData.loginName || this.userData.wikiName,
                 wikiName: this.userData.wikiName,
                 email: this.userData.email
             }

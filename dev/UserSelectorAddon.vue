@@ -4,12 +4,24 @@
 
 <script>
 /* global jsi18n sidebar $ foswiki */
+import MaketextMixin from './MaketextMixin.vue'
+
+var makeToast = function(type, msg) {
+    sidebar.makeToast({
+        closetime: 5000,
+        color: type,
+        text: jsi18n.get("UnifiedAuth", msg)
+    });
+};
 export default {
+    mixins: [MaketextMixin],
     props: ['api'],
     created: function(){
+      let self = this;
       this.api.registerEntryClickHandler(function(doc){
         let userObject = {
           id: doc.cuid_s,
+          providerModule: doc.mainprovidermodule_s,
           displayName: doc.displayname_s,
           wikiName: doc.wikiname_s,
           email: doc.email_s,
@@ -80,23 +92,44 @@ export default {
                 {
                   text: jsi18n.get('UnifiedAuth', 'Change email address'),
                   callback: () => {
+                      if(sidebar.$vm.contentComponent.propsData.user.providerModule != 'Topic') {
+                          makeToast.call(self, 'alert', "Function only supported for topic provider");
+                          return;
+                      }
                       sidebar.makeModal({
-                          title: "Change Email address",
-                          content: "bla bla bla",
+                          title: self.maketext("Change Email address"),
+                          content: self.maketext("You can use this form to change your registered e-mail address.") + " " + self.maketext("Currently known e-mail address") + ": <b>" +sidebar.$vm.contentComponent.propsData.user.email + '</b><input type="text" name="email" placeholder="' + self.maketext("New e-mail address") + '">',
                           buttons: {
                               cancel: {
-                                  text: 'Abort',
+                                  text: self.maketext("Abort"),
                                   callback: function() { sidebar.hideModal(); }
                               },
                               confirm: {
-                                  text: 'Change Email address',
+                                  text: self.maketext("Change Email address"),
                                   callback: function() {
                                       let params = {
                                           cuid: sidebar.$vm.contentComponent.propsData.user.id,
-                                          email: this.email
+                                          email: document.getElementsByName("email")[0].value,
+                                          wikiname: sidebar.$vm.contentComponent.propsData.user.wikiName
+                                      }
+                                      if (!params.email) {
+                                          makeToast.call(self, 'alert', 'Field email is required');
+                                          return false;
+                                      }
+                                      if (!/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i.test(params.email)) {
+                                          makeToast.call(self, 'alert', 'Invalid email address');
+                                          return false;
                                       }
                                       $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/updateEmail", params)
-                                      sidebar.hideModal();
+                                      .done(() => {
+                                          makeToast.call(self, 'success', "Email address changed");
+                                          sidebar.$vm.contentComponent.propsData.user.email = params.email;
+                                          sidebar.hideModal();
+                                      })
+                                      .fail((xhr) => {
+                                          var response = JSON.parse(xhr.responseText);
+                                          makeToast.call(self, 'alert', response.msg);
+                                      })
                                   }
                               },
                           }

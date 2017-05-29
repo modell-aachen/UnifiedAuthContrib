@@ -114,6 +114,7 @@ SQL
           'email_s' => $user->{email} || '',
           'mainprovidername_s' => $this->{id},
           'mainproviderdescription_s' => $provider->{description} || $this->{id},
+          'mainprovidermodule_s' => $provider->{module},
           'providers_lst' => [$provider->{description} || $this->{id}],
           'providerid_i' => $pid,
           'deactivated_i' => $user->{deactivated},

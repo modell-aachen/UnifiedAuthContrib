@@ -61,6 +61,12 @@ sub initPlugin {
                                         validate => 0,
                                         http_allow => 'POST',
                                       );
+    Foswiki::Func::registerRESTHandler( 'updateEmail',
+                                        \&_updateEmail,
+                                        authenticate => 1,
+                                        validate => 0,
+                                        http_allow => 'POST',
+                                      );
     return 1;
 }
 
@@ -283,12 +289,44 @@ sub _resetPassword {
   my $cuid = $q->param("cuid");
   my $wikiName = $q->param("wikiName");
 
-  #TODO: Check if topic user
   unless ($wikiName && $cuid) {
     $response->header(-status => 400);
     return to_json({status => 'error', msg => "Missing params"});
   }
+  my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiName));
+  unless ($indexProvider->{name} =~ /Topic/) {
+    $response->header(-status => 400);
+    return to_json({status => 'error', msg => "Function only supported for topic provider"});
+  }
   #TODO: Send Mail with reset link.
+
+  return to_json({status => "ok"});
+}
+
+sub _updateEmail {
+  my ($session, $subject, $verb, $response) = @_;
+  my $q = $session->{request};
+  my $auth = Foswiki::UnifiedAuth->new();
+
+  my $cuid = $q->param("cuid");
+  my $email = $q->param("email");
+  my $wikiName = $q->param("wikiname");
+
+  unless ($email && $cuid) {
+    $response->header(-status => 400);
+    return to_json({status => 'error', msg => "Missing params"});
+  }
+
+  my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiName));
+  unless ($indexProvider->{name} =~ /Topic/) {
+    $response->header(-status => 400);
+    return to_json({status => 'error', msg => "Function only supported for topic provider"});
+  }
+
+  my $db = $auth->db;
+  my $userinfo = $db->selectrow_hashref("SELECT cuid, display_name, deactivated, password FROM users WHERE users.cuid=?", {}, $cuid);
+  $auth->update_user('UTF-8', $userinfo->{cuid}, $email, $userinfo->{display_name}, $userinfo->{deactivated}, $userinfo->{password});
+  $indexProvider->indexUser($cuid);
 
   return to_json({status => "ok"});
 }

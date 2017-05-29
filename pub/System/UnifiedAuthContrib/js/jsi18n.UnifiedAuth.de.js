@@ -42,5 +42,12 @@ jsi18n.add('UnifiedAuth', {
       "User could not be added to group.": "Benutzer konnte nicht der Gruppe hinzugefügt werden.",
       "Add User to Group successfull": "Benutzer erfolgreich zur Gruppe hinzugefügt",
       "Removed User from Group successfull": "Benutzer erfolgreich aus der Gruppe entfernt",
-      "Create new user": "Neuen Nutzer anlegen"
+      "Create new user": "Neuen Nutzer anlegen",
+      "Change Email address": "E-Mail-Adresse ändern",
+      "You can use this form to change your registered e-mail address.": "Mit diesem Formular können Sie Ihre registrierte E-Mail-Adresse ändern.",
+      "Currently known e-mail address": "Derzeit bekannte E-Mail-Adresse",
+      "New e-mail address": "Neue E-Mail-Adresse",
+      "Abort": "Abbruch",
+      "Email address changed": "E-Mail-Adresse geändert",
+      "Function only supported for topic provider": "Funktion wird nur für Topic-Provider unterstützt"
 });
