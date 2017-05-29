@@ -1,4 +1,4 @@
-/* global Vue moment window $ VueJSPlugin foswiki */
+/* global window $ Vue sidebar SearchGridPlugin */
 
 import UserSelectorAddon from "./UserSelectorAddon";
 import StatusField from "./StatusField";
@@ -29,7 +29,6 @@ Vue.component("UserRegistration", {
     },
     methods: {
         openUserRegistration() {
-            self = this;
             var o = {
                 contentComponent: { name: "user-create-component", propsData: {showUserLoginName: this.showLoginName}},
                 header: {
@@ -41,7 +40,7 @@ Vue.component("UserRegistration", {
 });
 
 $(function(){
-    var vm = new Vue({
+    new Vue({
         el: "#userRegistration",
     });
 });

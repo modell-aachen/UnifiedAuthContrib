@@ -34,6 +34,7 @@
 </template>
 
 <script>
+/* global sidebar $ foswiki */
 import MaketextMixin from './MaketextMixin.vue'
 import GroupSelector from './GroupSelector';
 
@@ -74,7 +75,7 @@ export default {
                 wikiName: this.user.wikiName
             }
             $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/addUsersToGroup", params)
-            .done((result) => {
+            .done(() => {
                 makeToast.call(self, 'success', this.maketext("Add User to Group successfull"));
                 self.user.groups.push({name: selectedValues[0].name, provider: ''});
                 self.$refs.groupSelector.clearSelectedValues();
@@ -92,7 +93,7 @@ export default {
                 wikiName: this.user.wikiName
             }
             $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/removeUserFromGroup", params)
-            .done((result) => {
+            .done(() => {
                 makeToast.call(self, 'success', this.maketext("Removed User from Group successfull"));
                 let index = self.user.groups.indexOf(group);
                 self.user.groups.splice(index, 1);

@@ -3,6 +3,7 @@
 </template>
 
 <script>
+/* global foswiki */
 export default {
     props: ['doc','params'],
     computed: {

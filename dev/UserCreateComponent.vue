@@ -29,7 +29,7 @@
 </template>
 
 <script>
-/*global $ */
+/*global $ sidebar foswiki */
 import MaketextMixin from './MaketextMixin.vue'
 
 var makeToast = function(type, msg) {
@@ -119,7 +119,7 @@ export default {
                 if (!this.userData.password || /^\s*$/.test(this.userData.password)) {
                     makeToast.call(self, 'alert', 'Field password cannot be empty');
                     return;
-                };
+                }
 
                 if (this.userData.password !== this.userData.passwordConfirmation) {
                     makeToast.call(self, 'alert', 'Password mismatch');
@@ -130,7 +130,7 @@ export default {
 
             sidebar.makeModal({type: 'spinner', autoclose: false});
             $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/registerUser", params)
-            .done((result) => {
+            .done(() => {
                 makeToast.call(self, 'success', 'Registration successfull');
             }).fail((xhr) => {
                 var response = JSON.parse(xhr.responseText);

@@ -5,6 +5,7 @@
 </template>
 
 <script>
+/* global $ foswiki */
 import VueSelect from 'vue-select/src/index.js';
 export default {
     data() {
@@ -19,7 +20,7 @@ export default {
     computed: {
     },
     methods: {
-        fetchOptions(search) {
+        fetchOptions() {
             $.getJSON(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/groups/")
             .done((result) => {
                 this.options = result;

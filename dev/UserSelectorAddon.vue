@@ -3,6 +3,7 @@
 </template>
 
 <script>
+/* global jsi18n sidebar $ foswiki */
 export default {
     props: ['api'],
     created: function(){
@@ -69,7 +70,6 @@ export default {
                             confirm: {
                                 text: 'Reset password',
                                 callback: function() {
-                                    console.log(sidebar.$vm.contentComponent.propsData.user.id);
                                     sidebar.hideModal();
                                 }
                             },
