@@ -4,6 +4,7 @@ import UserSelectorAddon from "./UserSelectorAddon";
 import StatusField from "./StatusField";
 import UserViewComponent from "./UserViewComponent";
 import UserCreateComponent from "./UserCreateComponent";
+import GroupCreateComponent from "./GroupCreateComponent";
 import MaketextMixin from './MaketextMixin';
 
 SearchGridPlugin.registerComponent("UserSelector", UserSelectorAddon);
@@ -11,6 +12,7 @@ SearchGridPlugin.registerField("StatusField", StatusField);
 
 Vue.component("UserViewComponent", UserViewComponent);
 Vue.component("UserCreateComponent", UserCreateComponent);
+Vue.component("GroupCreateComponent", GroupCreateComponent);
 Vue.component("UserRegistration", {
     mixins: [MaketextMixin],
     props: {
@@ -39,8 +41,25 @@ Vue.component("UserRegistration", {
     }
 });
 
+Vue.component("GroupRegistration", {
+    mixins: [MaketextMixin],
+    template: '<button v-on:click="openGroupRegistration()" class="primary button">{{maketext("Create new group")}}</button>',
+    methods: {
+        openGroupRegistration() {
+            var o = {
+                contentComponent: { name: "group-create-component"},
+                header: {
+                }
+            };
+            sidebar.showContent(o);
+        }
+    }
+});
 $(function(){
     new Vue({
         el: "#userRegistration",
+    });
+    new Vue({
+        el: "#groupRegistration",
     });
 });

@@ -34,7 +34,7 @@ sub initPlugin {
                                         \&_RESTusers,
                                         authenticate => 0,
                                         validate => 0,
-                                        http_allow => 'POST',
+                                        http_allow => 'GET',
                                       );
 
     Foswiki::Func::registerRESTHandler( 'groups',
@@ -179,19 +179,23 @@ sub _registerUser {
   return to_json({status => "ok"});
 }
 
-
 sub _RESTusers {
   my ($session, $subject, $verb, $response) = @_;
   my $q = $session->{request};
+  my $search = $q->param("q");
   my $auth = Foswiki::UnifiedAuth->new();
 
+  $search = '%' unless $search;
   $q->{path_info} =~ /$subject\/$verb\/?(.*?)\/?$/;
   my $entity = $1;
   if($entity){
     #TODO: Get/modify user entity
   }
   else{
-    # TODO: Create user/get users
+    my $db = _getConnection();
+    my $baseQuery = "select users.display_name as name,users.cuid as id from users where LOWER(display_name) LIKE LOWER(?)";
+    my $users =  $db->selectall_arrayref($baseQuery, {Slice => {}}, '%'.$search.'%');
+    return to_json($users);
   }
 
 
@@ -225,29 +229,50 @@ sub _addUsersToGroup {
   my $auth = Foswiki::UnifiedAuth->new();
 
   my $group = $q->param("group[name]");
-  #TODO: use more then one cuid
-  my $cuids = $q->param("cuids");
-  #TODO: also need more then one wikiName
-  my $wikiName = $q->param("wikiName");
-
-  unless ($group and $cuids){
+  my @cuids;
+  my $create = $q->param("create");
+  foreach my $arg ($q->param()){
+    if($arg =~ /cuids\[(\d)\]\[name\]/) {
+        push @cuids, {name => $q->param("cuids[$1][name]"), id => $q->param("cuids[$1][id]")};
+    }
+  }
+  if($q->param("cuid")){
+    push @cuids, {name => $q->param("wikiName"), id => $q->param("cuid")};
+  }
+  unless ($group){
     $response->header(-status => 400);
     return to_json({status=> 'error', msg => "Missing params"});
   }
 
-  eval {
-      my $userMapping = Foswiki::Users::UnifiedUserMapping->new($session);
-      $userMapping->addUserToGroup($cuids, $group);
-      my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiName));
-      $indexProvider->indexUser($cuids);
-  };
-  if($@){
-    $response->header(-status => 404);
-    Foswiki::Func::writeWarning($@);
-    return to_json({status => 'error', msg => "User could not be added to group."});
+  unless ($create){
+      $create = 0;
+  }
+  #Create empty Group
+  if (scalar @cuids == 0 ) {
+          my $userMapping = Foswiki::Users::UnifiedUserMapping->new($session);
+          $userMapping->addUserToGroup(undef, $group, $create);
+  }
+  foreach my $cuid (@cuids) {
+      eval {
+          my $userMapping = Foswiki::Users::UnifiedUserMapping->new($session);
+          $userMapping->addUserToGroup($cuid->{id}, $group, $create);
+          my $wikiName = $userMapping->getWikiName($cuid->{id});
+          my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiName));
+          $indexProvider->indexUser($cuid->{id});
+      };
+      if($@){
+        $response->header(-status => 404);
+        Foswiki::Func::writeWarning($@);
+        return to_json({status => 'error', msg => "User could not be added to group."});
+      }
   }
 
-  return to_json({status => "ok"});
+  my $db = $auth->db;
+  my $providerInfo = $db->selectrow_hashref("SELECT providers.name FROM groups, providers WHERE groups.name=? AND groups.pid = providers.pid", {}, $group);
+  my $groupInfo = $db->selectrow_hashref("SELECT * FROM groups WHERE groups.name=?", {}, $group);
+  my $indexProvider = $auth->authProvider($session, $providerInfo->{name});
+  $indexProvider->indexGroup($groupInfo->{cuid});
+  return to_json({status => "ok", data => $groupInfo});
 }
 
 sub _removeUserFromGroup {

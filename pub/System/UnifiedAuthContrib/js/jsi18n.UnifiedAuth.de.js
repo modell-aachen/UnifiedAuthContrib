@@ -49,5 +49,12 @@ jsi18n.add('UnifiedAuth', {
       "New e-mail address": "Neue E-Mail-Adresse",
       "Abort": "Abbruch",
       "Email address changed": "E-Mail-Adresse geändert",
-      "Function only supported for topic provider": "Funktion wird nur für Topic-Provider unterstützt"
+      "Function only supported for topic provider": "Funktion wird nur für Topic-Provider unterstützt",
+      "Register new group": "Neue Gruppe anlegen",
+      "Think twice before restricting write access to a web or a topic, because an open system where everybody can contribute is the essence of a wiki culture.": "Überlegen Sie es sich gut, bevor Sie den Schreibzugriff auf ein Web oder Topic einschränken,  denn ein offenes System zu dem jeder beitragen kann ist das Wichtigste an der Wiki-Kultur.",
+       "Group name": "Gruppen name",
+       "A group name must be a WikiWord and <b>must</b> end in ...Group.": "Ein Gruppenname muss ein WikiWord sein und <b>muss</b> auf ...Group enden.",
+       "Group members": "Gruppenmitglieder",
+       "Register group": "Gruppe anlegen",
+       "Create new group": "Neue Gruppe anlegen"
 });

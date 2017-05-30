@@ -120,13 +120,18 @@ export default {
                                           makeToast.call(self, 'alert', 'Invalid email address');
                                           return false;
                                       }
+                                      sidebar.makeModal({
+                                          type: 'spinner'
+                                      });
                                       $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/updateEmail", params)
                                       .done(() => {
+                                          sidebar.hideModal();
                                           makeToast.call(self, 'success', "Email address changed");
                                           sidebar.$vm.contentComponent.propsData.user.email = params.email;
                                           sidebar.hideModal();
                                       })
                                       .fail((xhr) => {
+                                          sidebar.hideModal();
                                           var response = JSON.parse(xhr.responseText);
                                           makeToast.call(self, 'alert', response.msg);
                                       })

@@ -70,17 +70,22 @@ export default {
             let selectedValues = this.$refs.groupSelector.getSelectedValues();
             let self = this
             let params = {
-                cuids: this.user.id,
+                cuid: this.user.id,
                 group: selectedValues[0],
                 wikiName: this.user.wikiName
             }
+            sidebar.makeModal({
+                type: 'spinner'
+            });
             $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/addUsersToGroup", params)
             .done(() => {
+                sidebar.hideModal();
                 makeToast.call(self, 'success', this.maketext("Add User to Group successfull"));
                 self.user.groups.push({name: selectedValues[0].name, provider: ''});
                 self.$refs.groupSelector.clearSelectedValues();
             })
             .fail((xhr) => {
+                sidebar.hideModal();
                 var response = JSON.parse(xhr.responseText);
                 makeToast.call(self, 'alert', response.msg);
             })
@@ -92,13 +97,18 @@ export default {
                 group: group.name,
                 wikiName: this.user.wikiName
             }
+            sidebar.makeModal({
+                type: 'spinner'
+            });
             $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/removeUserFromGroup", params)
             .done(() => {
+                sidebar.hideModal();
                 makeToast.call(self, 'success', this.maketext("Removed User from Group successfull"));
                 let index = self.user.groups.indexOf(group);
                 self.user.groups.splice(index, 1);
             })
             .fail((xhr) => {
+                sidebar.hideModal();
                 var response = JSON.parse(xhr.responseText);
                 makeToast.call(self, 'alert', response.msg);
             })
