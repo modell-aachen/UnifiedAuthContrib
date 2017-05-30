@@ -1,17 +1,21 @@
 /* global window $ Vue sidebar SearchGridPlugin */
 
 import UserSelectorAddon from "./UserSelectorAddon";
+import GroupSelectorAddon from "./GroupSelectorAddon";
 import StatusField from "./StatusField";
 import UserViewComponent from "./UserViewComponent";
 import UserCreateComponent from "./UserCreateComponent";
+import GroupViewComponent from "./GroupViewComponent";
 import GroupCreateComponent from "./GroupCreateComponent";
 import MaketextMixin from './MaketextMixin';
 
 SearchGridPlugin.registerComponent("UserSelector", UserSelectorAddon);
+SearchGridPlugin.registerComponent("GroupSelector", GroupSelectorAddon);
 SearchGridPlugin.registerField("StatusField", StatusField);
 
 Vue.component("UserViewComponent", UserViewComponent);
 Vue.component("UserCreateComponent", UserCreateComponent);
+Vue.component("GroupViewComponent", GroupViewComponent);
 Vue.component("GroupCreateComponent", GroupCreateComponent);
 Vue.component("UserRegistration", {
     mixins: [MaketextMixin],

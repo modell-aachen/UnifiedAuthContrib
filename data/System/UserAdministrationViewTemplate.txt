@@ -31,6 +31,7 @@
   facets="multi-select-facet(Source systems,mainproviderdescription_s)"
   resultsPerPage="25"
   initialSort="groupname_sort,asc"
+  addons="group-selector"
 }%
 %ENDTAB%
 %ENDTABPANE%

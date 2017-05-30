@@ -56,5 +56,10 @@ jsi18n.add('UnifiedAuth', {
        "A group name must be a WikiWord and <b>must</b> end in ...Group.": "Ein Gruppenname muss ein WikiWord sein und <b>muss</b> auf ...Group enden.",
        "Group members": "Gruppenmitglieder",
        "Register group": "Gruppe anlegen",
-       "Create new group": "Neue Gruppe anlegen"
+       "Create new group": "Neue Gruppe anlegen",
+       "Add user or group to the <b>[_1]</b>": "Nutzer oder Gruppe zur <b>[_1]</b> hinzufügen",
+       "Add user/ group": "Butzer/ Gruppe hinzufügen",
+       "All contained groups": "Alle enthaltenen Gruppen",
+       "All contained users": "Alle enthaltenen Nutzer",
+       "Group": "Gruppe"
 });
