@@ -320,8 +320,13 @@ sub useDefaultLogin {
     1;
 }
 
+# Will refresh ALL groups and users, unless a cuid is provided.
+# When a cuid is passed in, only delegate to super class; DO NOT refresh cache
+# for that cuid!
 sub refresh {
-    my ( $this ) = @_;
+    my ( $this, $cuid ) = @_;
+
+    return $this->SUPER::refresh($cuid) if $cuid;
 
     my $pid = $this->getPid();
     my $uauth = Foswiki::UnifiedAuth->new();

@@ -96,8 +96,14 @@ sub setPassword {
     return 1;
 }
 
+# When this is __uauth: Refresh all groups
+# When this is a regular topic provider: Refresh all users unless a cuid is
+#    provided
+# When a cuid is provided: Only delegate to super class
 sub refresh {
-    my ( $this ) = @_;
+    my ( $this, $cuid ) = @_;
+
+    return $this->SUPER::refresh($cuid) if $cuid;
 
     my $pid = $this->getPid();
     my $uauth = Foswiki::UnifiedAuth->new();
