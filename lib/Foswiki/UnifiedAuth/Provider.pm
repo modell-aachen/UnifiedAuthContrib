@@ -84,7 +84,10 @@ sub _indexUsers {
     my $pid = $this->getPid();
 
     my $userQuery = 'SELECT * FROM users WHERE pid=?';
-    $userQuery .= " AND cuid='$cuid'" if $cuid;
+    if($cuid) {
+        my $quoted = $db->quote($cuid);
+        $userQuery .= " AND cuid=$quoted";
+    }
 
     my $users = $db->selectall_arrayref($userQuery, {Slice => {}}, $pid);
     foreach my $user (@$users) {
@@ -140,7 +143,10 @@ sub _indexGroups {
     my $pid = $this->getPid();
 
     my $groupQuery = 'SELECT * FROM groups WHERE pid=?';
-    $groupQuery .= " AND cuid='$cuid'" if $cuid;
+    if($cuid) {
+        my $quoted = $db->quote($cuid);
+        $groupQuery .= " AND cuid=$quoted"
+    }
 
     my $groups = $db->selectall_arrayref($groupQuery, {Slice => {}}, $pid);
     foreach my $group (@$groups) {
