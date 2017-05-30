@@ -241,6 +241,9 @@ sub _mapUser {
     my ($v) = @_;
     $v =~ s/^\s+|\s+$//g;
     my $shortV = $v =~ s/^(?:Main|%USERSWEB%)\.//r;
+    if($shortV =~ /WikiGuest/){
+        return $v;
+    }
     return $users{$shortV} ? $users{$shortV} : $v;
 }
 
