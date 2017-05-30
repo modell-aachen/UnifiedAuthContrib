@@ -20,7 +20,7 @@
 }%
 %ENDTAB%
 %TAB{"%MAKETEXT{"Groups"}%"}%
-<p>%MAKETEXT{"This site presents an overview of all groups which which are available for access control definitions in [_1]." args="%WIKITOOLNAME%"}%<p>
+<p>%MAKETEXT{"This site presents an overview of all groups which are available for access control definitions in [_1]." args="%WIKITOOLNAME%"}%<p>
 <p id="groupRegistration"><button v-on:click="openGroupRegistration" class="primary button">%MAKETEXT{"Create new group"}%</button></p>
 %SEARCHGRID{
   "type:ua_group"

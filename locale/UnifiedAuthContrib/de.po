@@ -42,7 +42,7 @@ msgstr "Benutzerverwaltung"
 msgid "This site presents an overview of currently all available users within this wiki. Deactivated users may also be shown."
 msgstr "Diese Übersichtsseite zeigt alle Benutzer an, die derzeit im Wiki hinterlegt sind. Es können auch deaktivierte Nutzer angezeigt werden."
 
-msgid "This site presents an overview of all groups which which are available for access control definitions in %1."
+msgid "This site presents an overview of all groups which are available for access control definitions in %1."
 msgstr "Diese Übersichtsseite zeigt alle Gruppen an, die verwendet werden können, um Zugriffskontrolle im Q.wiki zu definieren"
 
 msgid "Current number of active users:"
