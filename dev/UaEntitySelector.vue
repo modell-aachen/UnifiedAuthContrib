@@ -63,7 +63,7 @@ export default {
             if( typeof loading === "function"){
                 loading(true);
             }
-            $.getJSON(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/users/", params)
+            $.getJSON(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'users'), params)
             .done((result) => {
                 if(result.length < this.limit ){
                     this.moreResultsText = this.maketext("No more results available");

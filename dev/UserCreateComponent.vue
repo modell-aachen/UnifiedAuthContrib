@@ -129,7 +129,7 @@ export default {
             }
 
             sidebar.makeModal({type: 'spinner', autoclose: false});
-            $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/registerUser", params)
+            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'registerUser'), params)
             .done(() => {
                 makeToast.call(self, 'success', 'Registration successfull');
             }).fail((xhr) => {

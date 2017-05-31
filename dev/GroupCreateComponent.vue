@@ -64,7 +64,7 @@ export default {
                 return;
             }
             sidebar.makeModal({type: 'spinner', autoclose: false});
-            $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/addUsersToGroup", params)
+            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'addUsersToGroup'), params)
             .done(() => {
                 makeToast.call(self, 'success', 'Registration successfull');
                 //TODO: open view of Group

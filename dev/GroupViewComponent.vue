@@ -89,7 +89,7 @@ export default {
             }
 
             sidebar.makeModal({type: 'spinner', autoclose: false});
-            $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/addUsersToGroup", params)
+            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'addUsersToGroup'), params)
             .done(() => {
                 makeToast.call(self, 'success', this.maketext("Add User to Group successfull"));
                 self.$refs.userSelector.clearSelectedValues();
@@ -109,7 +109,7 @@ export default {
             sidebar.makeModal({
                 type: 'spinner'
             });
-            $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/removeUserFromGroup", params)
+            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'removeUserFromGroup'), params)
             .done(() => {
                 sidebar.hideModal();
                 makeToast.call(self, 'success', this.maketext("Removed User from Group successfull"));

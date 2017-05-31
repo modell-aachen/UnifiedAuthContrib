@@ -123,7 +123,7 @@ export default {
                                       sidebar.makeModal({
                                           type: 'spinner'
                                       });
-                                      $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/updateEmail", params)
+                                      $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'updateEmail'), params)
                                       .done(() => {
                                           sidebar.hideModal();
                                           makeToast.call(self, 'success', "Email address changed");
