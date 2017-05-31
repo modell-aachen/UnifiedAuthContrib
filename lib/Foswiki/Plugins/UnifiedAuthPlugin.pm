@@ -37,6 +37,7 @@ sub initPlugin {
                                         http_allow => 'GET',
                                       );
 
+    #XXX: obsolet function
     Foswiki::Func::registerRESTHandler( 'groups',
                                         \&_RESTgroups,
                                         authenticate => 0,
@@ -182,30 +183,56 @@ sub _registerUser {
 sub _RESTusers {
   my ($session, $subject, $verb, $response) = @_;
   my $q = $session->{request};
-  my $searchParam = $q->param("q");
-  my $user = $q->param("user");
-  my $group = $q->param("group");
+  my $searchParam = $q->param("q") || '';
+  my $limit = $q->param("limit") || 10;
+  my $page = $q->param("page") / $limit || 0;
+  my @field = split(/\s*,\s*/, Foswiki::Func::getPreferencesValue('QUERYUSERS_DEFAULT_FIELDS'));
+  my $basemapping = $q->param("basemapping") || "skip";
+  my $type;
+  if($q->param("user") && $q->param("group")){
+      $type = "any";
+  }elsif($q->param("group")){
+      $type= "group";
+  }else{
+      $type="user";
+  }
   my $auth = Foswiki::UnifiedAuth->new();
-  my @search;
+  my ($result, $count) = $auth->queryUser({
+          term => $searchParam,
+          limit => $limit,
+          page => $page,
+          type => $type,
+          searchable_fields => \@field,
+          basemapping => $basemapping
+      });
+  for my $entry (@{$result}){
+        $entry->{'name'} = $entry->{'displayname'} || $entry->{'wikiname'};
+        $entry->{'id'} = $entry->{'cuid'} ;
+  }
+  #my @search;
 
-  $searchParam = '%' unless $searchParam;
-  my $db = _getConnection();
-  my $baseQuery;
-  if($user) {
-      $baseQuery = "select users.display_name as name,users.cuid as id from users where LOWER(display_name) LIKE LOWER(?)";
-      push @search, "%".$searchParam."%";
-  }
-  if($user && $group){
-      $baseQuery .= " UNION ";
-  }
-  if($group){
-      $baseQuery .= "select groups.name as name,groups.cuid as id from groups inner join providers on (groups.pid=providers.pid) where providers.name='__uauth' AND LOWER(groups.name) LIKE LOWER(?) ";
-      push @search, "%".$searchParam."%";
-  }
-  my $result =  $db->selectall_arrayref($baseQuery, {Slice => {}}, @search);
+  #$searchParam = '%' unless $searchParam;
+  #my $db = _getConnection();
+  #my $baseQuery;
+  #if($user) {
+  #    $baseQuery = "select users.display_name as name,users.cuid as id from users where LOWER(display_name) LIKE LOWER(?)";
+  #    push @search, "%".$searchParam."%";
+  #}
+  #if($user && $group){
+  #    $baseQuery .= " UNION ";
+  #}
+  #if($group){
+  #$baseQuery .= "select groups.name as name,groups.cuid as id from groups inner join providers on (groups.pid=providers.pid) where providers.name='__uauth' AND LOWER(groups.name) LIKE LOWER(?) ";
+  #    push @search, "%".$searchParam."%";
+  #}
+  #if($offset){
+  #    $baseQuery .= "select groups.name as name,groups.cuid as id from groups inner join providers on (groups.pid=providers.pid) where providers.name='__uauth' AND LOWER(groups.name) LIKE LOWER(?) ";
+  #}
+  #my $result =  $db->selectall_arrayref($baseQuery, {Slice => {}}, @search);
   return to_json($result);
 }
 
+#XXX: obsolet function
 sub _RESTgroups {
   my ($session, $subject, $verb, $response) = @_;
   my $q = $session->{request};
@@ -260,9 +287,11 @@ sub _addUsersToGroup {
       eval {
           my $userMapping = Foswiki::Users::UnifiedUserMapping->new($session);
           $userMapping->addUserToGroup($cuid->{id}, $group, $create);
-          my $wikiName = $userMapping->getWikiName($cuid->{id});
-          my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiName));
-          $indexProvider->indexUser($cuid->{id});
+          if(!$userMapping->isGroup($cuid->{id})){
+              my $wikiName = $userMapping->getWikiName($cuid->{id});
+              my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiName));
+              $indexProvider->indexUser($cuid->{id});
+          }
       };
       if($@){
         $response->header(-status => 404);
@@ -307,7 +336,12 @@ sub _removeUserFromGroup {
     return to_json({status => 'error', msg => "User could not be removed from group."});
   }
 
-  return to_json({status => "ok"});
+  my $db = $auth->db;
+  my $providerInfo = $db->selectrow_hashref("SELECT providers.name FROM groups, providers WHERE groups.name=? AND groups.pid = providers.pid", {}, $group);
+  my $groupInfo = $db->selectrow_hashref("SELECT * FROM groups WHERE groups.name=?", {}, $group);
+  my $indexProvider = $auth->authProvider($session, $providerInfo->{name});
+  $indexProvider->indexGroup($groupInfo->{cuid});
+  return to_json({status => "ok", data => $groupInfo});
 }
 
 sub _resetPassword {

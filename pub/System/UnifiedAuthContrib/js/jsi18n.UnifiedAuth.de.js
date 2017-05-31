@@ -58,8 +58,11 @@ jsi18n.add('UnifiedAuth', {
        "Register group": "Gruppe anlegen",
        "Create new group": "Neue Gruppe anlegen",
        "Add user or group to the <b>[_1]</b>": "Nutzer oder Gruppe zur <b>[_1]</b> hinzufügen",
-       "Add user/ group": "Butzer/ Gruppe hinzufügen",
+       "Add user/ group": "Nutzer/ Gruppe hinzufügen",
        "All contained groups": "Alle enthaltenen Gruppen",
        "All contained users": "Alle enthaltenen Nutzer",
-       "Group": "Gruppe"
+       "Group": "Gruppe",
+       "No more results available": "Keine weiteren Ergebnisse",
+       "Show more results": "Zeige mehr Ergebnisse",
+       "Search term...": "Suchanfrage..."
 });

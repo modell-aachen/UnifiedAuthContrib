@@ -12,10 +12,10 @@
             <tr><th>{{maketext('Name')}}</th><th>{{maketext('Source')}}</th><th></th></tr>
         </thead>
         <tbody>
-            <tr v-for="member in group.members">
-                <td :title="member.displayName">{{member.displayName}}</td>
-                <td :title="member.provider"></td>
-                <td :title="maketext('Remove user from group')"><i @click="removeUserFromGroup(member)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
+            <tr v-for="group in nestedGroups">
+                <td :title="group.name">{{group.name}}</td>
+                <td :title="group.provider">{{group.provider}}</td>
+                <td :title="maketext('Remove group from group')"><i @click="removeUserFromGroup(group)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
             </tr>
         </tbody>
         </table>
@@ -27,9 +27,9 @@
         </thead>
         <tbody>
             <tr v-for="member in group.members">
-                <td :title="member.displayName">{{member.displayName}}</td>
-                <td :title="member.provider"></td>
-                <td :title="maketext('Remove user from group')"><i @click="removeUserFromGroup(member)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
+                <td :title="member.display_name">{{member.display_name}}</td>
+                <td :title="member.group_names">{{member.group_names}}</td>
+                <td :title="maketext('Remove user from group')"><i v-if="member.group_names.match(group.displayName)" @click="removeUserFromGroup(member)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
             </tr>
         </tbody>
         </table>
@@ -59,39 +59,52 @@ export default {
             if(this.propsData){
                 return this.propsData.group;
             }
+        },
+        nestedGroups(){
+             let result = [];
+             let lookup = {[this.group.displayName]: 1};
+             for(var i = 0; i < this.group.members.length; i++){
+                let group_name = this.group.members[i].group_names;
+                let group_names = group_name.split(", ");
+                let p_name = this.group.members[i].g_provider_name;
+                let p_names = p_name.split(", ");
+                for(var j = 0; j < p_names.length; j++){
+                    if(!(group_names[j] in lookup)) {
+                        lookup[group_names[j]] = 1;
+                        result.push({name: group_names[j], provider: p_names[j]});
+                    }
+                }
+             }
+             return result;
         }
     },
     methods: {
         addUserToGroup() {
-            let selectedValues = this.$refs.groupSelector.getSelectedValues();
-            let self = this
+            var self = this;
+            let selectedValues = this.$refs.userSelector.getSelectedValues();
             let params = {
-                cuid: this.user.id,
-                group: selectedValues[0],
-                wikiName: this.user.wikiName
+                group: {name: this.group.displayName},
+                cuids: selectedValues,
+                create: 0
             }
-            sidebar.makeModal({
-                type: 'spinner'
-            });
+
+            sidebar.makeModal({type: 'spinner', autoclose: false});
             $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/addUsersToGroup", params)
             .done(() => {
-                sidebar.hideModal();
                 makeToast.call(self, 'success', this.maketext("Add User to Group successfull"));
-                self.user.groups.push({name: selectedValues[0].name, provider: ''});
-                self.$refs.groupSelector.clearSelectedValues();
-            })
-            .fail((xhr) => {
-                sidebar.hideModal();
+                self.$refs.userSelector.clearSelectedValues();
+                //TODO: open view of Group
+            }).fail((xhr) => {
                 var response = JSON.parse(xhr.responseText);
                 makeToast.call(self, 'alert', response.msg);
-            })
+            }).always(() => sidebar.hideModal());
         },
-        removeUserFromGroup(group) {
+        removeUserFromGroup(member) {
             let self = this
             let params = {
-                cuids: this.user.id,
-                group: group.name,
-                wikiName: this.user.wikiName
+                cuids: member.cuid,
+                group: this.group.displayName,
+                wikiName: member.wiki_name
             }
             sidebar.makeModal({
                 type: 'spinner'
@@ -100,8 +113,8 @@ export default {
             .done(() => {
                 sidebar.hideModal();
                 makeToast.call(self, 'success', this.maketext("Removed User from Group successfull"));
-                let index = self.user.groups.indexOf(group);
-                self.user.groups.splice(index, 1);
+                let index = self.group.members.indexOf(member);
+                self.group.members.splice(index, 1);
             })
             .fail((xhr) => {
                 sidebar.hideModal();

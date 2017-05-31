@@ -152,10 +152,26 @@ sub _indexGroups {
     foreach my $group (@$groups) {
         my $members = $db->selectall_arrayref(<<SQL, {Slice => {}}, $group->{cuid});
 SELECT
-    u.cuid, u.login_name, u.wiki_name, u.display_name
-FROM group_members m
-JOIN users u ON m.u_cuid=u.cuid
-WHERE m.g_cuid=?;
+    string_agg(gm.g_cuid::character varying, ', '),string_agg(g.name, ', ') as group_names, string_agg(p.name, ', ') as g_provider_name, u.cuid, u.login_name, u.wiki_name, u.display_name
+FROM
+    (SELECT u_cuid, g_cuid
+        FROM group_members m
+        INNER JOIN
+            (SELECT child
+                FROM nested_groups
+                WHERE parent=\$1) c
+        ON (c.child = m.g_cuid)
+    union
+    SELECT u_cuid, g_cuid
+        FROM group_members
+        WHERE g_cuid=\$1) gm
+JOIN users u
+ON gm.u_cuid=u.cuid
+JOIN groups g
+ON g.cuid=gm.g_cuid
+JOIN providers p
+ON p.pid=g.pid
+GROUP BY u.cuid;
 SQL
 
         my (@memberIDs, @memberDNs, @memberWNs, @memberLNs);
@@ -188,6 +204,7 @@ SQL
           'memberdisplaynames_lst' => \@memberDNs,
           'memberwikinames_lst' => \@memberWNs,
           'memberloginnames_lst' => \@memberLNs,
+          'members_json' => to_json($members),
           'url' => ''
         );
 

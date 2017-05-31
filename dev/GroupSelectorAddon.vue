@@ -16,19 +16,9 @@ export default {
           displayName: doc.groupname_s,
           providerModule: doc.mainproviderdescription_s,
           providerid: doc.providerid_i,
-          members: [],
+          members: JSON.parse(doc.members_json),
           activemembers: doc.activemembers_i
         };
-
-        if(doc.memberids_lst){
-          for(let i = 0; i < doc.memberids_lst.length; i++){
-            groupObject.members.push({
-              id: doc.memberids_lst[i],
-              loginName: doc.memberloginnames_lst[i],
-              displayName: doc.memberdisplaynames_lst[i],
-            });
-          }
-        }
 
         let leftLabels = [];
         for(let i = 0;  i < doc.providers_lst.length; i++){

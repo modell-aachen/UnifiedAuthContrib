@@ -12,7 +12,7 @@
         <div class="section-title">
             <span>{{maketext('Group members')}}</span>
         </div>
-        <user-selector ref="userSelector"></user-selector>
+        <ua-entity-selector user multiple ref="userSelector"></ua-entity-selector>
         <button type="button" v-on:click="registerGroup" class="primary button small pull-right">{{maketext('Register group')}}</button>
     </form>
     </div>
