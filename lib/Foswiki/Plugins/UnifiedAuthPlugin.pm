@@ -182,24 +182,28 @@ sub _registerUser {
 sub _RESTusers {
   my ($session, $subject, $verb, $response) = @_;
   my $q = $session->{request};
-  my $search = $q->param("q");
+  my $searchParam = $q->param("q");
+  my $user = $q->param("user");
+  my $group = $q->param("group");
   my $auth = Foswiki::UnifiedAuth->new();
+  my @search;
 
-  $search = '%' unless $search;
-  $q->{path_info} =~ /$subject\/$verb\/?(.*?)\/?$/;
-  my $entity = $1;
-  if($entity){
-    #TODO: Get/modify user entity
+  $searchParam = '%' unless $searchParam;
+  my $db = _getConnection();
+  my $baseQuery;
+  if($user) {
+      $baseQuery = "select users.display_name as name,users.cuid as id from users where LOWER(display_name) LIKE LOWER(?)";
+      push @search, "%".$searchParam."%";
   }
-  else{
-    my $db = _getConnection();
-    my $baseQuery = "select users.display_name as name,users.cuid as id from users where LOWER(display_name) LIKE LOWER(?)";
-    my $users =  $db->selectall_arrayref($baseQuery, {Slice => {}}, '%'.$search.'%');
-    return to_json($users);
+  if($user && $group){
+      $baseQuery .= " UNION ";
   }
-
-
-  my $id = $q->param("id");
+  if($group){
+      $baseQuery .= "select groups.name as name,groups.cuid as id from groups inner join providers on (groups.pid=providers.pid) where providers.name='__uauth' AND LOWER(groups.name) LIKE LOWER(?) ";
+      push @search, "%".$searchParam."%";
+  }
+  my $result =  $db->selectall_arrayref($baseQuery, {Slice => {}}, @search);
+  return to_json($result);
 }
 
 sub _RESTgroups {

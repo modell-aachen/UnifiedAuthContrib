@@ -1,32 +1,35 @@
 <template>
     <div>
-        <span class="section-title">{{user.displayName}}</span>
-        <div class="row align-middle collapse">
-            <div class="columns small-4 title">{{maketext('WikiName')}}:</div>
-            <div class="columns">{{user.wikiName}}</div>
-        </div>
-        <div class="row align-middle collapse">
-            <div class="columns small-4 title">{{maketext('UID')}}:</div>
-            <div class="columns">{{user.id}}</div>
-        </div>
-        <div class="row align-middle collapse">
-            <div class="columns small-4 title">{{maketext('Email')}}</div>
-            <div class="columns">{{user.email}}</div>
-        </div>
-        <span class="section-title">{{maketext('Group memberships')}}</span>
-        <p v-html="maketext(strings.addUserToGroup, ['<b>'+user.displayName+'</b>'])"></p>
-        <ua-entity-selector group ref="groupSelector"></ua-entity-selector>
-        <button class="primary button small pull-right" @click="addUserToGroup">{{maketext('Add to group')}}</button>
+        <span class="section-title">{{group.displayName}}</span>
+        <span v-html="maketext('Add user or group to the <b>[_1]</b>', group.displayName)"></span>
+        <ua-entity-selector user group multiple ref="userSelector"></ua-entity-selector>
+        <button class="primary button small pull-right" @click="addUserToGroup">{{maketext('Add user/ group')}}</button>
 
+        <br/>
+        <span class="section-title">{{maketext("All contained groups")}}</span>
         <table class="ma-table ma-data-table">
         <thead>
             <tr><th>{{maketext('Name')}}</th><th>{{maketext('Source')}}</th><th></th></tr>
         </thead>
         <tbody>
-            <tr v-for="group in user.groups">
-                <td :title="group.name">{{group.name}}</td>
-                <td :title="group.provider">{{group.provider}}</td>
-                <td :title="maketext('Remove user from group')"><i @click="removeUserFromGroup(group)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
+            <tr v-for="member in group.members">
+                <td :title="member.displayName">{{member.displayName}}</td>
+                <td :title="member.provider"></td>
+                <td :title="maketext('Remove user from group')"><i @click="removeUserFromGroup(member)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
+            </tr>
+        </tbody>
+        </table>
+        <br/>
+        <span class="section-title">{{maketext("All contained users")}}</span>
+        <table class="ma-table ma-data-table">
+        <thead>
+            <tr><th>{{maketext('Name')}}</th><th>{{maketext('Group')}}</th><th></th></tr>
+        </thead>
+        <tbody>
+            <tr v-for="member in group.members">
+                <td :title="member.displayName">{{member.displayName}}</td>
+                <td :title="member.provider"></td>
+                <td :title="maketext('Remove user from group')"><i @click="removeUserFromGroup(member)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
             </tr>
         </tbody>
         </table>
@@ -48,20 +51,13 @@ var makeToast = function(type, msg) {
 export default {
     mixins: [MaketextMixin],
     props: ['propsData'],
-    data() {
-        return {
-            strings: {
-                addUserToGroup: "Add [_1] to an existing group.",
-            },
-        }
-    },
     components: {
         UaEntitySelector
     },
     computed: {
-        user(){
+        group(){
             if(this.propsData){
-                return this.propsData.user;
+                return this.propsData.group;
             }
         }
     },
