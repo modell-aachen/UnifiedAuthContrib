@@ -61,6 +61,12 @@ sub initPlugin {
         validate => 0,
         http_allow => 'POST',
     );
+    Foswiki::Func::registerRESTHandler( 'toggleUserState',
+        \&_toggleUserState,
+        authenticate => 1,
+        validate => 0,
+        http_allow => 'POST',
+    );
     return 1;
 }
 
@@ -343,6 +349,37 @@ sub _updateEmail {
     $indexProvider->indexUser($cuid);
 
     return to_json({status => "ok"});
+}
+
+sub _toggleUserState {
+    my ($session, $subject, $verb, $response) = @_;
+    my $q = $session->{request};
+
+    my $cuid = $q->param("cuid");
+    unless ($cuid) {
+        $response->header(-status => 400);
+        return to_json({status => 'error', msg => "Missing parameter cUID"});
+    }
+
+    my $auth = Foswiki::UnifiedAuth->new();
+    my $db = $auth->db;
+
+    my $user = $db->selectrow_hashref("SELECT * FROM users WHERE users.cuid=?", {}, $cuid);
+    my $deactivated = $user->{deactivated} ? 0 : 1;
+    $auth->update_user('UTF-8', $user->{cuid}, $user->{email}, $user->{display_name}, $deactivated, $user->{password});
+
+    my $provider = $auth->authProvider($session, $auth->getProviderForUser($cuid));
+    $provider->indexUser($cuid);
+
+    Foswiki::Func::writeEvent(
+        "ua",
+        "User $cuid " . ($deactivated ? 'deactivated' : 'activated')
+    );
+
+    return to_json({
+        status => "ok",
+        deactivated => $deactivated ? JSON::true : JSON::false
+    });
 }
 
 sub finishPlugin {

@@ -6,9 +6,9 @@
 /* global jsi18n sidebar $ foswiki */
 import MaketextMixin from './MaketextMixin.vue'
 
-var makeToast = function(type, msg) {
+var makeToast = function(type, msg, closetime) {
     sidebar.makeToast({
-        closetime: 5000,
+        closetime: closetime || 5000,
         color: type,
         text: jsi18n.get("UnifiedAuth", msg)
     });
@@ -25,7 +25,8 @@ export default {
           displayName: doc.displayname_s,
           wikiName: doc.wikiname_s,
           email: doc.email_s,
-          groups: []
+          groups: [],
+          deactivated: !!doc.deactivated_i
         };
 
         if(doc.groupids_lst){
@@ -61,8 +62,51 @@ export default {
             right: [{
               type: 'button',
               color: 'primary',
-              text: jsi18n.get('UnifiedAuth', 'Deactivate user'),
-              callback: () => {}
+              text: jsi18n.get('UnifiedAuth', (userObject.deactivated ? 'Activate' : 'Deactivate') + ' user'),
+              callback: () => {
+                var cuid = sidebar.$vm.contentComponent.propsData.user.id;
+                var dn = sidebar.$vm.contentComponent.propsData.user.displayName;
+                var deactivated = sidebar.$vm.contentComponent.propsData.user.deactivated;
+
+                var toggle = () => {
+                  sidebar.makeModal({type: 'spinner'});
+
+                  $.ajax({
+                    url: foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'toggleUserState'),
+                    method: 'POST',
+                    data: {cuid: cuid},
+                    cache: false
+                  }).done(
+                    (data) => {
+                      var response = JSON.parse(data);
+                      sidebar.$vm.contentComponent.propsData.user.deactivated = response.deactivated;
+                      var msg = 'User ' + (response.deactivated ? 'deactivated' : 'activated');
+                      makeToast.call(self, 'success', msg, 3000);
+                    }
+                  ).fail(
+                    (xhr) => makeToast.call(self, 'alert', JSON.parse(xhr.responseText).msg, 3000)
+                  ).always(sidebar.hideModal);
+                };
+
+                var title = self.maketext((deactivated ? 'Activate' : 'Deactivate') + ' user');
+                sidebar.makeModal({
+                  title: title,
+                  content: self.maketext(
+                    deactivated ? 'Activate access to [_1] for user [_2]?' : "By deactivating the access to [_1] user [_2] won't be able to sign in anymore.",
+                    [foswiki.getPreference('WIKITOOLNAME') || 'Q.wiki', dn]
+                  ),
+                  buttons: {
+                    cancel: {
+                      text: self.maketext("Abort"),
+                      callback: sidebar.hideModal
+                    },
+                    confirm: {
+                      text: title,
+                      callback: () => Vue.nextTick(toggle)
+                    }
+                  }
+                });
+              }
             }, {
               type: 'dropdown',
               color: 'primary',
