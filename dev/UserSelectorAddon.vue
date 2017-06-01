@@ -78,9 +78,19 @@ export default {
                     cache: false
                   }).done(
                     (data) => {
+
                       var response = JSON.parse(data);
+                      var deactivated = response.deactivated;
                       sidebar.$vm.contentComponent.propsData.user.deactivated = response.deactivated;
                       var msg = 'User ' + (response.deactivated ? 'deactivated' : 'activated');
+
+                      // Smell: This should be done by bindings...
+                      var badge = leftLabels.pop();
+                      badge.color = deactivated ? 'alert' : 'success';
+                      badge.text = jsi18n.get('UnifiedAuth', deactivated == 0 ? 'Active' : 'Deactivated');
+                      leftLabels.push(badge);
+                      o.header.right[0].text = jsi18n.get('UnifiedAuth', (deactivated ? 'Activate' : 'Deactivate') + ' user');
+
                       makeToast.call(self, 'success', msg, 3000);
                     }
                   ).fail(
