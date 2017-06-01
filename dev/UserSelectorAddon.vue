@@ -17,9 +17,9 @@ export default {
     mixins: [MaketextMixin],
     props: ['api'],
     created: function(){
-      let self = this;
+      var self = this;
       this.api.registerEntryClickHandler(function(doc){
-        let userObject = {
+        var userObject = {
           id: doc.cuid_s,
           providerModule: doc.mainprovidermodule_s,
           displayName: doc.displayname_s,
@@ -29,7 +29,7 @@ export default {
         };
 
         if(doc.groupids_lst){
-          for(let i = 0; i < doc.groupids_lst.length; i++){
+          for(var i = 0; i < doc.groupids_lst.length; i++){
             userObject.groups.push({
               id: doc.groupids_lst[i],
               name: doc.groupnames_lst[i],
@@ -38,12 +38,12 @@ export default {
           }
         }
 
-        let leftLabels = [];
-        for(let i = 0;  i < doc.providers_lst.length; i++){
+        var leftLabels = [];
+        for(var j = 0;  j < doc.providers_lst.length; j++){
           leftLabels.push({
             type: 'label',
             color: 'secondary',
-            text: doc.providers_lst[i]
+            text: doc.providers_lst[j]
           });
         }
 
@@ -107,7 +107,7 @@ export default {
                               confirm: {
                                   text: self.maketext("Change Email address"),
                                   callback: function() {
-                                      let params = {
+                                      var params = {
                                           cuid: sidebar.$vm.contentComponent.propsData.user.id,
                                           email: document.getElementsByName("email")[0].value,
                                           wikiname: sidebar.$vm.contentComponent.propsData.user.wikiName

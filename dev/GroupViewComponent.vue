@@ -61,13 +61,13 @@ export default {
             }
         },
         nestedGroups(){
-             let result = [];
-             let lookup = {[this.group.displayName]: 1};
+             var result = [];
+             var lookup = {[this.group.displayName]: 1};
              for(var i = 0; i < this.group.members.length; i++){
-                let group_name = this.group.members[i].group_names;
-                let group_names = group_name.split(", ");
-                let p_name = this.group.members[i].g_provider_name;
-                let p_names = p_name.split(", ");
+                var group_name = this.group.members[i].group_names;
+                var group_names = group_name.split(", ");
+                var p_name = this.group.members[i].g_provider_name;
+                var p_names = p_name.split(", ");
                 for(var j = 0; j < p_names.length; j++){
                     if(!(group_names[j] in lookup)) {
                         lookup[group_names[j]] = 1;
@@ -81,8 +81,8 @@ export default {
     methods: {
         addUserToGroup() {
             var self = this;
-            let selectedValues = this.$refs.userSelector.getSelectedValues();
-            let params = {
+            var selectedValues = this.$refs.userSelector.getSelectedValues();
+            var params = {
                 group: {name: this.group.displayName},
                 cuids: selectedValues,
                 create: 0
@@ -100,8 +100,8 @@ export default {
             }).always(() => sidebar.hideModal());
         },
         removeUserFromGroup(member) {
-            let self = this
-            let params = {
+            var self = this
+            var params = {
                 cuids: member.cuid,
                 group: this.group.displayName,
                 wikiName: member.wiki_name
@@ -113,7 +113,7 @@ export default {
             .done(() => {
                 sidebar.hideModal();
                 makeToast.call(self, 'success', this.maketext("Removed User from Group successfull"));
-                let index = self.group.members.indexOf(member);
+                var index = self.group.members.indexOf(member);
                 self.group.members.splice(index, 1);
             })
             .fail((xhr) => {

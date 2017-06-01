@@ -67,9 +67,9 @@ export default {
     },
     methods: {
         addUserToGroup() {
-            let selectedValues = this.$refs.groupSelector.getSelectedValues();
-            let self = this
-            let params = {
+            var selectedValues = this.$refs.groupSelector.getSelectedValues();
+            var self = this
+            var params = {
                 cuid: this.user.id,
                 group: selectedValues[0],
                 wikiName: this.user.wikiName
@@ -91,8 +91,8 @@ export default {
             })
         },
         removeUserFromGroup(group) {
-            let self = this
-            let params = {
+            var self = this
+            var params = {
                 cuids: this.user.id,
                 group: group.name,
                 wikiName: this.user.wikiName
@@ -104,7 +104,7 @@ export default {
             .done(() => {
                 sidebar.hideModal();
                 makeToast.call(self, 'success', this.maketext("Removed User from Group successfull"));
-                let index = self.user.groups.indexOf(group);
+                var index = self.user.groups.indexOf(group);
                 self.user.groups.splice(index, 1);
             })
             .fail((xhr) => {

@@ -46,7 +46,7 @@ export default {
     },
     methods: {
         getOptions(search, loading, offset) {
-            let params = {
+            var params = {
                 q: search,
                 limit: this.limit,
                 page: offset,

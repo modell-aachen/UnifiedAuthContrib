@@ -49,8 +49,8 @@ export default {
     methods: {
         registerGroup() {
             var self = this;
-            let selectedValues = this.$refs.userSelector.getSelectedValues();
-            let params = {
+            var selectedValues = this.$refs.userSelector.getSelectedValues();
+            var params = {
                 group: {name: this.groupData.name},
                 cuids: selectedValues,
                 create: 1
