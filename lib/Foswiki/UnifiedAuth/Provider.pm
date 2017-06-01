@@ -157,9 +157,17 @@ FROM
     (SELECT u_cuid, g_cuid
         FROM group_members m
         INNER JOIN
-            (SELECT child
-                FROM nested_groups
-                WHERE parent=\$1) c
+            (WITH RECURSIVE r(parent, child) AS (
+                SELECT parent, child
+                    FROM nested_groups
+                    WHERE parent=\$1
+                UNION
+                SELECT n.parent as parent, n.child as child
+                FROM r
+                LEFT OUTER JOIN nested_groups n
+                ON r.child=n.parent
+                WHERE r.parent IS NOT NULL)
+            SELECT * FROM r) c
         ON (c.child = m.g_cuid)
     union
     SELECT u_cuid, g_cuid
