@@ -196,6 +196,7 @@ FROM group_members m
 JOIN users u ON m.u_cuid=u.cuid
 WHERE u.deactivated=0 AND m.g_cuid=?;
 SQL
+        my $canChange = ($group->{name} =~ m/Group$/ && Foswiki::Func::topicExists($Foswiki::cfg{UsersWebName}, $group->{name}));
         my $grpdoc = $indexer->newDocument();
         $grpdoc->add_fields(
           'id' => $group->{cuid},
@@ -213,6 +214,7 @@ SQL
           'memberwikinames_lst' => \@memberWNs,
           'memberloginnames_lst' => \@memberLNs,
           'members_json' => to_json($members),
+          'canChange_s' => $canChange,
           'url' => ''
         );
 

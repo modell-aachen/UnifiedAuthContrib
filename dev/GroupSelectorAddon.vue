@@ -17,7 +17,8 @@ export default {
                 providerModule: doc.mainproviderdescription_s,
                 providerid: doc.providerid_i,
                 members: JSON.parse(doc.members_json),
-                activemembers: doc.activemembers_i
+                activemembers: doc.activemembers_i,
+                canChange: doc.canChange_s == 1 ? true : false
             };
 
             var leftLabels = [];

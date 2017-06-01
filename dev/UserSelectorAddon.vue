@@ -3,7 +3,7 @@
 </template>
 
 <script>
-/* global jsi18n sidebar $ foswiki */
+/* global jsi18n sidebar $ foswiki Vue */
 import MaketextMixin from './MaketextMixin.vue'
 
 var makeToast = function(type, msg, closetime) {

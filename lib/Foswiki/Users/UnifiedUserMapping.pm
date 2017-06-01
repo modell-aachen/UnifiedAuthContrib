@@ -841,6 +841,12 @@ sub addUserToGroup {
         );
     }
 
+    if (!$create && !Foswiki::Func::topicExists($grpWeb, $grpName)) {
+        throw Error::Simple(
+            $this->{session}->i18n->maketext(
+                'Users cannot be added to [_1]', $grpName)
+        );
+    }
     my $actor = $this->_userToCUID($this->{session}->{user});
     my $actor_wikiname = $this->getWikiName($actor);
     my $isGroup = $this->isGroup($grpName);
@@ -929,6 +935,12 @@ sub removeUserFromGroup {
         )
     ) if ($grpName eq "$Foswiki::cfg{SuperAdminGroup}" && $cuid eq 'BaseUserMapping_333');
 
+    if (!Foswiki::Func::topicExists($grpWeb, $grpName)) {
+        throw Error::Simple(
+            $this->{session}->i18n->maketext(
+                'Users cannot be added to [_1]', $grpName)
+        );
+    }
     if ($this->isGroup($grpName)) {
         my $db = $this->{uac}->db;
         my $grp = $db->selectrow_hashref(

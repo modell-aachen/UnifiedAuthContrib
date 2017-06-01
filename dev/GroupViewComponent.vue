@@ -17,7 +17,7 @@
             <tr v-for="group in nestedGroups">
                 <td :title="group.name">{{group.name}}</td>
                 <td :title="group.provider">{{group.provider}}</td>
-                <td :title="maketext('Remove group from group')"><i @click="removeUserFromGroup(group)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
+                <td :title="maketext('Remove group from group')"><i v-if="canChange" @click="removeUserFromGroup(group)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
             </tr>
         </tbody>
         </table>
@@ -31,7 +31,7 @@
             <tr v-for="member in group.members">
                 <td :title="member.display_name">{{member.display_name}}</td>
                 <td :title="member.group_names">{{member.group_names}}</td>
-                <td :title="maketext('Remove user from group')"><i v-if="member.group_names.match(group.displayName)" @click="removeUserFromGroup(member)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
+                <td :title="maketext('Remove user from group')"><i v-if="canModifyGroup && member.group_names.match(group.displayName)" @click="removeUserFromGroup(member)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
             </tr>
         </tbody>
         </table>
@@ -63,7 +63,7 @@ export default {
             }
         },
         canModifyGroup(){
-            return !/(NobodyGroup|BaseGroup)/.test(this.group.displayName) && /Group$/.test(this.group.displayName)
+            return !/(NobodyGroup|BaseGroup)/.test(this.group.displayName) && this.group.canChange;
         },
         nestedGroups(){
              var result = [];
