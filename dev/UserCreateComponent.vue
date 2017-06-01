@@ -86,8 +86,8 @@ export default {
     },
     methods: {
         getLink() {
-            var local_name = this.maketext("unique name");
-            return this.maketext("Your name that is visible in Q.wiki. This has to be a [_1].", ["<a href='" + this.wikiNameLink + "' target='_blank'>" + local_name + "</a>"]);
+            var local_name = this.maketext("unique WikiName");
+            return this.maketext("Your name that is visible in [_1]. This has to be a [_2].", [foswiki.getPreference('WIKITOOLNAME'),"<a href='" + this.wikiNameLink + "' target='_blank'>" + local_name + "</a>"]);
         },
         registerUser() {
             var self = this;

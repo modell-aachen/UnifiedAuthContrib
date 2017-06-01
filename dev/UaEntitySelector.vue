@@ -44,13 +44,6 @@ export default {
             return debounce(this.getOptions, 300);
         }
     },
-    watch: {
-        Characteristics(){
-            this.moreResultsText = "Show more results";
-            console.log("what to do?");
-            //this.options = this.facetCharacteristics;
-        }
-    },
     methods: {
         getOptions(search, loading, offset) {
             let params = {
@@ -90,16 +83,15 @@ export default {
             this.getOptions(search, loading);
         },
         getOptionLabel(option){
-            return option.wikiname;
+            return option[this.label];
         },
         getSelectedValues() {
             return this.selectedValues;
         },
         getSelectedValuesLabel(option) {
-            return option.wikiname;
+            return option[this.label];
         },
         onGetMoreOptions(search, loading) {
-            console.log("getMOre");
             this.getOptions(search,loading, this.options.length);
         },
         clearSelectedValues(){

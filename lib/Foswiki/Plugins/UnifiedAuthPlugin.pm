@@ -37,13 +37,6 @@ sub initPlugin {
         http_allow => 'GET',
     );
 
-    #XXX: obsolet function
-    Foswiki::Func::registerRESTHandler( 'groups',
-        \&_RESTgroups,
-        authenticate => 0,
-        validate => 0,
-        http_allow => 'GET',
-    );
     Foswiki::Func::registerRESTHandler( 'addUsersToGroup',
         \&_addUsersToGroup,
         authenticate => 1,
@@ -210,28 +203,6 @@ sub _RESTusers {
         $entry->{'id'} = $entry->{'cuid'} ;
     }
     return to_json($result);
-}
-
-#XXX: obsolet function
-sub _RESTgroups {
-    my ($session, $subject, $verb, $response) = @_;
-    my $q = $session->{request};
-    my $auth = Foswiki::UnifiedAuth->new();
-
-    $q->{path_info} =~ /$subject\/$verb\/?(.*?)\/?$/;
-    my $entity = $1;
-    if($entity){
-        #TODO: Get/modifiy group entity
-    }
-    else{
-        my $db = _getConnection();
-        my $baseQuery = "select groups.name as name,groups.cuid as id from groups inner join providers on (groups.pid=providers.pid) where providers.name='__uauth'";
-        my $groups =  $db->selectall_arrayref($baseQuery, {Slice => {}});
-        return to_json($groups);
-    }
-
-
-    my $id = $q->param("id");
 }
 
 sub _addUsersToGroup {

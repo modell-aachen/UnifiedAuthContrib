@@ -34,14 +34,6 @@ export default {
           contentComponent: { name: "group-view-component", propsData: {group: groupObject}},
           header: {
             left: leftLabels,
-          },
-          footer: {
-            right: [{
-                type: 'button',
-                color: 'secondary',
-                text: jsi18n.get('UnifiedAuth', 'Close'),
-                callback: function() {sidebar.hide();}
-            }]
           }
       };
 
