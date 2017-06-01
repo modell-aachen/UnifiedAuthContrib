@@ -152,7 +152,7 @@ sub _indexGroups {
     foreach my $group (@$groups) {
         my $members = $db->selectall_arrayref(<<SQL, {Slice => {}}, $group->{cuid});
 SELECT
-    string_agg(gm.g_cuid::character varying, ', '),string_agg(g.name, ', ') as group_names, string_agg(p.name, ', ') as g_provider_name, u.cuid, u.login_name, u.wiki_name, u.display_name
+    string_agg(gm.g_cuid::character varying, ', ') as g_cuids,string_agg(g.name, ', ') as group_names, string_agg(p.name, ', ') as g_provider_name, u.cuid, u.login_name, u.wiki_name, u.display_name
 FROM
     (SELECT u_cuid, g_cuid
         FROM group_members m

@@ -1,9 +1,11 @@
 <template>
     <div>
         <span class="section-title">{{group.displayName}}</span>
-        <span v-html="maketext('Add user or group to the <b>[_1]</b>', group.displayName)"></span>
-        <ua-entity-selector user group multiple ref="userSelector"></ua-entity-selector>
-        <button class="primary button small pull-right" @click="addUserToGroup">{{maketext('Add user/ group')}}</button>
+        <template v-if="canModifyGroup">
+            <span v-html="maketext('Add user or group to the <b>[_1]</b>', group.displayName)"></span>
+            <ua-entity-selector user group multiple ref="userSelector"></ua-entity-selector>
+            <button class="primary button small pull-right" @click="addUserToGroup">{{maketext('Add user/ group')}}</button>
+        </template>
 
         <br/>
         <span class="section-title">{{maketext("All contained groups")}}</span>
@@ -59,6 +61,9 @@ export default {
             if(this.propsData){
                 return this.propsData.group;
             }
+        },
+        canModifyGroup(){
+            return !/(NobodyGroup|BaseGroup)/.test(this.group.displayName) && /Group$/.test(this.group.displayName)
         },
         nestedGroups(){
              var result = [];

@@ -11,7 +11,6 @@ export default {
     props: ['api'],
     created: function(){
         this.api.registerEntryClickHandler(function(doc){
-            console.log(doc);
             var groupObject = {
                 id: doc.cuid_s,
                 displayName: doc.groupname_s,
