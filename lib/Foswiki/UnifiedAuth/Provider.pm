@@ -83,6 +83,7 @@ sub _indexUsers {
     my $provider = $Foswiki::cfg{UnifiedAuth}{Providers}{$this->{id}};
     my $pid = $this->getPid();
 
+    $indexer->deleteByQuery("type:\"ua_user\" providerid_i:\"$pid\"");
     my $userQuery = 'SELECT * FROM users WHERE pid=?';
     if($cuid) {
         my $quoted = $db->quote($cuid);

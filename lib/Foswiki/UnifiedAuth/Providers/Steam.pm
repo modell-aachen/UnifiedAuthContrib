@@ -162,7 +162,12 @@ sub processLogin {
                 my $charset = 'UTF-8'; # XXX
                 my $email = '';
                 my $wiki_name = "SteamUser$login";
-                $cuid = $uauth->add_user($charset, $pid, undef, $email, $login, $wiki_name, $login);
+                $cuid = $uauth->add_user($charset, $pid, {
+                    email => $email,
+                    login_name => $login,
+                    wiki_name => $wiki_name,
+                    display_name => $login
+                });
                 Foswiki::Func::writeWarning("New steam user: $login ($cuid)");
             }
         },

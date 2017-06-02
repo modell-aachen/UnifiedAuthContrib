@@ -468,22 +468,21 @@ sub _updateEmail {
 
     my $cuid = $q->param("cuid");
     my $email = $q->param("email");
-    my $wikiName = $q->param("wikiname");
 
     unless ($email && $cuid) {
         $response->header(-status => 400);
         return to_json({status => 'error', msg => "Missing params"});
     }
 
-    my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiName));
+    my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($cuid));
     unless ($indexProvider->{name} =~ /Topic/) {
         $response->header(-status => 400);
         return to_json({status => 'error', msg => "Function only supported for topic provider"});
     }
 
-    my $db = $auth->db;
-    my $userinfo = $db->selectrow_hashref("SELECT cuid, display_name, deactivated, password FROM users WHERE users.cuid=?", {}, $cuid);
-    $auth->update_user('UTF-8', $userinfo->{cuid}, $email, $userinfo->{display_name}, $userinfo->{deactivated}, $userinfo->{password});
+    $auth->update_user('UTF-8', $cuid, {
+        email => $email
+    });
     $indexProvider->indexUser($cuid);
 
     return to_json({status => "ok"});
@@ -504,7 +503,9 @@ sub _toggleUserState {
 
     my $user = $db->selectrow_hashref("SELECT * FROM users WHERE users.cuid=?", {}, $cuid);
     my $deactivated = $user->{deactivated} ? 0 : 1;
-    $auth->update_user('UTF-8', $user->{cuid}, $user->{email}, $user->{display_name}, $deactivated, $user->{password});
+    $auth->update_user('UTF-8', $user->{cuid}, {
+        deactivated => $deactivated
+    });
 
     my $provider = $auth->authProvider($session, $auth->getProviderForUser($cuid));
     $provider->indexUser($cuid);

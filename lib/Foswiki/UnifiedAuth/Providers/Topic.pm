@@ -98,9 +98,9 @@ sub setPassword {
     if ($newUserPassword) {
         $pwHash = _generatePwHash($newUserPassword);
     }
-    my $db = $uauth->db;
-    my $userinfo = $db->selectrow_hashref("SELECT cuid, email, display_name, deactivated FROM users WHERE users.login_name=?", {}, $login);
-    my $cuid = $uauth->update_user('UTF-8', $userinfo->{cuid}, $userinfo->{email}, $userinfo->{display_name}, $userinfo->{deactivated}, $pwHash);
+    my $cuid = $uauth->update_user('UTF-8', $userinfo->{cuid}, {
+        password => $pwHash
+    });
     my $cgis = $this->{session}->getCGISession();
     $cgis->param('force_set_pw', 0);
     $uauth->update_reset_request('UTF-8', $userinfo->{cuid}, undef, undef);
@@ -257,7 +257,13 @@ sub addUser {
         if (!$import && $password) {
             $pwHash = _generatePwHash($password);
         }
-        $cuid = $auth->add_user('UTF-8', $pid, undef, $emails, $login, $wikiname, $wikiname, 0, $pwHash);
+        $cuid = $auth->add_user('UTF-8', $pid, {
+            email => $emails,
+            login_name => $login,
+            wiki_name => $wikiname,
+            display_name => $wikiname,
+            password => $pwHash
+        });
 
         my $addedWikiName = $this->{session}->{users}->getWikiName($cuid);
         unless($addedWikiName eq $wikiname) {
