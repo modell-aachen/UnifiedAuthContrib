@@ -10,7 +10,8 @@ our $RELEASE = "1.0";
 our $SHORTDESCRIPTION = 'User management supporting multiple authentication and data sources';
 
 our $SITEPREFS = {
-    USER_CREATE_ALLOW_CHANGE_LOGINNAME => 0
+    USER_CREATE_ALLOW_CHANGE_LOGINNAME => 0,
+    PASSWORD_RESET_DURATION => 24
 };
 
 sub maintenanceHandler {
