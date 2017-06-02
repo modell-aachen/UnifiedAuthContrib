@@ -100,7 +100,7 @@ export default {
             sidebar.makeModal({
                 type: 'spinner'
             });
-            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'removeUserFromGroup'), params)
+            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'removeUserFromGroup'), {params: JSON.stringify(params)})
             .done(() => {
                 sidebar.hideModal();
                 makeToast.call(self, 'success', this.maketext("Removed User from Group successfull"));
