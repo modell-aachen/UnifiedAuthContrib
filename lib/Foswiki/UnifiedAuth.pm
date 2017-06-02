@@ -28,7 +28,7 @@ my @schema_updates = (
             display_name TEXT NOT NULL,
             email TEXT NOT NULL,
             password CHAR(135),
-            deactivated INTEGER DEFAULT 0
+            deactivated INTEGER DEFAULT 0,
         )",
         "CREATE UNIQUE INDEX idx_wiki_name ON users (wiki_name)",
         "CREATE UNIQUE INDEX idx_cuid ON users (cuid)",
@@ -61,6 +61,10 @@ my @schema_updates = (
             child UUID NOT NULL,
             PRIMARY KEY (parent, child)
         )"
+    ],
+    [
+        "ALTER TABLE users ADD COLUMN reset_id Char(20), ADD COLUMN reset_limit INTEGER",
+        "UPDATE meta SET version=1 WHERE type='core'"
     ]
 );
 
@@ -147,7 +151,7 @@ my %normalizers = (
 
 sub guid {
     my $this = shift;
-    Data::GUID->guid;
+    lc(Data::GUID->guid);
 }
 
 sub getCUID {
@@ -264,6 +268,12 @@ sub update_user {
     $deactivated = 0 unless defined $deactivated;
     _uni($charset, $cuid, $display_name, $email);
     return $this->db->do("UPDATE users SET display_name=?, email=?, deactivated=?, password=? WHERE cuid=?", {}, $display_name, $email, $deactivated, $password, $cuid);
+}
+
+sub update_reset_request {
+    my ($this, $charset, $cuid, $reset_id, $reset_limit) = @_;
+    _uni($charset, $cuid, $reset_id, $reset_limit);
+    return $this->db->do("UPDATE users SET reset_id=?, reset_limit=? WHERE cuid=?", {}, $reset_id, $reset_limit, $cuid);
 }
 
 sub update_wikiname {

@@ -47,7 +47,7 @@ jsi18n.add('UnifiedAuth', {
       "You can use this form to change your registered e-mail address.": "Mit diesem Formular können Sie Ihre registrierte E-Mail-Adresse ändern.",
       "Currently known e-mail address": "Derzeit bekannte E-Mail-Adresse",
       "New e-mail address": "Neue E-Mail-Adresse",
-      "Abort": "Abbruch",
+      "Abort": "Abbrechen",
       "Email address changed": "E-Mail-Adresse geändert",
       "Function only supported for topic provider": "Funktion wird nur für Topic-Provider unterstützt",
       "Register new group": "Neue Gruppe anlegen",
@@ -61,5 +61,7 @@ jsi18n.add('UnifiedAuth', {
        "Add user/ group": "Butzer/ Gruppe hinzufügen",
        "All contained groups": "Alle enthaltenen Gruppen",
        "All contained users": "Alle enthaltenen Nutzer",
-       "Group": "Gruppe"
+       "Group": "Gruppe",
+       "After submitting this form the user will receive an email with a link to reset the password.":"Nach Absenden dieses Formulars erhält der Nutzer eine E-Mail mit einem Link um sein Passwort neu zu setzen.",
+       "Reset password mail sent.":"Email erfolgreich gesendet"
 });

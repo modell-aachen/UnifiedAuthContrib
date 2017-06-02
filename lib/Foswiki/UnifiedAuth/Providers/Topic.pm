@@ -67,6 +67,18 @@ sub _generatePwHash {
     return $pbkdf2->generate($password);
 }
 
+sub rndStr{
+    my $strLength = shift;
+    my @classes = @_;
+    join '', @classes[ map{ rand @classes } 1 .. $strLength ];
+}
+
+sub generateResetId {
+    my $random = rndStr(20, 'A'..'Z', 0..9, 'a'..'z' );
+    return $random;
+}
+
+
 sub setPassword {
     my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
 
@@ -91,6 +103,7 @@ sub setPassword {
     my $cuid = $uauth->update_user('UTF-8', $userinfo->{cuid}, $userinfo->{email}, $userinfo->{display_name}, $userinfo->{deactivated}, $pwHash);
     my $cgis = $this->{session}->getCGISession();
     $cgis->param('force_set_pw', 0);
+    $uauth->update_reset_request('UTF-8', $userinfo->{cuid}, undef, undef);
 
     $this->{error} = undef;
     return 1;
@@ -257,6 +270,7 @@ sub addUser {
 }
 
 sub processLoginData {
+
     my ( $this, $login, $password ) = @_;
 
     my ($cuid, $change_password) = $this->_checkPassword($login, $password);

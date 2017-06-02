@@ -6,6 +6,7 @@ use strict;
 use warnings;
 
 use Foswiki::Func;
+use Foswiki::Prefs;
 use Foswiki::Contrib::PostgreContrib;
 use Foswiki::UnifiedAuth;
 use Foswiki::Contrib::MailTemplatesContrib;
@@ -60,6 +61,12 @@ sub initPlugin {
                                         authenticate => 1,
                                         validate => 0,
                                         http_allow => 'POST',
+                                      );
+    Foswiki::Func::registerRESTHandler( 'setPassword',
+                                        \&_setPassword,
+                                        authenticate => 0,
+                                        validate => 0,
+                                        http_allow => 'GET,POST',
                                       );
     Foswiki::Func::registerRESTHandler( 'updateEmail',
                                         \&_updateEmail,
@@ -310,27 +317,140 @@ sub _removeUserFromGroup {
   return to_json({status => "ok"});
 }
 
+# handler for setting the user password with link
 sub _resetPassword {
   my ($session, $subject, $verb, $response) = @_;
   my $q = $session->{request};
   my $auth = Foswiki::UnifiedAuth->new();
 
   my $cuid = $q->param("cuid");
-  my $wikiName = $q->param("wikiName");
+  my $wikiname = $q->param("wikiname");
 
-  unless ($wikiName && $cuid) {
+  my $db = $auth->db;
+  my $userinfo = $db->selectrow_hashref("SELECT cuid, email FROM users WHERE users.cuid=?", {}, $cuid);
+
+  unless ($wikiname && $cuid) {
     $response->header(-status => 400);
     return to_json({status => 'error', msg => "Missing params"});
   }
-  my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiName));
+  # check for TopicProvider
+  my $indexProvider = $auth->authProvider($session, $auth->getProviderForUser($wikiname));
   unless ($indexProvider->{name} =~ /Topic/) {
     $response->header(-status => 400);
     return to_json({status => 'error', msg => "Function only supported for topic provider"});
   }
-  #TODO: Send Mail with reset link.
+
+  my $resetid = $indexProvider->generateResetId();
+  my $timestamp = time();
+  my $duration = 24; # in hours
+
+  my $prefs = Foswiki::Prefs->new($session);
+  $prefs->loadSitePreferences();
+  my $prefValue = $prefs->getPreference("PASSWORD_RESET_DURATION");
+  $prefs->finish();
+
+  $duration = $prefValue if $prefValue;
+  my $resetLimit = $timestamp + ($duration*3600);
+
+  $auth->update_reset_request('UTF-8', $cuid, $resetid, $resetLimit);
+
+  my $email = $userinfo->{email};
+  my $mailPreferences = {
+    REGISTRATION_MAIL => $userinfo->{email},
+    RESET_ID => $resetid,
+    RESET_LIMIT => $duration
+  };
+
+  Foswiki::Contrib::MailTemplatesContrib::sendMail("uauth_resetnotify", {GenerateInAdvance => 1}, $mailPreferences, 1);
 
   return to_json({status => "ok"});
 }
+
+
+sub _setPassword {
+  my ($session, $subject, $verb, $response) = @_;
+  my $q = $session->{request};
+
+  my $auth = Foswiki::UnifiedAuth->new();
+  my $db = $auth->db;
+
+  my $resetid = $q->param("resetid");
+
+  unless($resetid){
+    $response->header(-status => 500);
+    return to_json({status => "error"});
+  }
+
+  my $resetinfo = $db->selectrow_hashref("SELECT cuid, reset_limit FROM users WHERE users.reset_id=?", {}, $resetid);
+  unless($resetinfo){
+    Foswiki::Func::writeWarning("db returned no info for resetid $resetid");
+    $response->header(-status => 403);
+    return to_json({status => "error"});
+  }
+
+  return to_json({status => "time limit exceeded"}) unless $resetinfo->{reset_limit}>time();
+
+  my $username = $q->param("username");
+  my $newPassword = $q->param("password");
+  my $newPasswordA = $q->param("passwordA");
+
+  unless( $newPassword && $newPasswordA && $newPassword eq $newPasswordA ){
+    Foswiki::Func::writeWarning("Missmatch between passwords.");
+    $username = undef;
+    $response->header(-status => 500);
+    $response->pushHeader("message", "Passwords don't match.");
+    # return to_json({status => "error", msg => "Passwords don't match."});
+  }
+
+  unless ( $username && $newPassword ) {
+    my $path = '%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib';
+    Foswiki::Func::addToZone(
+      'head',
+      'uauth:css',
+      "<link rel=\"stylesheet\" type=\"text/css\" media=\"all\" href=\"$path/css/uauth.css?version=$RELEASE\" />"
+    );
+
+    my $tml = Foswiki::Func::loadTemplate( 'oopssetpassword' );
+    $tml = Foswiki::Func::expandCommonVariables($tml);
+    my $html = Foswiki::Func::renderText($tml);
+    return $html;
+  }
+
+  # check for combination of manually given username and resetid
+  $resetinfo = $db->selectrow_hashref("SELECT cuid, reset_limit FROM users WHERE users.reset_id=? AND (users.wiki_name=? OR users.login_name=?)", {}, $resetid, $username, $username);
+
+  unless ( $resetinfo->{cuid} ){
+    Foswiki::Func::writeWarning("No db entry for the combination of username $username and reset_id $resetid.");
+    $response->header(-status => 403);
+    return to_json({status => "denied"});
+  }
+
+  my %providers = %{$Foswiki::cfg{UnifiedAuth}{Providers}};
+  my $topicProvider;
+  while (my ($id, $hash) = each %providers) {
+    next unless $hash->{module} =~ /^Topic$/;
+    $topicProvider = $auth->authProvider($session, $id);
+    last;
+  }
+
+  unless($topicProvider){
+    $response->header(-status => 500);
+    return to_json({status => 'error', msg => "User provider (TOPIC) not configured"});
+  }
+
+  unless($topicProvider->enabled){
+    $response->header(-status => 500);
+    return to_json({status => 'error', msg => "User provider (TOPIC) disabled"});
+  }
+
+  my $result;
+  eval {
+    $result = $topicProvider->setPassword($username, $newPassword, '1');
+  };
+
+  Foswiki::Func::redirectCgiQuery( undef, $Foswiki::cfg{DefaultUrlHost});
+}
+
 
 sub _updateEmail {
   my ($session, $subject, $verb, $response) = @_;

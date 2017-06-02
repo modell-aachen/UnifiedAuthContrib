@@ -71,21 +71,43 @@ export default {
                 {
                   text: jsi18n.get('UnifiedAuth', 'Reset password'),
                   callback: () => {
+                    if(sidebar.$vm.contentComponent.propsData.user.providerModule != 'Topic') {
+                      makeToast.call(self, 'alert', "Function only supported for topic provider");
+                      return;
+                    }
                     sidebar.makeModal({
-                        title: "Reset password",
-                        content: "bla bla bla",
-                        buttons: {
-                            cancel: {
-                                text: 'Abort',
-                                callback: function() { sidebar.hideModal(); }
-                            },
-                            confirm: {
-                                text: 'Reset password',
-                                callback: function() {
-                                    sidebar.hideModal();
-                                }
-                            },
-                        }
+                      title: self.maketext("Reset password"),
+                      content: self.maketext("After submitting this form the user will receive an email with a link to reset the password."),
+                      buttons: {
+                        cancel: {
+                          text: self.maketext("Abort"),
+                          callback: function() { sidebar.hideModal(); }
+                        },
+                        confirm: {
+                          text: self.maketext("Reset password"),
+                          callback: function() {
+                            var params = {
+                              cuid: sidebar.$vm.contentComponent.propsData.user.id,
+                              wikiname: sidebar.$vm.contentComponent.propsData.user.wikiName
+                            };
+                            sidebar.makeModal({
+                              type: 'spinner'
+                            });
+                            $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/resetPassword", params)
+                            .done(() => {
+                              sidebar.hideModal();
+                              makeToast.call(self, 'success', self.maketext("Reset password mail sent."));
+                              sidebar.hideModal();
+                            })
+                            .fail((xhr) => {
+                               sidebar.hideModal();
+                               var response = JSON.parse(xhr.responseText);
+                               makeToast.call(self, 'alert', self.maketext(response.msg));
+                            })
+                            sidebar.hideModal();
+                          }
+                        },
+                      }
                     });
                   }
                 },
