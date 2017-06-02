@@ -212,7 +212,7 @@ sub add_user {
         push @fields, $k;
         push @query, '?';
     }
-    _uni($charset, $userinfo);
+    _uni($charset, @args);
     my @normalizers = split(/\s*,\s*/, $Foswiki::cfg{UnifiedAuth}{WikiNameNormalizers} || '');
     foreach my $n (@normalizers) {
         next if $n =~ /^\s*$/;
