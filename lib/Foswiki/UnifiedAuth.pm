@@ -67,7 +67,7 @@ my @schema_updates = (
         "UPDATE meta SET version=1 WHERE type='core'"
     ], [
         "ALTER TABLE IF EXISTS users ADD COLUMN uac_disabled INTEGER DEFAULT 0",
-        "UPDATE meta SET version=1 WHERE type='core'"
+        "UPDATE meta SET version=2 WHERE type='core'"
     ]
 );
 

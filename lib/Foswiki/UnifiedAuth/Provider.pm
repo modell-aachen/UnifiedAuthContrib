@@ -83,11 +83,13 @@ sub _indexUsers {
     my $provider = $Foswiki::cfg{UnifiedAuth}{Providers}{$this->{id}};
     my $pid = $this->getPid();
 
-    $indexer->deleteByQuery("type:\"ua_user\" providerid_i:\"$pid\"");
     my $userQuery = 'SELECT * FROM users WHERE pid=?';
     if($cuid) {
         my $quoted = $db->quote($cuid);
         $userQuery .= " AND cuid=$quoted";
+        $indexer->deleteByQuery("type:\"ua_user\" cuid_s:\"$cuid\"");
+    } else {
+        $indexer->deleteByQuery("type:\"ua_user\" providerid_i:\"$pid\"");
     }
 
     my $users = $db->selectall_arrayref($userQuery, {Slice => {}}, $pid);
@@ -146,7 +148,10 @@ sub _indexGroups {
     my $groupQuery = 'SELECT * FROM groups WHERE pid=?';
     if($cuid) {
         my $quoted = $db->quote($cuid);
-        $groupQuery .= " AND cuid=$quoted"
+        $groupQuery .= " AND cuid=$quoted";
+        $indexer->deleteByQuery("type:\"ua_group\" cuid_s:\"$cuid\"");
+    } else {
+        $indexer->deleteByQuery("type:\"ua_group\" providerid_i:\"$pid\"");
     }
 
     my $groups = $db->selectall_arrayref($groupQuery, {Slice => {}}, $pid);
