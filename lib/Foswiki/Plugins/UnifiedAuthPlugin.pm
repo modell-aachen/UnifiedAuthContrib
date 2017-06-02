@@ -223,16 +223,25 @@ sub _addUsersToGroup {
     my $q = $session->{request};
     my $auth = Foswiki::UnifiedAuth->new();
 
-    my $group = $q->param("group[name]");
-    my @cuids;
-    my $create = $q->param("create");
-    foreach my $arg ($q->param()){
-        if($arg =~ /cuids\[(\d)\]\[name\]/) {
-            push @cuids, {name => $q->param("cuids[$1][name]"), id => $q->param("cuids[$1][id]")};
-        }
+    my $params;
+    eval {
+        $params = from_json($q->param("params"));
+    };
+    if($@){
+        $response->header(-status => 404);
+        Foswiki::Func::writeWarning($@);
+        return to_json({status => 'error', msg => "Error - pleas ask your admin"});
     }
-    if($q->param("cuid")){
-        push @cuids, {name => $q->param("wikiName"), id => $q->param("cuid")};
+    my $group = $params->{group}->{name};
+    my @cuids;
+    my $create = $params->{create};
+    if(ref($params->{cuids}) eq "ARRAY"){
+        @cuids = @{$params->{cuids}};
+    }else{
+        push @cuids, $params->{cuids} if $params->{cuids};
+    }
+    if($params->{cuid}){
+        push @cuids, {name => $params->{wikiName}, id => $params->{cuid}};
     }
     unless ($group){
         $response->header(-status => 400);
@@ -243,7 +252,7 @@ sub _addUsersToGroup {
         $create = 0;
     }
     #Create empty Group
-    if (scalar @cuids == 0 ) {
+    if (scalar @cuids == 0 && $create) {
         my $userMapping = Foswiki::Users::UnifiedUserMapping->new($session);
         $userMapping->addUserToGroup(undef, $group, $create);
     }
@@ -277,11 +286,20 @@ sub _removeUserFromGroup {
     my $q = $session->{request};
     my $auth = Foswiki::UnifiedAuth->new();
 
-    my $group = $q->param("group");
+    my $params;
+    eval {
+        $params = from_json($q->param("params"));
+    };
+    if($@){
+        $response->header(-status => 404);
+        Foswiki::Func::writeWarning($@);
+        return to_json({status => 'error', msg => "Error - pleas ask your admin"});
+    }
+    my $group = $params->{group};
     #TODO: use more then one cuid
-    my $cuids = $q->param("cuids");
+    my $cuids = $params->{cuids};
     #TODO: also need more then one wikiName
-    my $wikiName = $q->param("wikiName");
+    my $wikiName = $params->{wikiName};
 
     unless ($group and $cuids){
         $response->header(-status => 400);

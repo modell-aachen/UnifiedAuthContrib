@@ -77,7 +77,7 @@ export default {
             sidebar.makeModal({
                 type: 'spinner'
             });
-            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'addUsersToGroup'), params)
+            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'addUsersToGroup'), {params: JSON.stringify(params)})
             .done(() => {
                 sidebar.hideModal();
                 makeToast.call(self, 'success', this.maketext("Add User to Group successfull"));

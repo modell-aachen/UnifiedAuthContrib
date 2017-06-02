@@ -17,7 +17,7 @@
             <tr v-for="group in nestedGroups">
                 <td :title="group.name">{{group.name}}</td>
                 <td :title="group.provider">{{group.provider}}</td>
-                <td :title="maketext('Remove group from group')"><i v-if="canChange" @click="removeUserFromGroup(group)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
+                <td :title="maketext('Remove group from group')"><i v-if="canModifyGroup" @click="removeGroupFromGroup(group)" class="fa fa-trash fa-2x click" aria-hidden="true"></i></td>
             </tr>
         </tbody>
         </table>
@@ -85,16 +85,15 @@ export default {
     },
     methods: {
         addUserToGroup() {
-            var self = this;
             var selectedValues = this.$refs.userSelector.getSelectedValues();
+            var self = this;
             var params = {
                 group: {name: this.group.displayName},
                 cuids: selectedValues,
                 create: 0
             }
-
             sidebar.makeModal({type: 'spinner', autoclose: false});
-            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'addUsersToGroup'), params)
+            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'addUsersToGroup'), {params: JSON.stringify(params)})
             .done(() => {
                 makeToast.call(self, 'success', this.maketext("Add User to Group successfull"));
                 self.$refs.userSelector.clearSelectedValues();
@@ -104,8 +103,12 @@ export default {
                 makeToast.call(self, 'alert', response.msg);
             }).always(() => sidebar.hideModal());
         },
+        removeGroupFromGroup(){
+
+            //this.removeUserFromGroup();
+            return true;
+        },
         removeUserFromGroup(member) {
-            var self = this
             var params = {
                 cuids: member.cuid,
                 group: this.group.displayName,
@@ -114,7 +117,8 @@ export default {
             sidebar.makeModal({
                 type: 'spinner'
             });
-            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'removeUserFromGroup'), params)
+            var self = this
+            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'removeUserFromGroup'), {params: JSON.stringify(params)})
             .done(() => {
                 sidebar.hideModal();
                 makeToast.call(self, 'success', this.maketext("Removed User from Group successfull"));
