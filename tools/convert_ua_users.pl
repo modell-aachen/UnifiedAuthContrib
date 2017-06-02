@@ -68,6 +68,7 @@ sub readGroupsFromLdap {
 
     foreach my $group (split(',', $db_hash{GROUPS})) {
         my $group_escaped = $group =~ s/([^a-zA-Z0-9])/'_'.sprintf('%02x', ord($1))/ger;
+        $group_escaped = lc($group_escaped) unless $Foswiki::cfg{Ldap}{CaseSensitiveLogin};
         next if $group eq $group_escaped;
         $users->{$group} = $group_escaped;
         $count++;
