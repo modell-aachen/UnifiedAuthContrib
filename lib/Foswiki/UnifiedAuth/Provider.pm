@@ -152,10 +152,34 @@ sub _indexGroups {
     foreach my $group (@$groups) {
         my $members = $db->selectall_arrayref(<<SQL, {Slice => {}}, $group->{cuid});
 SELECT
-    u.cuid, u.login_name, u.wiki_name, u.display_name
-FROM group_members m
-JOIN users u ON m.u_cuid=u.cuid
-WHERE m.g_cuid=?;
+    string_agg(gm.g_cuid::character varying, ', ') as g_cuids,string_agg(g.name, ', ') as group_names, string_agg(p.name, ', ') as g_provider_name, u.cuid, u.login_name, u.wiki_name, u.display_name
+FROM
+    (SELECT u_cuid, g_cuid
+        FROM group_members m
+        INNER JOIN
+            (WITH RECURSIVE r(parent, child) AS (
+                SELECT parent, child
+                    FROM nested_groups
+                    WHERE parent=\$1
+                UNION
+                SELECT n.parent as parent, n.child as child
+                FROM r
+                LEFT OUTER JOIN nested_groups n
+                ON r.child=n.parent
+                WHERE r.parent IS NOT NULL)
+            SELECT * FROM r) c
+        ON (c.child = m.g_cuid)
+    union
+    SELECT u_cuid, g_cuid
+        FROM group_members
+        WHERE g_cuid=\$1) gm
+JOIN users u
+ON gm.u_cuid=u.cuid
+JOIN groups g
+ON g.cuid=gm.g_cuid
+JOIN providers p
+ON p.pid=g.pid
+GROUP BY u.cuid;
 SQL
 
         my (@memberIDs, @memberDNs, @memberWNs, @memberLNs);
@@ -172,6 +196,7 @@ FROM group_members m
 JOIN users u ON m.u_cuid=u.cuid
 WHERE u.deactivated=0 AND m.g_cuid=?;
 SQL
+        my $canChange = ($group->{name} =~ m/Group$/ && Foswiki::Func::topicExists($Foswiki::cfg{UsersWebName}, $group->{name}));
         my $grpdoc = $indexer->newDocument();
         $grpdoc->add_fields(
           'id' => $group->{cuid},
@@ -188,6 +213,8 @@ SQL
           'memberdisplaynames_lst' => \@memberDNs,
           'memberwikinames_lst' => \@memberWNs,
           'memberloginnames_lst' => \@memberLNs,
+          'members_json' => to_json($members),
+          'canChange_s' => $canChange,
           'url' => ''
         );
 

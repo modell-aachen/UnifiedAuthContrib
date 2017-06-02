@@ -586,6 +586,7 @@ sub getProviderForUser {
     my ($this, $user) = @_;
 
     my $db = $this->db();
+    return $db->selectrow_array("SELECT name, pid FROM users NATURAL JOIN providers WHERE cuid=?", {}, $user) if isCUID($user);
     my @row = $db->selectrow_array("SELECT name, pid FROM users NATURAL JOIN providers WHERE (login_name=? OR wiki_name=?)", {}, $user, $user);
 
     return @row;

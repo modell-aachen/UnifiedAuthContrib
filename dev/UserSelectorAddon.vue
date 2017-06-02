@@ -3,12 +3,12 @@
 </template>
 
 <script>
-/* global jsi18n sidebar $ foswiki */
+/* global jsi18n sidebar $ foswiki Vue */
 import MaketextMixin from './MaketextMixin.vue'
 
-var makeToast = function(type, msg) {
+var makeToast = function(type, msg, closetime) {
     sidebar.makeToast({
-        closetime: 5000,
+        closetime: closetime || 5000,
         color: type,
         text: jsi18n.get("UnifiedAuth", msg)
     });
@@ -17,19 +17,20 @@ export default {
     mixins: [MaketextMixin],
     props: ['api'],
     created: function(){
-      let self = this;
+      var self = this;
       this.api.registerEntryClickHandler(function(doc){
-        let userObject = {
+        var userObject = {
           id: doc.cuid_s,
           providerModule: doc.mainprovidermodule_s,
           displayName: doc.displayname_s,
           wikiName: doc.wikiname_s,
           email: doc.email_s,
-          groups: []
+          groups: [],
+          deactivated: !!doc.deactivated_i
         };
 
         if(doc.groupids_lst){
-          for(let i = 0; i < doc.groupids_lst.length; i++){
+          for(var i = 0; i < doc.groupids_lst.length; i++){
             userObject.groups.push({
               id: doc.groupids_lst[i],
               name: doc.groupnames_lst[i],
@@ -38,12 +39,12 @@ export default {
           }
         }
 
-        let leftLabels = [];
-        for(let i = 0;  i < doc.providers_lst.length; i++){
+        var leftLabels = [];
+        for(var j = 0;  j < doc.providers_lst.length; j++){
           leftLabels.push({
             type: 'label',
             color: 'secondary',
-            text: doc.providers_lst[i]
+            text: doc.providers_lst[j]
           });
         }
 
@@ -61,8 +62,61 @@ export default {
             right: [{
               type: 'button',
               color: 'primary',
-              text: jsi18n.get('UnifiedAuth', 'Deactivate user'),
-              callback: () => {}
+              text: jsi18n.get('UnifiedAuth', (userObject.deactivated ? 'Activate' : 'Deactivate') + ' user'),
+              callback: () => {
+                var cuid = sidebar.$vm.contentComponent.propsData.user.id;
+                var dn = sidebar.$vm.contentComponent.propsData.user.displayName;
+                var deactivated = sidebar.$vm.contentComponent.propsData.user.deactivated;
+
+                var toggle = () => {
+                  sidebar.makeModal({type: 'spinner'});
+
+                  $.ajax({
+                    url: foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'toggleUserState'),
+                    method: 'POST',
+                    data: {cuid: cuid},
+                    cache: false
+                  }).done(
+                    (data) => {
+
+                      var response = JSON.parse(data);
+                      var deactivated = response.deactivated;
+                      sidebar.$vm.contentComponent.propsData.user.deactivated = response.deactivated;
+                      var msg = 'User ' + (response.deactivated ? 'deactivated' : 'activated');
+
+                      // Smell: This should be done by bindings...
+                      var badge = leftLabels.pop();
+                      badge.color = deactivated ? 'alert' : 'success';
+                      badge.text = jsi18n.get('UnifiedAuth', deactivated == 0 ? 'Active' : 'Deactivated');
+                      leftLabels.push(badge);
+                      o.header.right[0].text = jsi18n.get('UnifiedAuth', (deactivated ? 'Activate' : 'Deactivate') + ' user');
+
+                      makeToast.call(self, 'success', msg, 3000);
+                    }
+                  ).fail(
+                    (xhr) => makeToast.call(self, 'alert', JSON.parse(xhr.responseText).msg, 3000)
+                  ).always(sidebar.hideModal);
+                };
+
+                var title = self.maketext((deactivated ? 'Activate' : 'Deactivate') + ' user');
+                sidebar.makeModal({
+                  title: title,
+                  content: self.maketext(
+                    deactivated ? 'Activate access to [_1] for user [_2]?' : "By deactivating the access to [_1] user [_2] won't be able to sign in anymore.",
+                    [foswiki.getPreference('WIKITOOLNAME') || 'Q.wiki', dn]
+                  ),
+                  buttons: {
+                    cancel: {
+                      text: self.maketext("Abort"),
+                      callback: sidebar.hideModal
+                    },
+                    confirm: {
+                      text: title,
+                      callback: () => Vue.nextTick(toggle)
+                    }
+                  }
+                });
+              }
             }, {
               type: 'dropdown',
               color: 'primary',
@@ -129,7 +183,7 @@ export default {
                               confirm: {
                                   text: self.maketext("Change Email address"),
                                   callback: function() {
-                                      let params = {
+                                      var params = {
                                           cuid: sidebar.$vm.contentComponent.propsData.user.id,
                                           email: document.getElementsByName("email")[0].value,
                                           wikiname: sidebar.$vm.contentComponent.propsData.user.wikiName
@@ -145,7 +199,7 @@ export default {
                                       sidebar.makeModal({
                                           type: 'spinner'
                                       });
-                                      $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/updateEmail", params)
+                                      $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'updateEmail'), params)
                                       .done(() => {
                                           sidebar.hideModal();
                                           makeToast.call(self, 'success', "Email address changed");

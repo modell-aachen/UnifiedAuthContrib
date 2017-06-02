@@ -2,17 +2,17 @@
     <div>
         <div class="section-title">
             <span>{{maketext('Register new group')}}</span>
-            <p class="sub">{{maketext('Think twice before restricting write access to a web or a topic, because an open system where everybody can contribute is the essence of a wiki cultur.')}}</p>
+            <p class="sub">{{maketext('Think twice before restricting write access to a web or a topic, because an open system where everybody can contribute is the essence of a wiki culture.')}}</p>
         </div>
     <form>
         <input v-model="groupData.name" type="text" name="groupName" :placeholder="maketext('Group name')" aria-describedby="groupNameHelpText">
         <br/>
-        <p class="help-text" id="groupNameHelpText"><strong>{{maketext("Notice:")}}</strong> <span v-html="maketext('A group name must be a WikiWord and <b>must</b> end in ...Group.')"></span></p>
+        <p class="help-text" id="groupNameHelpText"><strong>{{maketext("Notice:")}}</strong> <span v-html="maketext('A group name must be a [_1] and <b>must</b> end in ...Group.', [wikiNameLink])"></span></p>
         <br/>
         <div class="section-title">
             <span>{{maketext('Group members')}}</span>
         </div>
-        <user-selector ref="userSelector"></user-selector>
+        <ua-entity-selector user group multiple ref="userSelector"></ua-entity-selector>
         <button type="button" v-on:click="registerGroup" class="primary button small pull-right">{{maketext('Register group')}}</button>
     </form>
     </div>
@@ -38,6 +38,7 @@ export default {
             groupData: {
                 name: "",
             },
+            wikiNameLink: "<a href='" + foswiki.getScriptUrl('view') + "/" + foswiki.getPreference("SYSTEMWEB")+ "/WikiName" + "' target='_blank'>" + this.maketext("unique WikiName") + "</a>",
         }
     },
     computed: {
@@ -48,8 +49,8 @@ export default {
     methods: {
         registerGroup() {
             var self = this;
-            let selectedValues = this.$refs.userSelector.getSelectedValues();
-            let params = {
+            var selectedValues = this.$refs.userSelector.getSelectedValues();
+            var params = {
                 group: {name: this.groupData.name},
                 cuids: selectedValues,
                 create: 1
@@ -64,10 +65,12 @@ export default {
                 return;
             }
             sidebar.makeModal({type: 'spinner', autoclose: false});
-            $.post(foswiki.preferences.SCRIPTURL + "/rest/UnifiedAuthPlugin/addUsersToGroup", params)
+            $.post(foswiki.getScriptUrl('rest', 'UnifiedAuthPlugin', 'addUsersToGroup'), params)
             .done(() => {
                 makeToast.call(self, 'success', 'Registration successfull');
                 //TODO: open view of Group
+                self.groupData.name = '';
+                self.$refs.userSelector.clearSelectedValues();
             }).fail((xhr) => {
                 var response = JSON.parse(xhr.responseText);
                 makeToast.call(self, 'alert', response.msg);

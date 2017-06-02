@@ -35,7 +35,7 @@
 }%
 %ENDTAB%
 %ENDTABPANE%
-%ADDTOZONE{"script" requires="SEARCHGRID" text="<script class='script' type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/userAdministration.js'></script>"}%
-%ADDTOZONE{"script" requires="SEARCHGRID" text="<script class='script' type='text/javascript' src='%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/js/jsi18n.UnifiedAuth.de.js'></script>"}%
+%TMPL:P{"LIBJS" id="UnifiedAuthContrib/js/userAdministration" requires="SEARCHGRID"}%
+%JSI18N{"UnifiedAuthContrib/js" id="UnifiedAuth"}%
 </div>%TMPL:END%
 %{</verbatim>}%
