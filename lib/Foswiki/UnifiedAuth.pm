@@ -28,7 +28,7 @@ my @schema_updates = (
             display_name TEXT NOT NULL,
             email TEXT NOT NULL,
             password CHAR(135),
-            deactivated INTEGER DEFAULT 0,
+            deactivated INTEGER DEFAULT 0
         )",
         "CREATE UNIQUE INDEX idx_wiki_name ON users (wiki_name)",
         "CREATE UNIQUE INDEX idx_cuid ON users (cuid)",
