@@ -16,6 +16,7 @@
   facets="multi-select-facet(Source systems,mainproviderdescription_s),multi-select-facet(Status,deactivated_i)"
   resultsPerPage="25"
   initialSort="displayname_sort,asc"
+  mappings_deactivated_i="0=%MAKETEXT{"Active"}%;1=%MAKETEXT{"Deactivated"}%"
   addons="user-selector"
 }%
 %ENDTAB%
