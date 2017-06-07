@@ -184,6 +184,7 @@ sub refresh {
                     my $wikiname = $topicMapping->getWikiName($cuid);
                     my @emails = $topicPwManager->getEmails($login);
                     if($Foswiki::UNICODE) {
+                        $login = Foswiki::encode_utf8($login);
                         $wikiname = Foswiki::encode_utf8($wikiname);
                         @emails = map {Foswiki::encode_utf8($_)} @emails;
                     }
