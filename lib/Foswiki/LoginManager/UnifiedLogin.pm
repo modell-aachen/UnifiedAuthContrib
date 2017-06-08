@@ -48,7 +48,6 @@ sub _packRequest {
     if ( ref($uri) ) {    # first parameter is a $session
         my $r = $uri->{request};
         $uri    = $r->uri();
-        $uri    = Foswiki::urlDecode($uri);
         $method = $r->method() || 'UNDEFINED';
         $action = $r->action();
     }
@@ -59,7 +58,7 @@ sub _packRequest {
 sub _unpackRequest {
     my $packed = shift || '';
     my ( $method, $action, $uri ) = split( ',', $packed, 3 );
-    return ( $uri, $method, $action );
+    return ( Foswiki::urlDecode($uri), $method, $action );
 }
 
 sub _authProvider {
