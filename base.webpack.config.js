@@ -4,7 +4,8 @@ var webpack = require('webpack')
 
 var includeDirs = [
   projectRoot + '/dev',
-  projectRoot + '/node_modules/vue-select/'
+  projectRoot + '/node_modules/vue-select/',
+  projectRoot + '/tests'
 ];
 
 var babelLoaderOptions = {

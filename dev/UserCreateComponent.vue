@@ -102,7 +102,7 @@ export default {
                 return;
             }
 
-            if (!params.email || /^\s*$/.test(params.wikiName)) {
+            if (!params.email || /^\s*$/.test(params.email)) {
                 makeToast.call(self, 'alert', 'Field email is required');
                 return;
             }
