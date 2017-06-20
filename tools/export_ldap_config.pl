@@ -80,6 +80,7 @@ my $ldapContribRemove = {
 };
 
 $Data::Dumper::Terse = 1;
+$Data::Dumper::Sortkeys = 1;
 no warnings 'once';
 my $oldConfig = $Foswiki::cfg{Ldap};
 foreach my $key (keys(%$oldConfig)){
