@@ -1,0 +1,54 @@
+#!/bin/bash
+
+function query_db() {
+	query=$1
+	extra_switches=$2
+	echo "$(sudo -u postgres psql foswiki_users $2 -c "$query")"
+}
+
+searchterm=$1
+if ! id postgres >/dev/null 2>&1; then
+	echo "Error: The postgres user does not exist." \
+		 "Please check whether postgresql is correctly installed."
+	exit 1
+fi
+
+if ! sudo -u postgres psql foswiki_users -c '\q' >/dev/null 2>&1; then
+   	echo "Error: Cannot connect to the foswiki_users database." \
+   		 "Please check whether the database exists and whether correct permissions are set."
+   	exit 1
+fi
+
+
+if [[ -z "$searchterm" ]]; then
+	total_user_count=$(query_db 'select count(*) from users;' -t)
+	total_group_count=$(query_db 'select count(*) from groups;' -t)
+	ldap_users=$(query_db 'select count(*) from users_ldap;' -t)
+
+	echo -e ""\
+"---Users---
+Total user count:             $total_user_count
+Users imported from LDAP:     $ldap_users
+
+---Groups---
+Total group count:            $total_group_count
+
+To search for users and groups provide the search term as the first parameter."
+else
+	user_query="select display_name,wiki_name,cuid from users where
+	            lower(display_name) ~ lower('$searchterm') or
+		        lower(wiki_name) ~ lower('$searchterm');"
+	user_result=$(query_db "$user_query")
+
+	group_query="select name,cuid from groups
+			     where lower(name) ~ lower('$searchterm')"
+	group_result=$(query_db "$group_query")
+
+	echo -e ""\
+"---User search results---
+$user_result
+
+---Group search results---
+$group_result"
+fi
+exit 0

@@ -40,3 +40,4 @@ tools/fix_missing_userform.pl 0754 Toool to fix user topics
 tools/synchronize_ldap_to_uac 0754 Tool to import WikiNames from LdapContrib
 tools/ldaptest_ua.pl 0754 Ldap connection test tool
 tools/set_denyweb.pl 0754 set denywebview
+tools/ua_db_test 0754 Database test tool
