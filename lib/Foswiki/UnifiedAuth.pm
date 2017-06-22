@@ -255,7 +255,7 @@ sub add_user {
 sub delete_user {
     my ($this, $cuid) = @_;
 
-    $this->{db}->do("DELETE FROM users WHERE user_id=?", {}, $cuid);
+    $this->{db}->do("DELETE FROM users WHERE cuid=?", {}, $cuid);
 }
 
 sub _uni {
