@@ -168,6 +168,15 @@ sub refresh {
     # XXX: If we do not find the user in WikiUsers, it will simply generate a
     # new WikiName.
     {
+        unless (-f $Foswiki::cfg{Htpasswd}{FileName}) {
+            my $msg = <<MSG;
+Unable to find '.htpasswd' file at '$Foswiki::cfg{Htpasswd}{FileName}'.
+Importing users from old TopicUserMapping will probably fail!
+MSG
+            print STDERR "$msg\n" if $Foswiki::engine->isa('Foswiki::Engine::CLI');
+            Foswiki::Func::writeWarning($msg);
+        }
+
         local $Foswiki::cfg{PasswordManager} = 'Foswiki::Users::HtPasswdUser';
         my $topicMapping = Foswiki::Users::TopicUserMapping->new($this->{session});
 
