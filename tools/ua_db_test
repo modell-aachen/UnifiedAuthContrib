@@ -7,6 +7,25 @@ function query_db() {
 }
 
 searchterm=$1
+if [[ $searchterm == "-h" ]]; then
+	echo ""\
+"This script checks whether a local connection to the unified auth database
+can be established and allows you to make simple queries for users and groups.
+To do this it connects to the foswiki_users database with the postgres user
+via the psql command.
+
+If you run the script without any parameters it will just print an overview of
+how many users and groups are stored in the database.
+
+If you run the script with a parameter (except '-h') it will use that parameter to
+search for users and groups. For users it will search in the users display name and wiki name,
+for groups it will just search in the groups name"
+exit 0
+else
+	echo "To get additional information on what this script does and how it works"\
+		 "run it with '-h'"
+fi
+
 if ! id postgres >/dev/null 2>&1; then
 	echo "Error: The postgres user does not exist." \
 		 "Please check whether postgresql is correctly installed."
@@ -31,9 +50,8 @@ Total user count:             $total_user_count
 Users imported from LDAP:     $ldap_users
 
 ---Groups---
-Total group count:            $total_group_count
+Total group count:            $total_group_count"
 
-To search for users and groups provide the search term as the first parameter."
 else
 	user_query="select display_name,wiki_name,cuid from users where
 	            lower(display_name) ~ lower('$searchterm') or
