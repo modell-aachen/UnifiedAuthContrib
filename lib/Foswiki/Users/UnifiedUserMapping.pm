@@ -579,16 +579,25 @@ sub eachGroupMember {
     }
 
     my $db = $this->{uac}->db;
-    my $grp = $this->{uac}->db->selectrow_hashref(
-        'SELECT cuid, name FROM groups WHERE name=?', {}, $group);
-    return new Foswiki::ListIterator() unless $grp->{cuid} && $grp->{name};
+    my ($cuid, $name);
+    if(_isCUID($group)) {
+        $cuid = $group;
+        $name = $this->{uac}->db->selectrow_array(
+            'SELECT name FROM groups WHERE cuid=?', {}, $group);
+    } else {
+        $name = $group;
+        $cuid = $this->{uac}->db->selectrow_array(
+            'SELECT cuid FROM groups WHERE name=?', {}, $group);
+    }
+    return new Foswiki::ListIterator() unless $cuid && $name;
 
-    my $expanded = $this->_expandGroup($grp->{cuid}, $expand);
+    my $expanded = $this->_expandGroup($cuid, $expand);
     my @members = sort @{$expanded};
 
     my $cache = $expand ? 'eachGroupMember' : 'singleGroupMembers';
-    $this->{$cache}->{$group} = \@members;
-    return new Foswiki::ListIterator($this->{$cache}->{$group});
+    $this->{$cache}->{$name} = \@members;
+    $this->{$cache}->{$cuid} = \@members;
+    return new Foswiki::ListIterator($this->{$cache}->{$cuid});
 }
 
 =begin TML
