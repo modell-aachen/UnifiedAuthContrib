@@ -1,6 +1,8 @@
 # Release manifest for UnifiedAuthContrib
 !noci
 data/System/UnifiedAuthContrib.txt 0644 Documentation
+data/System/UserAdministration.txt 0644 Documentation
+data/System/UserAdministrationViewTemplate.txt 0644 Documentation
 lib/Foswiki/Contrib/UnifiedAuthContrib.pm 0644 Contrib base module
 lib/Foswiki/LoginManager/UnifiedLogin.pm 0644 Login manager
 lib/Foswiki/Plugins/UnifiedAuthPlugin.pm 0644 Tag handlers
@@ -10,6 +12,7 @@ lib/Foswiki/UnifiedAuth/IdentityProvider.pm 0644 Base module for identity provid
 lib/Foswiki/UnifiedAuth/Providers/BaseUser.pm 0644 BaseUser provider
 lib/Foswiki/UnifiedAuth/Providers/Cas.pm 0644 Cas provider
 lib/Foswiki/UnifiedAuth/Providers/Default.pm 0644 BaseUser provider
+lib/Foswiki/UnifiedAuth/Providers/EnvVar.pm 0644 HTTP Request Header provider
 lib/Foswiki/UnifiedAuth/Providers/Google.pm 0644 OAuth for Google
 lib/Foswiki/UnifiedAuth/Providers/IpRange.pm 0644
 lib/Foswiki/UnifiedAuth/Providers/Kerberos.pm 0644 TopicUserMapping replacement
@@ -24,11 +27,17 @@ pub/System/UnifiedAuthContrib/facebook.png 0444
 pub/System/UnifiedAuthContrib/google.png 0444
 pub/System/UnifiedAuthContrib/css/uauth.css 0444
 pub/System/UnifiedAuthContrib/js/uauth.js 0444
+pub/System/UnifiedAuthContrib/js/userAdministration.js 0444
+pub/System/UnifiedAuthContrib/js/jsi18n.UnifiedAuth.de.js 0444
 templates/uauth.tmpl 0644 Template file
 templates/oopsresetpassword.tmpl 0644 Template file
+templates/oopssetpassword.tmpl 0644 Template file
+templates/uauth_registernotify.tmpl 0644 Template file
+templates/uauth_resetnotify.tmpl 0644 Template file
 tools/convert_ua_users.pl 0754 Converter tool to migrate cUIDs
 tools/export_ldap_config.pl 0754 Tool to export LdapContrib settings
 tools/fix_missing_userform.pl 0754 Toool to fix user topics
 tools/synchronize_ldap_to_uac 0754 Tool to import WikiNames from LdapContrib
 tools/ldaptest_ua.pl 0754 Ldap connection test tool
 tools/set_denyweb.pl 0754 set denywebview
+tools/ua_db_test 0754 Database test tool

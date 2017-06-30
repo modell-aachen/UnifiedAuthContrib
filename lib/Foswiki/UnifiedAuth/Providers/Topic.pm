@@ -67,6 +67,18 @@ sub _generatePwHash {
     return $pbkdf2->generate($password);
 }
 
+sub rndStr{
+    my $strLength = shift;
+    my @classes = @_;
+    join '', @classes[ map{ rand @classes } 1 .. $strLength ];
+}
+
+sub generateResetId {
+    my $random = rndStr(20, 'A'..'Z', 0..9, 'a'..'z' );
+    return $random;
+}
+
+
 sub setPassword {
     my ( $this, $login, $newUserPassword, $oldUserPassword ) = @_;
 
@@ -81,23 +93,32 @@ sub setPassword {
     }
 
     my $uauth = Foswiki::UnifiedAuth->new();
+    my $db = $uauth->db;
+    my $userinfo = $db->selectrow_hashref("SELECT * FROM users WHERE users.login_name=?", {}, $login);
     # XXX UTF-8
     my $pwHash;
     if ($newUserPassword) {
         $pwHash = _generatePwHash($newUserPassword);
     }
-    my $db = $uauth->db;
-    my $userinfo = $db->selectrow_hashref("SELECT cuid, email, display_name, deactivated FROM users WHERE users.login_name=?", {}, $login);
-    my $cuid = $uauth->update_user('UTF-8', $userinfo->{cuid}, $userinfo->{email}, $userinfo->{display_name}, $userinfo->{deactivated}, $pwHash);
+    my $cuid = $uauth->update_user('UTF-8', $userinfo->{cuid}, {
+        password => $pwHash
+    });
     my $cgis = $this->{session}->getCGISession();
     $cgis->param('force_set_pw', 0);
+    $uauth->update_reset_request('UTF-8', $userinfo->{cuid}, undef, undef);
 
     $this->{error} = undef;
     return 1;
 }
 
+# When this is __uauth: Refresh all groups
+# When this is a regular topic provider: Refresh all users unless a cuid is
+#    provided
+# When a cuid is provided: Only delegate to super class
 sub refresh {
-    my ( $this ) = @_;
+    my ( $this, $cuid ) = @_;
+
+    return $this->SUPER::refresh($cuid) if $cuid;
 
     my $pid = $this->getPid();
     my $uauth = Foswiki::UnifiedAuth->new();
@@ -139,7 +160,7 @@ sub refresh {
         }
 
         # do not import any users into __uauth
-        return;
+        return $this->SUPER::refresh();
     }
 
     # Faking HtPasswdUser, so we get the correct wikiname and email from the
@@ -147,6 +168,15 @@ sub refresh {
     # XXX: If we do not find the user in WikiUsers, it will simply generate a
     # new WikiName.
     {
+        unless (-f $Foswiki::cfg{Htpasswd}{FileName}) {
+            my $msg = <<MSG;
+Unable to find '.htpasswd' file at '$Foswiki::cfg{Htpasswd}{FileName}'.
+Importing users from old TopicUserMapping will probably fail!
+MSG
+            print STDERR "$msg\n" if $Foswiki::engine->isa('Foswiki::Engine::CLI');
+            Foswiki::Func::writeWarning($msg);
+        }
+
         local $Foswiki::cfg{PasswordManager} = 'Foswiki::Users::HtPasswdUser';
         my $topicMapping = Foswiki::Users::TopicUserMapping->new($this->{session});
 
@@ -162,6 +192,11 @@ sub refresh {
                     $cuid = $topicMapping->login2cUID($login);
                     my $wikiname = $topicMapping->getWikiName($cuid);
                     my @emails = $topicPwManager->getEmails($login);
+                    if($Foswiki::UNICODE) {
+                        $login = Foswiki::encode_utf8($login);
+                        $wikiname = Foswiki::encode_utf8($wikiname);
+                        @emails = map {Foswiki::encode_utf8($_)} @emails;
+                    }
                     if($wikiname && @emails) {
                         push @addUsers, [$login, $wikiname, \@emails];
                     } else {
@@ -178,6 +213,8 @@ sub refresh {
             Foswiki::Func::writeWarning(shift);
         };
     }
+
+    return $this->SUPER::refresh();
 }
 
 sub addUser {
@@ -232,7 +269,13 @@ sub addUser {
         if (!$import && $password) {
             $pwHash = _generatePwHash($password);
         }
-        $cuid = $auth->add_user('UTF-8', $pid, undef, $emails, $login, $wikiname, $wikiname, 0, $pwHash);
+        $cuid = $auth->add_user('UTF-8', $pid, {
+            email => $emails,
+            login_name => $login,
+            wiki_name => $wikiname,
+            display_name => $wikiname,
+            password => $pwHash
+        });
 
         my $addedWikiName = $this->{session}->{users}->getWikiName($cuid);
         unless($addedWikiName eq $wikiname) {
@@ -245,6 +288,7 @@ sub addUser {
 }
 
 sub processLoginData {
+
     my ( $this, $login, $password ) = @_;
 
     my ($cuid, $change_password) = $this->_checkPassword($login, $password);

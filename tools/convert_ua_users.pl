@@ -46,7 +46,16 @@ my %users;
 my $usercount;
 
 my %params = ();
-GetOptions (\%params, 'host=s', 'help|h', 'man', 'ldapcache=s') or pod2usage(2);
+
+my %skipUserTopics = (
+  'AdminUser' => 1,
+  'WikiGuest' => 1,
+  'RegistrationAgent' => 1,
+  'UnknownUser' => 1,
+  'ProjectContributor' => 1,
+);
+
+GetOptions (\%params, 'host=s', 'help|h', 'man', 'ldapcache=s', 'userform=s') or pod2usage(2);
 
 pod2usage(1) if exists $params{help};
 pod2usage(-verbose => 4) if exists $params{man};
@@ -115,6 +124,8 @@ sub convert {
         $users{$u} = $cuid;
         $users{$login =~ s/([^a-zA-Z0-9])/'_'.sprintf('%02x', ord($1))/ger} = $cuid;
         $usercount++;
+
+        fixUserTopic($u);
     }
     print STDERR "Loaded information about $usercount users.\n";
 
@@ -153,6 +164,23 @@ sub convert {
     if (!$keepmsg) {
         print STDERR "\033[F\033[K";
     }
+}
+
+sub fixUserTopic {
+    my $wikiName = shift;
+    my $userForm = $params{userform} || $Foswiki::cfg{SystemWebName}.".UserForm";
+
+    return if $skipUserTopics{$wikiName};
+    return unless Foswiki::Func::topicExists($Foswiki::cfg{UsersWebName}, $wikiName);
+    my ($meta, $text) = Foswiki::Func::readTopic($Foswiki::cfg{UsersWebName}, $wikiName);
+    my $form = $meta->getFormName() || '';
+    return if $form eq $userForm;
+
+    $meta->remove('FORM') if $meta->getFormName();
+    $meta->put('FORM', {name => $userForm});
+    $meta->saveAs($meta->web(), $meta->topic(), (dontlog => 1, minor => 1, nohandlers => 1));
+    $meta->finish();
+    print STDERR "Fixed user topic for $wikiName\n";
 }
 
 # Rewrite history meta file (.m)
@@ -245,6 +273,9 @@ sub _mapUser {
     my ($v) = @_;
     $v =~ s/^\s+|\s+$//g;
     my $shortV = $v =~ s/^(?:Main|%USERSWEB%)\.//r;
+    if($shortV =~ /WikiGuest/){
+        return $v;
+    }
     return $users{$shortV} ? $users{$shortV} : $v;
 }
 
@@ -342,6 +373,10 @@ Converting groups is only a 'best effort' solution. Groups will only be identifi
  convert_ua_users -ldapcache=/backups/cache.db
 
 If you specify this option, the file must exist or the script will terminate.
+
+=item B<-userform>
+
+Specifies the location of a UserForm which will be set for each user topic. If not specified it will default to '{SystemWeb}.UserForm'.
 
 =item B<-help|h>
 

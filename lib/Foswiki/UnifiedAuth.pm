@@ -34,6 +34,7 @@ my @schema_updates = (
         "CREATE UNIQUE INDEX idx_cuid ON users (cuid)",
         "CREATE INDEX idx_login_name ON users (login_name)",
         "CREATE INDEX idx_email ON users (email)",
+        "CREATE INDEX idx_deactivated ON users (deactivated)",
         "CREATE TABLE IF NOT EXISTS merged_users (
             primary_cuid UUID NOT NULL,
             mapped_cuid UUID NOT NULL,
@@ -60,6 +61,13 @@ my @schema_updates = (
             child UUID NOT NULL,
             PRIMARY KEY (parent, child)
         )"
+    ],
+    [
+        "ALTER TABLE users ADD COLUMN reset_id Char(20), ADD COLUMN reset_limit INTEGER",
+        "UPDATE meta SET version=1 WHERE type='core'"
+    ], [
+        "ALTER TABLE IF EXISTS users ADD COLUMN uac_disabled INTEGER DEFAULT 0",
+        "UPDATE meta SET version=2 WHERE type='core'"
     ]
 );
 
@@ -146,7 +154,7 @@ my %normalizers = (
 
 sub guid {
     my $this = shift;
-    Data::GUID->guid;
+    lc(Data::GUID->guid);
 }
 
 sub getCUID {
@@ -194,17 +202,21 @@ sub isCUID {
 
 sub add_user {
     my $this = shift;
-    my ($charset, $authdomainid, $cuid, $email, $login_name, $wiki_name, $display_name, $deactivated, $password) = @_;
-    $deactivated = 0 unless defined $deactivated;
+    my ($charset, $authdomainid, $userinfo) = @_;
+    my (@args, @fields, @query);
 
-    _uni($charset, $cuid, $wiki_name, $display_name, $email);
-
-    $cuid = $this->guid unless $cuid;
-
+    $userinfo->{cuid} = $this->guid unless defined $userinfo->{cuid};
+    $userinfo->{pid} = $authdomainid;
+    while (my ($k, $v) = each %$userinfo) {
+        push @args, $v;
+        push @fields, $k;
+        push @query, '?';
+    }
+    _uni($charset, @args);
     my @normalizers = split(/\s*,\s*/, $Foswiki::cfg{UnifiedAuth}{WikiNameNormalizers} || '');
     foreach my $n (@normalizers) {
         next if $n =~ /^\s*$/;
-        $wiki_name = $normalizers{$n}->($wiki_name);
+        $userinfo->{wiki_name} = $normalizers{$n}->($userinfo->{wiki_name}) if $userinfo->{wiki_name};
     }
 
     # make sure we have a valid topic name
@@ -216,8 +228,8 @@ sub add_user {
             };
         return $text;
     }
-    $wiki_name =~ s/$Foswiki::cfg{NameFilter}/unidecode($_)/gi;
-    $wiki_name =~ s/$Foswiki::cfg{NameFilter}//gi;
+    $userinfo->{wiki_name} =~ s/$Foswiki::cfg{NameFilter}/unidecode($_)/gi;
+    $userinfo->{wiki_name} =~ s/$Foswiki::cfg{NameFilter}//gi;
 
     my $db = $this->db;
     my $has = sub {
@@ -225,26 +237,25 @@ sub add_user {
         return $db->selectrow_array("SELECT COUNT(wiki_name) FROM users WHERE wiki_name=?", {}, $name);
     };
 
-    my $wn = $wiki_name;
+    my $wn = $userinfo->{wiki_name};
     my $serial = 1;
     while ($has->($wn)) {
-        $wn = $wiki_name . $serial++;
+        $wn = $userinfo->{wiki_name} . $serial++;
     }
-    $wiki_name = $wn;
+    $userinfo->{wiki_name} = $wn;
 
-    $this->{db}->do("INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email, deactivated, password) VALUES(?,?,?,?,?,?,?,?)", {},
-        $cuid, $authdomainid, $login_name, $wiki_name, $display_name, $email, $deactivated, $password
-    );
-
+    my $fields = join(', ', @fields);
+    my $q = join(', ', @query);
+    $this->{db}->do("INSERT INTO users ($fields) VALUES($q)", {}, @args);
     $this->{db}->do("INSERT INTO merged_users (primary_cuid, mapped_cuid, primary_provider, mapped_provider) VALUES(?,?,?,?)", {},
-        $cuid, $cuid, $authdomainid, $authdomainid);
-    return $cuid;
+        $userinfo->{cuid}, $userinfo->{cuid}, $authdomainid, $authdomainid);
+    return $userinfo->{cuid};
 }
 
 sub delete_user {
     my ($this, $cuid) = @_;
 
-    $this->{db}->do("DELETE FROM users WHERE user_id=?", {}, $cuid);
+    $this->{db}->do("DELETE FROM users WHERE cuid=?", {}, $cuid);
 }
 
 sub _uni {
@@ -259,10 +270,25 @@ sub _uni {
 }
 
 sub update_user {
-    my ($this, $charset, $cuid, $email, $display_name, $deactivated, $password) = @_;
-    $deactivated = 0 unless defined $deactivated;
-    _uni($charset, $cuid, $display_name, $email);
-    return $this->db->do("UPDATE users SET display_name=?, email=?, deactivated=?, password=? WHERE cuid=?", {}, $display_name, $email, $deactivated, $password, $cuid);
+    my ($this, $charset, $cuid, $userinfo) = @_;
+    my (@args, @query);
+
+    while (my ($k, $v) = each %$userinfo) {
+        push @args, $v;
+        push @query, "$k=?";
+    }
+
+    _uni($charset, @args);
+
+    my $q = join(', ', @query);
+    push @args, $cuid;
+    return $this->db->do("UPDATE users SET $q WHERE cuid=?", {}, @args);
+}
+
+sub update_reset_request {
+    my ($this, $charset, $cuid, $reset_id, $reset_limit) = @_;
+    _uni($charset, $cuid, $reset_id, $reset_limit);
+    return $this->db->do("UPDATE users SET reset_id=?, reset_limit=? WHERE cuid=?", {}, $reset_id, $reset_limit, $cuid);
 }
 
 sub update_wikiname {
@@ -442,7 +468,7 @@ SELECT
     display_name AS displayName,
     email
     FROM users $u_join
-    WHERE deactivated=0 AND ($u_condition)
+    WHERE deactivated=0 AND uac_disabled=0 AND ($u_condition)
 UNION
 SELECT
     'group' AS type,
@@ -463,7 +489,7 @@ SELECT
 SELECT
     cuid
     FROM users $u_join
-    WHERE deactivated=0 AND ($u_condition)
+    WHERE deactivated=0 AND uac_disabled=0 AND ($u_condition)
 UNION
 SELECT
     cuid
@@ -480,7 +506,7 @@ SELECT
     wiki_name as wikiName,
     display_name AS displayName
 FROM users $u_join
-WHERE deactivated=0 AND ($u_condition)
+WHERE deactivated=0 AND uac_disabled=0 AND ($u_condition)
 ORDER BY displayName
 OFFSET $offset
 SQL
@@ -488,7 +514,7 @@ SQL
 SELECT
     count(*)
 FROM users $u_join
-WHERE deactivated=0 AND ($u_condition)
+WHERE deactivated=0 AND uac_disabled=0 AND ($u_condition)
 SQL
         }
         $list = $this->db->selectall_arrayref($statement, $options, @params);
@@ -575,6 +601,7 @@ sub getProviderForUser {
     my ($this, $user) = @_;
 
     my $db = $this->db();
+    return $db->selectrow_array("SELECT name, pid FROM users NATURAL JOIN providers WHERE cuid=?", {}, $user) if isCUID($user);
     my @row = $db->selectrow_array("SELECT name, pid FROM users NATURAL JOIN providers WHERE (login_name=? OR wiki_name=?)", {}, $user, $user);
 
     return @row;

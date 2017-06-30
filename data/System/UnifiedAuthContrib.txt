@@ -98,10 +98,12 @@ authentication process.
 <verbatim>
 {UnifiedAuth}{Providers} = {
    'provider_id_1' => {
+      'description' => '...',
       'config' => {...},
       'module' => 'auth_provider_1'
    },
    'provider_id_2' => {
+      'description' => '...',
       'config' => {...},
       'module' => 'auth_provider_2'
    }
@@ -119,6 +121,7 @@ For now UnifiedAuthContrib ships with the following modules:
 | !IpRange | Authentication based on IP addresses |
 | Google | Google accounts, as well as Google's G Suite |
 | Cas | Single Sign-on using CAS |
+| !EnvVar | Authentication based on header X-Remote-User |
 
 *Note*: Module names are *case sensitive*.
 
@@ -138,6 +141,7 @@ which are shared across all providers.
 | allow | Comma separated list of IPs | |
 | deny | Comma separated list of IPs | |
 | debug | Set to =1= for debug output in error logs and =verbose= for even _more_ debug output. | |
+| description | String to define a more user friendly name | |
 
 Any authentication provider may be disabled by setting its =enabled= attribute
 to a falsely value (0).%BR%
@@ -168,12 +172,14 @@ is only granted to clients from an external network, e.g. the Internet.
       'config' => {
          'allow' => '10.10.10.0/24',
       },
+      'description' => 'Single sign-on',
       'module' => 'Kerberos'
    },
    'ldap' => {
       'config' => {
          'allow' => '10.10.10.0/24'
       },
+      'description' => 'Ldap',
       'module' => 'Ldap'
    },
    'google' => {
@@ -584,6 +590,28 @@ This authentication provider can be configured multiple times.
 }
 </verbatim>
 
+---+++ !EnvVar (Header X-Remote-User)
+The =EnvVar= provider tries to authenticate user by scanning the client's HTTP
+request for a given request header. By default =EnvVar= will look for the header
+=X-Remote-User=. To use a different header you may set configuration option
+header to a suitable value.
+
+This provider has to be used aside of an idnetity provider, e.g. LDAP.
+
+<verbatim>
+{UnifiedAuth}{Providers} = {
+   'users' => {
+      'config' => {
+         'header' => 'X-Remote-User',
+         'identityProvider' => 'my_ldap'
+      },
+      'module' => 'EnvVar'
+   },
+   'my_ldap' => {...}
+}
+</verbatim>
+
+
 ---++ Refreshing User Information
 =UnifiedAuth= caches information about known users within its database.
 Providers which are allowing to query all users at once (e.g. =Ldap=) can be
@@ -611,6 +639,15 @@ Only wiki administrators are allowed to force a cache update.
 %SCRIPTURL{"view"}%/%WEB%/%TOPIC%?refreshauth=all
 </pre>
 
+
+---++ User Administration
+To administrate the user in this Wiki us the [[UserAdministration]] site.
+
+---+++ Configuration
+WikiPreferences:
+| *Name* | *Values* | *Default* | *Description* |
+| USER_CREATE_ALLOW_CHANGE_LOGINNAME | 0/1 | 0 | Set if the LoginName can be set while creating a new user |
+| PASSWORD_RESET_DURATION | Integer  | 24 | Set duration in hours for validity of reset password link |
 
 ---++ Query User Information
 The following form provides a convinient way to print user information by his

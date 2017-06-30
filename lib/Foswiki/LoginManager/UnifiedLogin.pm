@@ -48,7 +48,6 @@ sub _packRequest {
     if ( ref($uri) ) {    # first parameter is a $session
         my $r = $uri->{request};
         $uri    = $r->uri();
-        $uri    = Foswiki::urlDecode($uri);
         $method = $r->method() || 'UNDEFINED';
         $action = $r->action();
     }
@@ -59,7 +58,7 @@ sub _packRequest {
 sub _unpackRequest {
     my $packed = shift || '';
     my ( $method, $action, $uri ) = split( ',', $packed, 3 );
-    return ( $uri, $method, $action );
+    return ( Foswiki::urlDecode($uri), $method, $action );
 }
 
 sub _authProvider {
@@ -249,7 +248,7 @@ sub loadSession {
         $req->delete('refreshauth');
         if($refresh eq 'all') {
             Foswiki::Func::writeWarning("refreshing all providers");
-            foreach my $id ( ('__baseuser', sort keys %{$Foswiki::cfg{UnifiedAuth}{Providers}}, '__uauth' ) ) {
+            foreach my $id ( ('__baseuser', sort(keys %{$Foswiki::cfg{UnifiedAuth}{Providers}}), '__uauth' ) ) {
                 Foswiki::Func::writeWarning("refreshing $id");
                 try {
                     my $provider = $this->_authProvider($id);
@@ -342,40 +341,43 @@ sub processProviderLogin {
     }
 
     if (ref($loginResult) eq 'HASH' && $loginResult->{cuid}) {
-        $this->userLoggedIn($loginResult->{cuid});
-        $session->logger->log(
-            {
-                level    => 'info',
-                action   => 'login',
-                webTopic => $web . '.' . $topic,
-                extra    => "AUTHENTICATION SUCCESS - $loginResult->{cuid} - "
-            }
-        );
-        $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
-          if $this->{_cgisession};
-        my ( $origurl, $origmethod, $origaction ) = _unpackRequest($provider->origin);
-        if (!$origurl || $origaction eq 'login') {
-            $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
-            $session->{request}->delete_all;
-        } else {
-            # Unpack params encoded in the origurl and restore them
-            # to the query. If they were left in the query string they
-            # would be lost if we redirect with passthrough.
-            # First extract the params, ignoring any trailing fragment.
-            if ( $origurl =~ s/\?([^#]*)// ) {
-                foreach my $pair ( split( /[&;]/, $1 ) ) {
-                    if ( $pair =~ /(.*?)=(.*)/ ) {
-                        $session->{request}->param( $1, TAINT($2) );
+        my $deactivated = $this->{uac}->{db}->selectrow_array("SELECT deactivated FROM users WHERE cuid=?", {}, $loginResult->{cuid});
+        unless ($deactivated) {
+            $this->userLoggedIn($loginResult->{cuid});
+            $session->logger->log(
+                {
+                    level    => 'info',
+                    action   => 'login',
+                    webTopic => $web . '.' . $topic,
+                    extra    => "AUTHENTICATION SUCCESS - $loginResult->{cuid} - "
+                }
+            );
+            $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
+              if $this->{_cgisession};
+            my ( $origurl, $origmethod, $origaction ) = _unpackRequest($provider->origin);
+            if (!$origurl || $origaction eq 'login') {
+                $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
+                $session->{request}->delete_all;
+            } else {
+                # Unpack params encoded in the origurl and restore them
+                # to the query. If they were left in the query string they
+                # would be lost if we redirect with passthrough.
+                # First extract the params, ignoring any trailing fragment.
+                if ( $origurl =~ s/\?([^#]*)// ) {
+                    foreach my $pair ( split( /[&;]/, $1 ) ) {
+                        if ( $pair =~ /(.*?)=(.*)/ ) {
+                            $session->{request}->param( $1, TAINT($2) );
+                        }
                     }
                 }
-            }
 
-            # Restore the action too
-            $session->{request}->action($origaction) if $origaction;
+                # Restore the action too
+                $session->{request}->action($origaction) if $origaction;
+            }
+            $session->{request}->method($origmethod);
+            $session->redirect($origurl, 1);
+            return $loginResult->{cuid};
         }
-        $session->{request}->method($origmethod);
-        $session->redirect($origurl, 1);
-        return $loginResult->{cuid};
     }
 
     if ($Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {

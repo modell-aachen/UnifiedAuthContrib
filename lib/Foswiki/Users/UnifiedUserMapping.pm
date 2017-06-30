@@ -579,16 +579,25 @@ sub eachGroupMember {
     }
 
     my $db = $this->{uac}->db;
-    my $grp = $this->{uac}->db->selectrow_hashref(
-        'SELECT cuid, name FROM groups WHERE name=?', {}, $group);
-    return new Foswiki::ListIterator() unless $grp->{cuid} && $grp->{name};
+    my ($cuid, $name);
+    if(_isCUID($group)) {
+        $cuid = $group;
+        $name = $this->{uac}->db->selectrow_array(
+            'SELECT name FROM groups WHERE cuid=?', {}, $group);
+    } else {
+        $name = $group;
+        $cuid = $this->{uac}->db->selectrow_array(
+            'SELECT cuid FROM groups WHERE name=?', {}, $group);
+    }
+    return new Foswiki::ListIterator() unless $cuid && $name;
 
-    my $expanded = $this->_expandGroup($grp->{cuid}, $expand);
+    my $expanded = $this->_expandGroup($cuid, $expand);
     my @members = sort @{$expanded};
 
     my $cache = $expand ? 'eachGroupMember' : 'singleGroupMembers';
-    $this->{$cache}->{$group} = \@members;
-    return new Foswiki::ListIterator($this->{$cache}->{$group});
+    $this->{$cache}->{$name} = \@members;
+    $this->{$cache}->{$cuid} = \@members;
+    return new Foswiki::ListIterator($this->{$cache}->{$cuid});
 }
 
 =begin TML
@@ -833,6 +842,12 @@ sub addUserToGroup {
         );
     }
 
+    if (!$create && !Foswiki::Func::topicExists($grpWeb, $grpName)) {
+        throw Error::Simple(
+            $this->{session}->i18n->maketext(
+                'Users cannot be added to [_1]', $grpName)
+        );
+    }
     my $actor = $this->_userToCUID($this->{session}->{user});
     my $actor_wikiname = $this->getWikiName($actor);
     my $isGroup = $this->isGroup($grpName);
@@ -921,6 +936,12 @@ sub removeUserFromGroup {
         )
     ) if ($grpName eq "$Foswiki::cfg{SuperAdminGroup}" && $cuid eq 'BaseUserMapping_333');
 
+    if (!Foswiki::Func::topicExists($grpWeb, $grpName)) {
+        throw Error::Simple(
+            $this->{session}->i18n->maketext(
+                'Users cannot be added to [_1]', $grpName)
+        );
+    }
     if ($this->isGroup($grpName)) {
         my $db = $this->{uac}->db;
         my $grp = $db->selectrow_hashref(

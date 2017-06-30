@@ -98,8 +98,13 @@ sub useDefaultLogin {
     1;
 }
 
+# Only checks database schema. BaseUsers are fixed and do not need re-indexing.
+# When a cuid is passed in, only delegate to super class.
 sub refresh {
     my $this = shift;
+    my $cuid = shift;
+
+    return $this->SUPER::refresh($cuid) if $cuid;
 
     my $uauth = Foswiki::UnifiedAuth->new();
     my $pid = $this->getPid();
@@ -108,6 +113,7 @@ sub refresh {
         $a = [ map { $_ =~ s#\%id\%#$this->{id}#gr =~ s#\%pid\%#$pid#gr } @$a];
     }
     $uauth->apply_schema('users_baseuser', @pid_schema_updates);
+    return $this->SUPER::refresh();
 }
 
 sub processLoginData {

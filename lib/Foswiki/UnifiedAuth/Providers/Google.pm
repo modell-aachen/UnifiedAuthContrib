@@ -129,7 +129,12 @@ sub processLogin {
         my $user_email = $acc_info->{email};
         eval {
             $db->begin_work;
-            $user_id = $uauth->add_user('UTF-8', $pid, undef, $user_email, $user_email, $this->_formatWikiName($acc_info), $this->_formatDisplayName($acc_info));
+            $user_id = $uauth->add_user('UTF-8', $pid, {
+                email => $user_email,
+                login_name => $user_email,
+                wiki_name => $this->_formatWikiName($acc_info),
+                display_name => $this->_formatDisplayName($acc_info)
+            });
             $db->do("INSERT INTO users_google (cuid, pid, info) VALUES(?,?,?)", {}, $user_id, $pid,JSON::encode_json($acc_info));
             $db->commit;
         };
@@ -150,7 +155,7 @@ sub processLogin {
     my $userdata = $db->selectrow_hashref("SELECT * FROM users AS u NATURAL JOIN users_google WHERE u.login_name=? AND u.pid=?", {}, $acc_info->{email}, $pid);
     my $cur_dn = $this->_formatDisplayName($acc_info);
     if ($cur_dn ne $userdata->{display_name}) {
-        $uauth->update_user('UTF-8', $userdata->{cuid}, $acc_info->{email}, $cur_dn);
+        $uauth->update_user('UTF-8', $userdata->{cuid}, {email => $acc_info->{email}, display_name => $cur_dn});
     }
 
     return $userdata->{login_name} if $this->{config}{identityProvider};

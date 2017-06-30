@@ -1,0 +1,17 @@
+%TMPL:INCLUDE{"mailtemplatescontrib"}%
+
+%TMPL:DEF{"ModacMailFrom"}%%TMPL:P{"ModacNoReply"}%%TMPL:END%
+
+%TMPL:DEF{"ModacMailTo"}%%REGISTRATION_MAIL%%TMPL:END%
+
+%TMPL:DEF{"ModacMailSubject"}%%{
+}%%MAKETEXT{"[_1] - Reset Password" arg1="%WIKITOOLNAME%"}%%{
+}%%TMPL:END%
+
+%TMPL:DEF{"ModacMailContents"}%%{
+}%%SWITCHTEXT{"%LANGUAGE%" defaultTo="en" en="For your %WIKITOOLNAME% account a request was issued to reset the password. The following link is valid for the next %RESET_LIMIT% hours and enables you to set a new password." de="Für Ihren %WIKITOOLNAME% Account wurde eine Anfrage zum Zurücksetzen des Passwords gestellt. Der folgende Link ist für die nächsten %RESET_LIMIT% Stunden gültig und ermöglicht es Ihnen ein neues Password zu setzen."}%
+
+%SCRIPTURL{"rest"}%/UnifiedAuthPlugin/setPassword?resetid=%RESET_ID%
+
+%{
+}%%TMPL:END%

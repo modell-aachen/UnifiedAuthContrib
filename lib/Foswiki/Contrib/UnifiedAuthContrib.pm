@@ -1,6 +1,6 @@
 # See bottom of file for license and copyright information
 
-package Foswiki::Plugins::UnifiedAuthContrib;
+package Foswiki::Contrib::UnifiedAuthContrib;
 
 use strict;
 use warnings;
@@ -8,6 +8,33 @@ use warnings;
 our $VERSION = '1.0';
 our $RELEASE = "1.0";
 our $SHORTDESCRIPTION = 'User management supporting multiple authentication and data sources';
+
+our $SITEPREFS = {
+    USER_CREATE_ALLOW_CHANGE_LOGINNAME => 0,
+    PASSWORD_RESET_DURATION => 24
+};
+
+sub maintenanceHandler {
+    Foswiki::Plugins::MaintenancePlugin::registerCheck("unifiedauth:dbencoding", {
+        name => "UnifiedAuth: DB encoding.",
+        description => "Check if the database for UnifiedAuth useing the UTF8 encoding",
+        check => sub {
+            my $result = { result => 0 };
+            my $ua = Foswiki::UnifiedAuth::new();
+            my $db = $ua->db();
+            my $sth=$db->prepare("SHOW SERVER_ENCODING");
+            $sth->execute();
+            my ($value) = $sth->fetchrow_array();
+            $sth->finish();
+            if ($value =~ /SQL_ASCII/) {
+                $result->{result} = 1;
+                $result->{priority} = $Foswiki::Plugins::MaintenancePlugin::CRITICAL;
+                $result->{solution} = "Change the database encoding to UTF8";
+            }
+            return $result;
+       }
+    });
+}
 
 1;
 

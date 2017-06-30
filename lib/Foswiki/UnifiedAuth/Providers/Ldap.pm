@@ -320,8 +320,13 @@ sub useDefaultLogin {
     1;
 }
 
+# Will refresh ALL groups and users, unless a cuid is provided.
+# When a cuid is passed in, only delegate to super class; DO NOT refresh cache
+# for that cuid!
 sub refresh {
-    my ( $this ) = @_;
+    my ( $this, $cuid ) = @_;
+
+    return $this->SUPER::refresh($cuid) if $cuid;
 
     my $pid = $this->getPid();
     my $uauth = Foswiki::UnifiedAuth->new();
@@ -330,6 +335,7 @@ sub refresh {
     $this->makeConfig();
 
     $this->refreshCache(1);
+    return $this->SUPER::refresh();
 }
 
 sub writeDebug {
@@ -562,23 +568,55 @@ sub _processGroups {
 
         # fetch all members of this group
         my $memberVals = $entry->get_value($this->{memberAttribute}, alloptions => 1);
-        my $members = [];
+        my @members = (defined($memberVals) && exists($memberVals->{''})) ? @{$memberVals->{''}} : ();
         my $nested = [];
-        if ($memberVals) {
-            foreach my $member ( @{$memberVals->{''} || []} ) {
-            $member = $this->fromLdapCharSet($member);
-                if ($groupsDN->{$member}) {
-                    $member = $groupsDN->{$member};
-                }
-                if ($groups->{$member}) {
-                    push @$nested, $uauth->getOrCreateGroup($member, $this->getPid());
-                } elsif ($users->{$member}) {
-                    push @$members, $users->{$member}->{cuid};
-                }
+        if (! scalar(@members)) {
+            while(1) {
+                my ($rangeEnd, $range_members);
+                foreach my $k (keys %$memberVals) {
+                    next if $k !~ /^;range=(?:\d+)-(\*|\d+)$/o;
+                    ($rangeEnd, $range_members) = ($1, $memberVals->{$k});
+                    last;
+              }
+
+              last if !defined $rangeEnd;
+              push @members, @$range_members;
+              last if $rangeEnd eq '*';
+              $rangeEnd++;
+
+              # Apparently there are more members, so iterate
+              # Apparently we need a dummy filter to make this work#
+              my $dn = $this->fromLdapCharSet($entry->dn());
+              my $newRes = $this->search(filter => 'objectClass=*', base => $dn, scope => 'base', attrs => ["member;range=$rangeEnd-*"]);
+              unless ($newRes) {
+                writeDebug("error fetching more members for $dn: " . $this->getError());
+                last;
+              }
+
+              my $newEntry = $newRes->pop_entry();
+              if (!defined $newEntry) {
+                writeDebug("no result when doing member;range=$rangeEnd-* search for $dn\n");
+                last;
+              }
+
+              $memberVals = $newEntry->get_value($this->{memberAttribute}, alloptions => 1);
             }
         }
 
-        $uauth->updateGroup($this->getPid(), $groupName, $members, $nested);
+        my $ua_members = [];
+        foreach my $member ( @members ) {
+            $member = $this->fromLdapCharSet($member);
+            if ($groupsDN->{$member}) {
+                $member = $groupsDN->{$member};
+            }
+            if ($groups->{$member}) {
+                push @$nested, $uauth->getOrCreateGroup($member, $this->getPid());
+            } elsif ($users->{$member}) {
+                push @$ua_members, $users->{$member}->{cuid};
+            }
+        }
+
+        $uauth->updateGroup($this->getPid(), $groupName, $ua_members, $nested);
     }
 }
 
@@ -1032,8 +1070,8 @@ sub cacheUserFromEntry {
     # SMELL. Applies to Active Directory only
     # See https://support.microsoft.com/en-us/kb/305144
     my $accoundControl = int($entry->get_value('userAccountControl') || 0);
-    my $isDeactivated = $accoundControl & 2;
-    $isDeactivated = $isDeactivated ? 1 : 0;
+    my $uacDisabled = $accoundControl & 2;
+    $uacDisabled = $uacDisabled ? 1 : 0;
 
     # get old data
     my $cuid = $db->selectrow_array("SELECT cuid FROM users WHERE pid=? AND login_name=?", {}, $pid, $loginName);
@@ -1097,9 +1135,19 @@ sub cacheUserFromEntry {
             $wikiName = $alias;
         }
 
-        $cuid = $uauth->add_user(undef, $pid, undef, $email, $loginName, $wikiName, $displayName, $isDeactivated);
+        $cuid = $uauth->add_user(undef, $pid, {
+            email => $email,
+            login_name => $loginName,
+            wiki_name => $wikiName,
+            display_name => $displayName,
+            uac_disabled => $uacDisabled
+        });
     } else {
-        $uauth->update_user(undef , $cuid, $email, $displayName, $isDeactivated);
+        $uauth->update_user(undef , $cuid, {
+            email => $email,
+            display_name => $displayName,
+            uac_disabled => $uacDisabled
+        });
     }
     # fake upsert
     $db->begin_work;
