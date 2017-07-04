@@ -203,16 +203,10 @@ sub isCUID {
 sub add_user {
     my $this = shift;
     my ($charset, $authdomainid, $userinfo) = @_;
-    my (@args, @fields, @query);
 
     $userinfo->{cuid} = $this->guid unless defined $userinfo->{cuid};
     $userinfo->{pid} = $authdomainid;
-    while (my ($k, $v) = each %$userinfo) {
-        push @args, $v;
-        push @fields, $k;
-        push @query, '?';
-    }
-    _uni($charset, @args);
+
     my @normalizers = split(/\s*,\s*/, $Foswiki::cfg{UnifiedAuth}{WikiNameNormalizers} || '');
     foreach my $n (@normalizers) {
         next if $n =~ /^\s*$/;
@@ -243,6 +237,14 @@ sub add_user {
         $wn = $userinfo->{wiki_name} . $serial++;
     }
     $userinfo->{wiki_name} = $wn;
+
+    my (@args, @fields, @query);
+    while (my ($k, $v) = each %$userinfo) {
+        push @args, $v;
+        push @fields, $k;
+        push @query, '?';
+    }
+    _uni($charset, @args);
 
     my $fields = join(', ', @fields);
     my $q = join(', ', @query);

@@ -20,7 +20,7 @@ sub maintenanceHandler {
         description => "Check if the database for UnifiedAuth useing the UTF8 encoding",
         check => sub {
             my $result = { result => 0 };
-            my $ua = Foswiki::UnifiedAuth::new();
+            my $ua = Foswiki::UnifiedAuth->new();
             my $db = $ua->db();
             my $sth=$db->prepare("SHOW SERVER_ENCODING");
             $sth->execute();
