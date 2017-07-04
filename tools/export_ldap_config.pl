@@ -33,7 +33,7 @@ my $ldapContribDefaults = {
 	'LoginAttribute' => 'sAMAccountName',
 	'LoginFilter' => 'objectClass=person',
 	'MailAttribute' => 'mail',
-	'MapGroups' => 1,
+	'MapGroups' => 0,
 	'MaxCacheAge' => 86400,
 	'MemberAttribute' => 'member',
 	'MemberIndirection' => 1,
