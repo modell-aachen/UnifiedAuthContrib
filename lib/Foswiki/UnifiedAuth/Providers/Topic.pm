@@ -192,11 +192,11 @@ MSG
                     $cuid = $topicMapping->login2cUID($login);
                     my $wikiname = $topicMapping->getWikiName($cuid);
                     my @emails = $topicPwManager->getEmails($login);
-                    if($Foswiki::UNICODE) {
-                        $login = Foswiki::encode_utf8($login);
-                        $wikiname = Foswiki::encode_utf8($wikiname);
-                        @emails = map {Foswiki::encode_utf8($_)} @emails;
-                    }
+                    #if($Foswiki::UNICODE) {
+                        #$login = Foswiki::encode_utf8($login);
+                        #$wikiname = Foswiki::encode_utf8($wikiname);
+                        #@emails = map {Foswiki::encode_utf8($_)} @emails;
+                    #}
                     if($wikiname && @emails) {
                         push @addUsers, [$login, $wikiname, \@emails];
                     } else {
@@ -269,7 +269,7 @@ sub addUser {
         if (!$import && $password) {
             $pwHash = _generatePwHash($password);
         }
-        $cuid = $auth->add_user('UTF-8', $pid, {
+        $cuid = $auth->add_user(undef, $pid, {
             email => $emails,
             login_name => $login,
             wiki_name => $wikiname,
