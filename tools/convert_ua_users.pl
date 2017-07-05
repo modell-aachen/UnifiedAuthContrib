@@ -260,12 +260,26 @@ sub treatFile {
     # Task changesets
     $l =~ s/^(%META:TASKCHANGESET\{)(.*)(\}%)$/$1. _mapTag($2, '^actor$' => 0) .$3/egm;
 
+    # Attachments
+    $l =~ s/^(%META:FILEATTACHMENT\{.+)(user=")([^"]+)("[^%]+%)$/$1 . $2 . _decodeLogin($3) . $4/egm;
+
     return 1 if $l eq $origL;
     open($tfh, '>:utf8', $filename) or warn("Can't open $filename for writing: $!") && return;
     print $tfh $l;
     close($tfh);
     print STDERR "*";
     2;
+}
+
+sub _decodeLogin {
+    my $login = shift;
+    my $orig = $login;
+
+    use bytes;
+    $login =~ s/_([0-9a-f][0-9a-f])/chr(hex($1))/gei;
+    no bytes;
+
+    return $users{$login} ? $users{$login} : $orig;
 }
 
 # Map a single name to its cUID (unless it's unknown or already mapped).
