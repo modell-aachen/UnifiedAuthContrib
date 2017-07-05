@@ -438,7 +438,7 @@ sub refreshUsersCache {
 }
 
 sub refreshGroupsCache {
-    my ($this, $data, $groupBase) = @_;
+    my ($this, $data, $groupBase, $imported) = @_;
 
     writeDebug("called refreshGroupsCache($groupBase)");
     $data ||= $this->{data};
@@ -477,14 +477,24 @@ sub refreshGroupsCache {
     $this->_processGroups($groupsCache, $groupsCacheDN, $users);
     $this->_processVirtualGroups($groupsCache, $users);
 
-    # kick removed groups
-    foreach my $oldName ( @$oldGroups ) {
-        unless ($groupsCache->{$oldName}) {
-            $this->{uauth}->removeGroup(name => $oldName, pid => $pid);
-        }
-    }
+    map {$imported->{$_} = 1} keys %$groupsCache;
 
     return 1;
+}
+
+sub removeCachedGroups {
+    my $this = shift;
+    my $imported = shift;
+
+    my $db = $this->{uauth}->db();
+    my $pid = $this->getPid();
+    my $existing = $db->selectcol_arrayref('SELECT name FROM groups WHERE pid=?', {}, $pid);
+
+    foreach my $name (@$existing) {
+        next if $imported->{$name} == 1;
+        writeDebug("Removing group: '$name'. That group does not exist anymore in provider '$pid'.");
+        $this->{uauth}->removeGroup(name => $name, pid => $pid);
+    }
 }
 
 sub cacheGroupFromEntry {
@@ -1209,6 +1219,7 @@ sub refreshCache {
     $this->{_refreshMode} = $mode;
 
     my %tempData;
+    my %importedGroups;
 
     my $isOk;
 
@@ -1219,10 +1230,14 @@ sub refreshCache {
 
     if ($isOk && $this->{mapGroups}) {
         foreach my $groupBase (@{$this->{groupBase}}) {
-            $isOk = $this->refreshGroupsCache(\%tempData, $groupBase);
+            $isOk = $this->refreshGroupsCache(\%tempData, $groupBase, \%importedGroups);
             last unless $isOk;
         }
     }
+
+    # Remove unused groups
+    $this->removeCachedGroups(\%importedGroups);
+    undef %importedGroups;
 
     unless ($isOk) {    # we had an error: keep the old cache til the error is resolved
         return 0;
