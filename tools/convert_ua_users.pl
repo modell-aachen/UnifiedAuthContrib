@@ -251,11 +251,11 @@ sub treatFile {
     $l =~ s/^(%META:COMMENT\{)(.*)(\}%)$/$1. _mapTag($2, '^(?:read|notified)$' => 1, '^author$' => 0) .$3/egm;
 
     # Preferences
-    $l =~ s/^(%META:PREFERENCE\{name=\"(?:ALLOW|DENY)TOPIC.*?\")(.*)(\}%)$/$1. _mapTag($2, '^value$' => 1) .$3/egm;
+    $l =~ s/^(%META:PREFERENCE\{name=\"(?:ALLOW|DENY)TOPIC.*?\")(.*)(\}%)$/$1 . ' ' . _mapTag($2, '^value$' => 1) .$3/egm;
     $l =~ s/^((?:   )+\*\s+Set\s+(\w+)\s+=\s+)([^\015\012]*)$/$1. _mapPref($2, $3)/egm;
 
     # WikiGroups
-    $l =~ s/^(%META:PREFERENCE\{name=\"GROUP\")(.*)(\}%)$/$1. _mapTag($2, '^value$' => 1) .$3/egm;
+    $l =~ s/^(%META:PREFERENCE\{name=\"GROUP\")(.*)(\}%)$/$1 . ' ' . _mapTag($2, '^value$' => 1) .$3/egm;
 
     # Task changesets
     $l =~ s/^(%META:TASKCHANGESET\{)(.*)(\}%)$/$1. _mapTag($2, '^actor$' => 0) .$3/egm;
