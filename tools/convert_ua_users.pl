@@ -39,6 +39,7 @@ use Foswiki ();
 # XXX It would be nice, if this was a require, so you would not need it when
 # you do not import anything. But how do I import DB_HASH then?
 use DB_File;
+use Encode;
 
 my %formcache;
 my $session;
@@ -88,6 +89,7 @@ sub readGroupsFromLdap {
 }
 
 sub convert {
+    print STDERR "==> Host: $Foswiki::Contrib::VirtualHostingContrib::VirtualHost::CURRENT \n";
     $session = Foswiki->new('admin');
 
     %users = ();
@@ -107,6 +109,7 @@ sub convert {
         my $u = $uit->next;
         my $cuid = Foswiki::Func::getCanonicalUserID($u);
         my $login = Foswiki::Func::wikiToUserName($u);
+        my $wikiName = Encode::encode('utf-8',Foswiki::Func::getWikiName($u));
 
         next if $cuid =~ /^BaseUserMapping/;
         print STDERR "Skipping wikiname $u: No available login information!\n" unless $login;
@@ -123,6 +126,7 @@ sub convert {
         $users{$login} = $cuid;
         $users{$u} = $cuid;
         $users{$login =~ s/([^a-zA-Z0-9])/'_'.sprintf('%02x', ord($1))/ger} = $cuid;
+        $users{$wikiName =~ s/([^a-zA-Z0-9])/'_'.sprintf('%02x', ord($1))/ger} = $cuid;
         $usercount++;
 
         fixUserTopic($u);
@@ -139,7 +143,7 @@ sub convert {
             opendir(my $pfvh, $pfvdir) or warn("Can't read revisions dir $pfvdir: $!") if $haspfv;
 
             if (!$keepmsg) {
-                print STDERR "\033[F\033[K";
+                #print STDERR "\033[F\033[K";
             }
             $keepmsg = 0;
             print STDERR "$web.$topic: (current)";
@@ -153,16 +157,16 @@ sub convert {
                     treatMetaFile($web, "$pfvdir/$f");
                 }
                 next unless $f =~ /^\d+$/;
-                print STDERR "($f)";
+                #print STDERR "($f)";
                 $res = treatFile($web, "$pfvdir/$f");
                 $keepmsg = 1 if !$res || $res == 2;
                 next TOPIC unless $res;
             }
-            print STDERR ".\n";
+            #print STDERR ".\n";
         }
     }
     if (!$keepmsg) {
-        print STDERR "\033[F\033[K";
+        #print STDERR "\033[F\033[K";
     }
 }
 
@@ -199,7 +203,7 @@ sub treatMetaFile {
     open($tfh, '>:utf8', $filename) or warn("Can't open $filename for writing: $!") && return;
     print $tfh $l;
     close($tfh);
-    print STDERR "*";
+    #print STDERR "*";
     2;
 }
 
@@ -267,7 +271,7 @@ sub treatFile {
     open($tfh, '>:utf8', $filename) or warn("Can't open $filename for writing: $!") && return;
     print $tfh $l;
     close($tfh);
-    print STDERR "*";
+    #print STDERR "*";
     2;
 }
 
