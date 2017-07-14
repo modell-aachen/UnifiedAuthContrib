@@ -116,7 +116,6 @@ sub processLogin {
     if (length($token)) {
         $ENV{KRB5_KTNAME} = "FILE:$cfg->{keytab}";
         my $ctx;
-        my $omech = GSSAPI::OID->new;
         my $accept_status = GSSAPI::Context::accept(
             $ctx,
             GSS_C_NO_CREDENTIAL,
