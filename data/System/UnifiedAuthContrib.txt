@@ -253,10 +253,17 @@ SetEnvIf Authorization (.+) HTTP_AUTHORIZATION=$1
 Make sure to set proper ACLs in =SitePreferences= and/or =WebPreferences= when
 disabling authentication on web server basis.
 
+*Configuring Realms and Subdomains* %BR%
+As stated below the realm configuration takes a Perl regular expression as input. This configuration defines which users can login via SSO
+based on their assigned Kerberos realm. E.g. if you want to allow all users from all subdomains of =EXAMPLE.COM= to login via SSO you would
+set realm to =.*\.EXAMPLE.\COM=. %RED%%BR%
+ATTENTION: %ENDCOLOR% Allowing multiple subdomains will lead to problems if there are users with the same username in different subdomains.
+This will lead to users being logged in with the wrong user account.
+
 | *Preference* | *Description* |
 | identityProvider | ID of a configured Ldap provider which shall be used to fetch user information; use =_all_= for all configured providers. Defaults to =_all_=. |
 | keytab | Path to a valid Kerberos keytab file |
-| realm | The domain realm |
+| realm | The domain realm provided as a Perl regular expression. |
 | serviceName | Service principal name |
 
 *Example configuration*
@@ -267,7 +274,7 @@ disabling authentication on web server basis.
          'allow' => '10.10.10.0/24',
          'identityProvider' => 'my_ldap',
          'keytab' => '/etc/apache2/http.keytab',
-         'realm' => 'EXAMPLE.COM',
+         'realm' => 'EXAMPLE\.COM',
          'serviceName' => 'HTTP/server.example.com'
       },
       'module' => 'Kerberos'
@@ -286,7 +293,7 @@ disabling authentication on web server basis.
          'allow' => '10.10.10.0/24',
          'identityProvider' => 'ldap_provider_id1',
          'keytab' => '/etc/apache2/http.keytab',
-         'realm' => 'FOO.ORG',
+         'realm' => 'FOO\.ORG',
          'serviceName' => 'HTTP/server.foo.org'
       },
       'module' => 'Kerberos'
@@ -296,7 +303,7 @@ disabling authentication on web server basis.
          'allow' => '10.10.20.0/24',
          'identityProvider' => 'ldap_provider_id2',
          'keytab' => '/etc/apache2/http.keytab',
-         'realm' => 'BAR.ORG',
+         'realm' => 'BAR\.ORG',
          'serviceName' => 'HTTP/server.bar.org'
       },
       'module' => 'Kerberos'
