@@ -1041,6 +1041,18 @@ SQL
     push @members, @users, @groups;
 
     my $meta = Foswiki::Meta->load($this->{session}, $web, $topic);
+
+    my @acl;
+    my @canChange = ($topic);
+    my $pref = $meta->get('PREFERENCE', 'ALLOWTOPICCHANGE');
+
+    @acl = split(/,/, $pref->{value}) if defined $pref && $pref->{value};
+    @acl = map {$_ =~ s/^\s+|\s+$//gr} @acl;
+
+    foreach my $entry (@acl) {
+        push @canChange, $entry unless grep {$_ eq $entry} @canChange;
+    }
+
     $meta->putKeyed('PREFERENCE', {
         type  => 'Set',
         name  => 'GROUP',
@@ -1051,7 +1063,7 @@ SQL
         type  => 'Set',
         name  => 'ALLOWTOPICCHANGE',
         title => 'ALLOWTOPICCHANGE',
-        value => $topic
+        value => join(',', @canChange)
     });
     $meta->putKeyed('PREFERENCE', {
         type  => 'Set',
