@@ -74,7 +74,9 @@ sub readGroupsFromLdap {
 
     my $count = 0;
     my %db_hash;
-    tie %db_hash, $Foswiki::UNICODE ? 'Foswiki::Contrib::LdapContrib::DBFileLockConvert' : 'DB_File::Lock', $cacheFile, O_RDONLY, 0664, $DB_HASH, 'read' or die "Error tieing cache file $cacheFile: $!";
+    my $pkg = $Foswiki::UNICODE ? 'Foswiki::Contrib::LdapContrib::DBFileLockConvert' : 'DB_File::Lock';
+    eval "require $pkg";
+    tie %db_hash, $pkg, $cacheFile, O_RDONLY, 0664, $DB_HASH, 'read' or die "Error tieing cache file $cacheFile: $!";
 
     foreach my $group (split(',', $db_hash{GROUPS})) {
         my $group_escaped = $group =~ s/([^a-zA-Z0-9])/'_'.sprintf('%02x', ord($1))/ger;
