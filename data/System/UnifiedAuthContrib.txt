@@ -303,7 +303,7 @@ This will lead to users being logged in with the wrong user account.
          'allow' => '10.10.20.0/24',
          'identityProvider' => 'ldap_provider_id2',
          'keytab' => '/etc/apache2/http.keytab',
-         'realm' => 'BAR\.ORG',
+         'realm' => qr/BAR\.ORG/,
          'serviceName' => 'HTTP/server.bar.org'
       },
       'module' => 'Kerberos'
