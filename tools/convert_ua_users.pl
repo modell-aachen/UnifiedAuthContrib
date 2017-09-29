@@ -297,8 +297,8 @@ sub _mapUser {
         return $v;
     }
     my $lowerV = lc $shortV;
-    if($users{lowerV}){
-        return $users{lowerV};
+    if($users{$lowerV}){
+        return $users{$lowerV};
     }
     return $users{$shortV} ? $users{$shortV} : $v;
 }
