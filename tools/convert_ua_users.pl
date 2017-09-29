@@ -296,6 +296,10 @@ sub _mapUser {
     if($shortV =~ /WikiGuest/){
         return $v;
     }
+    my $lowerV = lc $shortV;
+    if($users{lowerV}){
+        return $users{lowerV};
+    }
     return $users{$shortV} ? $users{$shortV} : $v;
 }
 
