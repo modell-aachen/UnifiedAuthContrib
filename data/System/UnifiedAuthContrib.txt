@@ -656,6 +656,10 @@ WikiPreferences:
 | USER_CREATE_ALLOW_CHANGE_LOGINNAME | 0/1 | 0 | Set if the LoginName can be set while creating a new user |
 | PASSWORD_RESET_DURATION | Integer  | 24 | Set duration in hours for validity of reset password link |
 
+---+++ KEYUSER_ADMINISTRATED setting
+
+When a (template) group has the setting =KEYUSER_ADMINISTRATED= set to perl-true (=1=) on its group-topic, it will not add the group to the =ALLOWTOPICCHANGE= setting automatically. Instead the =KeyUserGroup= will be added.
+
 ---++ Query User Information
 The following form provides a convinient way to print user information by his
 login name, wikiname or cUID. Just fill the textbox and submit the form.
