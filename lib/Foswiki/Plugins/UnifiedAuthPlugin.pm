@@ -25,56 +25,70 @@ sub initPlugin {
     Foswiki::Func::registerTagHandler('TOTALUSERS', \&_TOTALUSERS);
 
     Foswiki::Func::registerRESTHandler( 'registerUser',
-        \&_registerUser,
+        # \&_registerUser,
+        \&_bad_request,
         authenticate => 0,
         validate => 0,
         http_allow => 'POST',
     );
 
     Foswiki::Func::registerRESTHandler( 'users',
-        \&_RESTusers,
-        authenticate => 0,
+        # \&_RESTusers,
+        \&_bad_request,
+        authenticate => 1,
         validate => 0,
         http_allow => 'GET',
     );
 
     Foswiki::Func::registerRESTHandler( 'addUsersToGroup',
-        \&_addUsersToGroup,
+        # \&_addUsersToGroup,
+        \&_bad_request,
         authenticate => 1,
         validate => 0,
         http_allow => 'POST',
     );
     Foswiki::Func::registerRESTHandler( 'removeUserFromGroup',
-        \&_removeUserFromGroup,
+        # \&_removeUserFromGroup,
+        \&_bad_request,
         authenticate => 1,
         validate => 0,
         http_allow => 'POST',
     );
     Foswiki::Func::registerRESTHandler( 'resetPassword',
-        \&_resetPassword,
+        # \&_resetPassword,
+        \&_bad_request,
         authenticate => 1,
         validate => 0,
         http_allow => 'POST',
     );
     Foswiki::Func::registerRESTHandler( 'setPassword',
-        \&_setPassword,
+        # \&_setPassword,
+        \&_bad_request,
         authenticate => 0,
         validate => 0,
         http_allow => 'GET,POST',
     );
     Foswiki::Func::registerRESTHandler( 'updateEmail',
-        \&_updateEmail,
+        # \&_updateEmail,
+        \&_bad_request,
         authenticate => 1,
         validate => 0,
         http_allow => 'POST',
     );
     Foswiki::Func::registerRESTHandler( 'toggleUserState',
-        \&_toggleUserState,
+        # \&_toggleUserState,
+        \&_bad_request,
         authenticate => 1,
         validate => 0,
         http_allow => 'POST',
     );
     return 1;
+}
+
+sub _bad_request {
+    my ($session, $subject, $verb, $response) = @_;
+    $response->header(-status => 400);
+    return to_json({status => 'error', msg => 'Bad request'});
 }
 
 sub _AUTHPROVIDERS {
