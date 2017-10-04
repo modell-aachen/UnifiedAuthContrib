@@ -648,7 +648,7 @@ Only wiki administrators are allowed to force a cache update.
 
 
 ---++ User Administration
-To administrate the user in this Wiki us the [[UserAdministration]] site.
+To administrate the users in this Wiki use the [[UserAdministration]] site.
 
 ---+++ Configuration
 WikiPreferences:
@@ -661,7 +661,7 @@ WikiPreferences:
 When a (template) group has the setting =KEYUSER_ADMINISTRATED= set to perl-true (=1=) on its group-topic, it will not add the group to the =ALLOWTOPICCHANGE= setting automatically. Instead the =KeyUserGroup= will be added.
 
 ---++ Query User Information
-The following form provides a convinient way to print user information by his
+The following form provides a convenient way to print user information by his
 login name, wikiname or cUID. Just fill the textbox and submit the form.
 
 <h6 id="query"></h6>
