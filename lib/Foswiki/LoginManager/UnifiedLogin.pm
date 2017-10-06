@@ -398,10 +398,9 @@ sub processProviderLogin {
     my $banner = '';
     $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE');
 
-    if($error eq '') {
-        $error = $session->i18n->maketext("Wrong username or password"); # XXX this is in many cases not true, it would be better if providers passed down a message
+    if($error) {
+        $session->{prefs}->setSessionPreferences(UAUTH_AUTH_FAILURE_MESSAGE => $error, BANNER => $banner);
     }
-    $session->{prefs}->setSessionPreferences(UAUTH_AUTH_FAILURE_MESSAGE => $error, BANNER => $banner);
 
     return undef;
 }
