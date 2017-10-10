@@ -151,6 +151,7 @@ sub processLogin {
             throw Error::Simple($error);
         }
 
+        $principal = Encode::decode_utf8($principal);
         # ToDo. place an option in configure whether to strip off the realm
         $principal =~ s/\@$cfg->{realm}//;
         Foswiki::Func::writeWarning("Kerberos identified user as '$principal'") if $cfg->{debug};
