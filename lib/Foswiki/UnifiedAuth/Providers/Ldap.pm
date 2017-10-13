@@ -410,10 +410,33 @@ sub getData {
 }
 
 sub refreshUsersCache {
-    my ($this, $data, $userBase) = @_;
+    my ($this) = @_;
+
+    my %seenCuids = ();
+
+    foreach my $userBase (@{$this->{userBase}}) {
+        my $isOk = $this->_refreshEachUsersCache($userBase, \%seenCuids);
+        return 0 unless $isOk;
+    }
+
+    # delete old user entries we have not seen again
+    my $db = $this->{uauth}->db();
+    my $pid = $this->getPid();
+    my @enabledUsers = @{$db->selectcol_arrayref('SELECT cuid from users where pid=? and uac_disabled=0', {}, $pid) || []};
+    foreach my $cuid ( @enabledUsers ) {
+        next if $seenCuids{$cuid};
+
+        Foswiki::Func::writeWarning("Disabling user, because we can no longer find her/him: $cuid");
+        $db->do('UPDATE users SET uac_disabled=1 WHERE pid=? AND cuid=?', {}, $pid, $cuid);
+    }
+
+    return 1;
+}
+
+sub _refreshEachUsersCache {
+    my ($this, $userBase, $seenCuids) = @_;
 
     writeDebug("called refreshUsersCache($userBase)");
-    $data ||= $this->{data};
     $userBase ||= $this->{base};
 
     # prepare search
@@ -431,20 +454,57 @@ sub refreshUsersCache {
     return 0 if $gotError;
 
     foreach my $entry ( @$fromLdap ) {
-        $this->cacheUserFromEntry($entry);
+        my $cuid = $this->cacheUserFromEntry($entry);
+        $seenCuids->{$cuid} = 1;
     }
 
     return 1;
 }
 
+# Pull groups from ldap, populate members and nestings.
+# Remove no longer found groups.
+#
+# Only nest groups from same pid.
+# Nest users from all pids.
 sub refreshGroupsCache {
-    my ($this, $data, $groupBase) = @_;
+    my ($this) = @_;
+
+    my $db = $this->{uauth}->db();
+    my $pid = $this->getPid();
+
+    my $oldGroups = $db->selectcol_arrayref('SELECT name FROM groups WHERE pid=?', {}, $pid);
+
+    my $groupsCache = {}; # maps name -> ldap entry
+    my $groupsCacheDN = {}; # maps dn -> name
+
+    foreach my $groupBase (@{$this->{groupBase}}) {
+        return 0 unless $this->_refreshEachGroupCache($groupBase, $groupsCache, $groupsCacheDN);
+    }
+
+    # add members/nestings
+    # Note: Selecting users from ALL ldaps (not filtered by pid), because one
+    # might want to configure multiple ldaps for multiple branches, but still
+    # have groups containing users from all branches. The DNs should be enough
+    # to distinguish members coming from different ldaps entirely.
+    my $users = $db->selectall_hashref('SELECT dn, cuid FROM users_ldap', 'dn', {});
+    $this->_processGroups($groupsCache, $groupsCacheDN, $users);
+    $this->_processVirtualGroups($groupsCache, $users);
+
+    # kick removed groups
+    foreach my $oldName ( @$oldGroups ) {
+        unless ($groupsCache->{$oldName}) {
+            $this->{uauth}->removeGroup(name => $oldName, pid => $pid);
+        }
+    }
+
+    return 1;
+}
+
+sub _refreshEachGroupCache {
+    my ($this, $groupBase, $groupsCache, $groupsCacheDN) = @_;
 
     writeDebug("called refreshGroupsCache($groupBase)");
-    $data ||= $this->{data};
     $groupBase ||= $this->{base};
-
-    my $pid = $this->getPid();
 
     # prepare search
     my %args = (
@@ -459,29 +519,8 @@ sub refreshGroupsCache {
 
     # check for error
     return 0 if $gotError;
-
-    my $groupsCache = {}; # maps name -> ldap entry
-    my $groupsCacheDN = {}; # maps dn -> name
     foreach my $entry ( @$fromLdap ) {
         $this->cacheGroupFromEntry($entry, $groupsCache, $groupsCacheDN);
-    }
-
-    my $db = $this->{uauth}->db();
-    # Note: Selecting users from ALL ldaps (not filtered by pid), because one
-    # might want to configure multiple ldaps for multiple branches, but still
-    # have groups containing users from all branches. The DNs should be enough
-    # to distinguish members coming from different ldaps entirely.
-    my $users = $db->selectall_hashref('SELECT dn, cuid FROM users_ldap', 'dn', {});
-    my $oldGroups = $db->selectcol_arrayref('SELECT name FROM groups WHERE pid=?', {}, $pid);
-
-    $this->_processGroups($groupsCache, $groupsCacheDN, $users);
-    $this->_processVirtualGroups($groupsCache, $users);
-
-    # kick removed groups
-    foreach my $oldName ( @$oldGroups ) {
-        unless ($groupsCache->{$oldName}) {
-            $this->{uauth}->removeGroup(name => $oldName, pid => $pid);
-        }
     }
 
     return 1;
@@ -1188,7 +1227,7 @@ sub cacheUserFromEntry {
     #    }
     #  }
     #}
-    return 1;
+    return $cuid;
 }
 
 sub processLoginName {
@@ -1208,29 +1247,17 @@ sub refreshCache {
 
     $this->{_refreshMode} = $mode;
 
-    my %tempData;
-
     my $isOk;
 
-    foreach my $userBase (@{$this->{userBase}}) {
-        $isOk = $this->refreshUsersCache(\%tempData, $userBase);
-        last unless $isOk;
-    }
+    $isOk = $this->refreshUsersCache();
 
     if ($isOk && $this->{mapGroups}) {
-        foreach my $groupBase (@{$this->{groupBase}}) {
-            $isOk = $this->refreshGroupsCache(\%tempData, $groupBase);
-            last unless $isOk;
-        }
-    }
-
-    unless ($isOk) {    # we had an error: keep the old cache til the error is resolved
-        return 0;
+        $isOk = $this->refreshGroupsCache();
     }
 
     undef $this->{_refreshMode};
 
-    return 1;
+    return $isOk;
 }
 
 sub processLoginData {
