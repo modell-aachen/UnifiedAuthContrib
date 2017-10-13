@@ -15,6 +15,9 @@ our @ISA = qw(Foswiki::UnifiedAuth::Provider);
 sub new {
     my ($class, $session, $id, $config) = @_;
     my $this = $class->SUPER::new($session, $id, $config);
+
+    $this->{config}->{identityProvider} = '_all_' unless defined $this->{config}->{identityProvider};
+
     return $this;
 }
 

@@ -309,16 +309,25 @@ sub processProviderLogin {
             Foswiki::Func::writeWarning("Waiting for client to get back to us.") if defined $provider->{config}->{debug} && $provider->{config}->{debug} eq 'verbose';
             undef $loginResult;
         } elsif ($loginResult && $provider->{config}->{identityProvider}) {
-            my $id_provider = $provider->{config}->{identityProvider};
-            my $providersResult;
-            if ($id_provider eq '_all_') {
-                $this->{uac} = Foswiki::UnifiedAuth->new unless $this->{uac};
-                ($id_provider) = $this->{uac}->getProviderForUser($loginResult);
-                $id_provider ||= '__default';
+            my $providerConfig = $provider->{config}->{identityProvider};
+            my @providers;
+            if($providerConfig eq '_all_') {
+                # Note: we can not simply search the users table for the login
+                # since it can be rewritten by the providers (eg. lowercased)
+                #
+                # Sorting the providers, so we get a consistent result, should
+                # a login appear twice (misconfiguration)
+                @providers = sort keys %{$Foswiki::cfg{UnifiedAuth}{Providers}};
+            } else {
+                @providers = split(/\s*,\s*/, $providerConfig);
             }
-            my $identity = $this->_authProvider($id_provider);
-            if ($identity->isa('Foswiki::UnifiedAuth::IdentityProvider')) {
-                $providersResult = $identity->identify($loginResult);
+            my $providersResult;
+            foreach my $providerName ( @providers ) {
+                my $provider = $this->_authProvider($providerName);
+                if ($provider->isa('Foswiki::UnifiedAuth::IdentityProvider')) {
+                    $providersResult = $provider->identify($loginResult);
+                    last if $providersResult;
+                }
             }
             if($providersResult) {
                 $loginResult = $providersResult;
@@ -341,7 +350,12 @@ sub processProviderLogin {
     }
 
     if (ref($loginResult) eq 'HASH' && $loginResult->{cuid}) {
+
+        # NOTE: This is just a safety net, each provider MUST check if the
+        # login is active or not. Otherwise a deactivated provider will also
+        # invalidate following providers.
         my $deactivated = $this->{uac}->{db}->selectrow_array("SELECT deactivated FROM users WHERE cuid=?", {}, $loginResult->{cuid});
+
         unless ($deactivated) {
             $this->userLoggedIn($loginResult->{cuid});
             $session->logger->log(

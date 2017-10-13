@@ -261,7 +261,7 @@ ATTENTION: %ENDCOLOR% Allowing multiple subdomains will lead to problems if ther
 This will lead to users being logged in with the wrong user account.
 
 | *Preference* | *Description* |
-| identityProvider | ID of a configured Ldap provider which shall be used to fetch user information; use =_all_= for all configured providers. Defaults to =_all_=. |
+| identityProvider | Comma-separated list of IDs of configured Ldap providers which shall be used to fetch user information; use =_all_= for all configured providers. Defaults to =_all_=. |
 | keytab | Path to a valid Kerberos keytab file |
 | realm | The domain realm provided as a Perl regular expression. |
 | serviceName | Service principal name |

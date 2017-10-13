@@ -16,6 +16,8 @@ use Foswiki::Contrib::UnifiedAuthContrib();
 use Foswiki::UnifiedAuth::Providers::Ldap();
 
 use Data::Dumper;
+use Data::Compare;
+
 use Test::MockModule;
 
 my $mocks; # mocks will be stored in a package variable, so we can unmock them reliably when the test finished
@@ -46,7 +48,9 @@ sub set_up_mocks {
 
     $mocks = {};
     foreach my $module (qw(
+        Foswiki::LoginManager::UnifiedLogin
         Foswiki::UnifiedAuth
+        Foswiki::UnifiedAuth::Providers::Kerberos
         Foswiki::UnifiedAuth::Providers::Ldap
     )) {
         $mocks->{$module} = Test::MockModule->new($module);
@@ -144,6 +148,90 @@ sub test_ldapRefreshRemovesOldGroups {
     $ldap->refreshGroupsCache();
     $db->assertAllCalled();
     $this->assert($groupRemoved);
+}
+
+# Test if...
+# ... configured identityProviders get called in the specified order
+# ... following providers will not be called, once a provider accepts an identity
+sub test_identityProviderList {
+    my ( $this ) = @_;
+
+    my $session = $this->createNewFoswikiSession();
+
+    my $providers = {
+        sso => 'Foswiki::UnifiedAuth::Providers::Kerberos'->new($session, 'sso', {
+                'identityProvider' => 'ldap_one,ldap_two,ldap_three',
+            }
+        ),
+        ldap_one => 'Foswiki::UnifiedAuth::Providers::Ldap'->new($session, 'ldap_one', {}),
+        ldap_two => 'Foswiki::UnifiedAuth::Providers::Ldap'->new($session, 'ldap_two', {}),
+        ldap_three => 'Foswiki::UnifiedAuth::Providers::Ldap'->new($session, 'ldap_three', {}),
+    };
+    $mocks->{'Foswiki::LoginManager::UnifiedLogin'}->mock('_authProvider', sub {
+            $this->assert(defined $providers->{$_[1]}, "Tried to init unexpected provider: '$_[1]'");
+            return $providers->{$_[1]};
+        }
+    );
+
+    $mocks->{'Foswiki::UnifiedAuth::Providers::Kerberos'}->mock('processLogin', 'testuser');
+
+    my $calledLdapProviders = [];
+    $mocks->{'Foswiki::UnifiedAuth::Providers::Ldap'}->mock('identify', sub {
+            my $this = shift;
+            push @$calledLdapProviders, $this->{id};
+            return 1 if $this->{id} eq 'ldap_two'; # NOTE: this is an invalid return value, to simplify testing
+            return undef;
+        }
+    );
+
+    my $loginManager = Foswiki::LoginManager::UnifiedLogin->new($session);
+    $loginManager->processProviderLogin(undef, $session, $providers->{sso});
+
+    my $expectedCalls = ['ldap_one', 'ldap_two'];
+    $this->assert(Compare($calledLdapProviders, $expectedCalls), "Ldap providers where expected to be called in order [" . join(', ', @$expectedCalls) . "] but where called [" . join(', ', @$calledLdapProviders) . "]");
+}
+
+# Test if...
+# ... all providers are tested in alphabetical order when no identityProvider is configured
+sub test_noIdentityProvider {
+    my ( $this ) = @_;
+
+    my $session = $this->createNewFoswikiSession();
+
+    my $providers = {
+        sso => 'Foswiki::UnifiedAuth::Providers::Kerberos'->new($session, 'sso', {}),
+        ldap_one => 'Foswiki::UnifiedAuth::Providers::Ldap'->new($session, 'ldap_one', {}),
+        ldap_two => 'Foswiki::UnifiedAuth::Providers::Ldap'->new($session, 'ldap_two', {}),
+        ldap_three => 'Foswiki::UnifiedAuth::Providers::Ldap'->new($session, 'ldap_three', {}),
+    };
+    $mocks->{'Foswiki::LoginManager::UnifiedLogin'}->mock('_authProvider', sub {
+            $this->assert(defined $providers->{$_[1]}, "Tried to init unexpected provider: '$_[1]'");
+            return $providers->{$_[1]};
+        }
+    );
+    $Foswiki::cfg{UnifiedAuth}{Providers} = {
+        sso => {},
+        ldap_one => {},
+        ldap_two => {},
+        ldap_three => {},
+    };
+
+    $mocks->{'Foswiki::UnifiedAuth::Providers::Kerberos'}->mock('processLogin', 'testuser');
+
+    my $calledLdapProviders = [];
+    $mocks->{'Foswiki::UnifiedAuth::Providers::Ldap'}->mock('identify', sub {
+            my $this = shift;
+            push @$calledLdapProviders, $this->{id};
+            return 1 if $this->{id} eq 'ldap_two'; # NOTE: this is an invalid return value, to simplify testing
+            return undef;
+        }
+    );
+
+    my $loginManager = Foswiki::LoginManager::UnifiedLogin->new($session);
+    $loginManager->processProviderLogin(undef, $session, $providers->{sso});
+
+    my $expectedCalls = ['ldap_one', 'ldap_three', 'ldap_two'];
+    $this->assert(Compare($calledLdapProviders, $expectedCalls), "Ldap providers where expected to be called in order [" . join(', ', @$expectedCalls) . "] but where called [" . join(', ', @$calledLdapProviders) . "]");
 }
 
 sub getMockDb {
