@@ -188,7 +188,7 @@ sub test_identityProviderList {
     $loginManager->processProviderLogin(undef, $session, $providers->{sso});
 
     my $expectedCalls = ['ldap_one', 'ldap_two'];
-    $this->assert(Compare($calledLdapProviders, $expectedCalls), "Ldap providers where expected to be called in order [" . join(', ', @$expectedCalls) . "] but where called [" . join(', ', @$calledLdapProviders) . "]");
+    $this->assert(Compare($calledLdapProviders, $expectedCalls), "Ldap providers were expected to be called in order [" . join(', ', @$expectedCalls) . "] but were called [" . join(', ', @$calledLdapProviders) . "]");
 }
 
 # Test if...
@@ -231,7 +231,7 @@ sub test_noIdentityProvider {
     $loginManager->processProviderLogin(undef, $session, $providers->{sso});
 
     my $expectedCalls = ['ldap_one', 'ldap_three', 'ldap_two'];
-    $this->assert(Compare($calledLdapProviders, $expectedCalls), "Ldap providers where expected to be called in order [" . join(', ', @$expectedCalls) . "] but where called [" . join(', ', @$calledLdapProviders) . "]");
+    $this->assert(Compare($calledLdapProviders, $expectedCalls), "Ldap providers were expected to be called in order [" . join(', ', @$expectedCalls) . "] but were called [" . join(', ', @$calledLdapProviders) . "]");
 }
 
 sub getMockDb {
