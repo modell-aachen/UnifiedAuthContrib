@@ -1273,7 +1273,7 @@ sub processLoginData {
 
     $username = $this->processLoginName($username);
 
-    my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND users.pid=?", {}, $username, $pid);
+    my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND users.pid=? AND uac_disabled=0 AND deactivated=0", {}, $username, $pid);
     return undef unless $userinfo;
 
     my $dn = $db->selectrow_array("SELECT dn FROM users_ldap WHERE login=? AND pid=?", {}, $username, $pid);
