@@ -422,12 +422,12 @@ sub refreshUsersCache {
     # delete old user entries we have not seen again
     my $db = $this->{uauth}->db();
     my $pid = $this->getPid();
-    my @enabledUsers = @{$db->selectcol_arrayref('SELECT cuid from users where pid=? and uac_disabled=0', {}, $pid) || []};
+    my @enabledUsers = @{$db->selectcol_arrayref('SELECT cuid from users where pid=? AND (uac_disabled=0 OR deactivated=0)', {}, $pid) || []};
     foreach my $cuid ( @enabledUsers ) {
         next if $seenCuids{$cuid};
 
         Foswiki::Func::writeWarning("Disabling user, because we can no longer find her/him: $cuid");
-        $db->do('UPDATE users SET uac_disabled=1 WHERE pid=? AND cuid=?', {}, $pid, $cuid);
+        $db->do('UPDATE users SET uac_disabled=1, deactivated=1 WHERE pid=? AND cuid=?', {}, $pid, $cuid);
     }
 
     return 1;
