@@ -1109,8 +1109,9 @@ sub cacheUserFromEntry {
     # SMELL. Applies to Active Directory only
     # See https://support.microsoft.com/en-us/kb/305144
     my $accoundControl = int($entry->get_value('userAccountControl') || 0);
-    my $uacDisabled = $accoundControl & 2;
-    $uacDisabled = $uacDisabled ? 1 : 0;
+    my $deactivated = $accoundControl & 2;
+    $deactivated = $deactivated ? 1 : 0;
+    my $uacDisabled = $deactivated;
 
     # get old data
     my $cuid = $db->selectrow_array("SELECT cuid FROM users WHERE pid=? AND login_name=?", {}, $pid, $loginName);
@@ -1179,13 +1180,15 @@ sub cacheUserFromEntry {
             login_name => $loginName,
             wiki_name => $wikiName,
             display_name => $displayName,
-            uac_disabled => $uacDisabled
+            uac_disabled => $uacDisabled,
+            deactivated => $deactivated,
         });
     } else {
         $uauth->update_user(undef , $cuid, {
             email => $email,
             display_name => $displayName,
-            uac_disabled => $uacDisabled
+            uac_disabled => $uacDisabled,
+            deactivated => $deactivated,
         });
     }
     # fake upsert
