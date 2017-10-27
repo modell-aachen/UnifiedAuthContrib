@@ -95,7 +95,6 @@ sub makeConfig {
     $this->{mapGroups} = $this->{config}{MapGroups} || 0;
     $this->{rewriteGroups} = $this->{config}{RewriteGroups} || {};
     $this->{rewriteWikiNames} = $this->{config}{RewriteWikiNames} ||  { '^(.*)@.*$' => '$1' };
-    $this->{rewriteLoginNames} = $this->{config}{RewriteLoginNames} || [];
     $this->{mergeGroups} = $this->{config}{MergeGroups} || 0;
 
     $this->{mailAttribute} = $this->{config}{MailAttribute} || 'mail';
@@ -791,6 +790,7 @@ sub getError {
 sub rewriteLoginName {
     my ($this, $name) = @_;
 
+    $this->{rewriteLoginNames} = $this->{config}{RewriteLoginNames} || [];
     foreach my $rule (@{$this->{rewriteLoginNames}}) {
         my $pattern = $rule->[0];
         my $subst = $rule->[1];
