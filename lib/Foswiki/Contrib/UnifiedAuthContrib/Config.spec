@@ -26,6 +26,10 @@ $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider} = '';
 $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider} = '';
 
 # **BOOLEAN EXPERT**
+# If enabled, the login page includes a link to System/ResetPassword.
+$Foswiki::cfg{UnifiedAuth}{ShowResetPassword} = 0;
+
+# **BOOLEAN EXPERT**
 # If enabled, foswiki will *not* create backups of the users database.
 $Foswiki::cfg{UnifiedAuth}{NoDump} = 0;
 

@@ -23,6 +23,7 @@ our $connection;
 sub initPlugin {
     Foswiki::Func::registerTagHandler('AUTHPROVIDERS',\&_AUTHPROVIDERS);
     Foswiki::Func::registerTagHandler('TOTALUSERS', \&_TOTALUSERS);
+    Foswiki::Func::registerTagHandler('SHOWRESETPASSWORD', \&_SHOWRESETPASSWORD);
 
     Foswiki::Func::registerRESTHandler( 'registerUser',
         \&_registerUser,
@@ -121,6 +122,12 @@ sub _TOTALUSERS {
     my $baseQuery = "SELECT COUNT(DISTINCT users.cuid) FROM users INNER JOIN providers ON (users.pid=providers.pid) WHERE NOT providers.name ~ '^__'";
     return $db->selectrow_array($baseQuery, {}) unless Foswiki::isTrue($exclude, 0);
     $db->selectrow_array("$baseQuery AND users.deactivated=0", {});
+}
+
+sub _SHOWRESETPASSWORD {
+    my($session, $params, $topic, $web, $topicObject) = @_;
+    my $showResetPassword = $Foswiki::cfg{UnifiedAuth}{ShowResetPassword} || 0;
+    return $showResetPassword;
 }
 
 sub _registerUser {

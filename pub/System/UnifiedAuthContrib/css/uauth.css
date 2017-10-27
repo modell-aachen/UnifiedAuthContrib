@@ -6,6 +6,14 @@
   border: none
 }
 
+.uauth .rightAligned {
+  text-align: right;
+}
+
+.uauth .foswikiFormStep.rightAligned .foswikiUnvisited{
+  margin-right: 10px;
+}
+
 .uauth .foswikiInputField {
   border: 1px solid #ccc;
   border-radius: 4px;
