@@ -15,6 +15,9 @@ our @ISA = qw(Foswiki::UnifiedAuth::Provider);
 sub new {
     my ($class, $session, $id, $config) = @_;
     my $this = $class->SUPER::new($session, $id, $config);
+
+    $this->{config}->{identityProvider} = '_all_' unless defined $this->{config}->{identityProvider};
+
     return $this;
 }
 
@@ -116,7 +119,6 @@ sub processLogin {
     if (length($token)) {
         $ENV{KRB5_KTNAME} = "FILE:$cfg->{keytab}";
         my $ctx;
-        my $omech = GSSAPI::OID->new;
         my $accept_status = GSSAPI::Context::accept(
             $ctx,
             GSS_C_NO_CREDENTIAL,
@@ -152,6 +154,7 @@ sub processLogin {
             throw Error::Simple($error);
         }
 
+        $principal = Encode::decode_utf8($principal);
         # ToDo. place an option in configure whether to strip off the realm
         $principal =~ s/\@$cfg->{realm}//;
         Foswiki::Func::writeWarning("Kerberos identified user as '$principal'") if $cfg->{debug};

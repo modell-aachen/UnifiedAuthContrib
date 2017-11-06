@@ -506,7 +506,8 @@ SELECT
     cuid AS cUID,
     login_name AS loginName,
     wiki_name as wikiName,
-    display_name AS displayName
+    display_name AS displayName,
+    email
 FROM users $u_join
 WHERE deactivated=0 AND uac_disabled=0 AND ($u_condition)
 ORDER BY displayName

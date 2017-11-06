@@ -100,7 +100,8 @@ sub processLogin {
         my $result = $provider->processLoginData($username, $password);
         return $result if $result;
     }
-    return undef;
+    my $error = $session->i18n->maketext("Wrong username or password");
+    throw Error::Simple($error);
 }
 
 sub processUrl {

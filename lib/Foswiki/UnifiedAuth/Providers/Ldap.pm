@@ -95,7 +95,6 @@ sub makeConfig {
     $this->{mapGroups} = $this->{config}{MapGroups} || 0;
     $this->{rewriteGroups} = $this->{config}{RewriteGroups} || {};
     $this->{rewriteWikiNames} = $this->{config}{RewriteWikiNames} ||  { '^(.*)@.*$' => '$1' };
-    $this->{rewriteLoginNames} = $this->{config}{RewriteLoginNames} || [];
     $this->{mergeGroups} = $this->{config}{MergeGroups} || 0;
 
     $this->{mailAttribute} = $this->{config}{MailAttribute} || 'mail';
@@ -410,10 +409,33 @@ sub getData {
 }
 
 sub refreshUsersCache {
-    my ($this, $data, $userBase) = @_;
+    my ($this) = @_;
+
+    my %seenCuids = ();
+
+    foreach my $userBase (@{$this->{userBase}}) {
+        my $isOk = $this->_refreshEachUsersCache($userBase, \%seenCuids);
+        return 0 unless $isOk;
+    }
+
+    # delete old user entries we have not seen again
+    my $db = $this->{uauth}->db();
+    my $pid = $this->getPid();
+    my @enabledUsers = @{$db->selectcol_arrayref('SELECT cuid from users where pid=? AND (uac_disabled=0 OR deactivated=0)', {}, $pid) || []};
+    foreach my $cuid ( @enabledUsers ) {
+        next if $seenCuids{$cuid};
+
+        Foswiki::Func::writeWarning("Disabling user, because we can no longer find her/him: $cuid");
+        $db->do('UPDATE users SET uac_disabled=1, deactivated=1 WHERE pid=? AND cuid=?', {}, $pid, $cuid);
+    }
+
+    return 1;
+}
+
+sub _refreshEachUsersCache {
+    my ($this, $userBase, $seenCuids) = @_;
 
     writeDebug("called refreshUsersCache($userBase)");
-    $data ||= $this->{data};
     $userBase ||= $this->{base};
 
     # prepare search
@@ -431,20 +453,57 @@ sub refreshUsersCache {
     return 0 if $gotError;
 
     foreach my $entry ( @$fromLdap ) {
-        $this->cacheUserFromEntry($entry);
+        my $cuid = $this->cacheUserFromEntry($entry);
+        $seenCuids->{$cuid} = 1;
     }
 
     return 1;
 }
 
+# Pull groups from ldap, populate members and nestings.
+# Remove no longer found groups.
+#
+# Only nest groups from same pid.
+# Nest users from all pids.
 sub refreshGroupsCache {
-    my ($this, $data, $groupBase, $imported) = @_;
+    my ($this) = @_;
+
+    my $db = $this->{uauth}->db();
+    my $pid = $this->getPid();
+
+    my $oldGroups = $db->selectcol_arrayref('SELECT name FROM groups WHERE pid=?', {}, $pid);
+
+    my $groupsCache = {}; # maps name -> ldap entry
+    my $groupsCacheDN = {}; # maps dn -> name
+
+    foreach my $groupBase (@{$this->{groupBase}}) {
+        return 0 unless $this->_refreshEachGroupCache($groupBase, $groupsCache, $groupsCacheDN);
+    }
+
+    # add members/nestings
+    # Note: Selecting users from ALL ldaps (not filtered by pid), because one
+    # might want to configure multiple ldaps for multiple branches, but still
+    # have groups containing users from all branches. The DNs should be enough
+    # to distinguish members coming from different ldaps entirely.
+    my $users = $db->selectall_hashref('SELECT dn, cuid FROM users_ldap', 'dn', {});
+    $this->_processGroups($groupsCache, $groupsCacheDN, $users);
+    $this->_processVirtualGroups($groupsCache, $users);
+
+    # kick removed groups
+    foreach my $oldName ( @$oldGroups ) {
+        unless ($groupsCache->{$oldName}) {
+            $this->{uauth}->removeGroup(name => $oldName, pid => $pid);
+        }
+    }
+
+    return 1;
+}
+
+sub _refreshEachGroupCache {
+    my ($this, $groupBase, $groupsCache, $groupsCacheDN) = @_;
 
     writeDebug("called refreshGroupsCache($groupBase)");
-    $data ||= $this->{data};
     $groupBase ||= $this->{base};
-
-    my $pid = $this->getPid();
 
     # prepare search
     my %args = (
@@ -459,42 +518,11 @@ sub refreshGroupsCache {
 
     # check for error
     return 0 if $gotError;
-
-    my $groupsCache = {}; # maps name -> ldap entry
-    my $groupsCacheDN = {}; # maps dn -> name
     foreach my $entry ( @$fromLdap ) {
         $this->cacheGroupFromEntry($entry, $groupsCache, $groupsCacheDN);
     }
 
-    my $db = $this->{uauth}->db();
-    # Note: Selecting users from ALL ldaps (not filtered by pid), because one
-    # might want to configure multiple ldaps for multiple branches, but still
-    # have groups containing users from all branches. The DNs should be enough
-    # to distinguish members coming from different ldaps entirely.
-    my $users = $db->selectall_hashref('SELECT dn, cuid FROM users_ldap', 'dn', {});
-    my $oldGroups = $db->selectcol_arrayref('SELECT name FROM groups WHERE pid=?', {}, $pid);
-
-    $this->_processGroups($groupsCache, $groupsCacheDN, $users);
-    $this->_processVirtualGroups($groupsCache, $users);
-
-    map {$imported->{$_} = 1} keys %$groupsCache;
-
     return 1;
-}
-
-sub removeCachedGroups {
-    my $this = shift;
-    my $imported = shift;
-
-    my $db = $this->{uauth}->db();
-    my $pid = $this->getPid();
-    my $existing = $db->selectcol_arrayref('SELECT name FROM groups WHERE pid=?', {}, $pid);
-
-    foreach my $name (@$existing) {
-        next if $imported->{$name} == 1;
-        writeDebug("Removing group: '$name'. That group does not exist anymore in provider '$pid'.");
-        $this->{uauth}->removeGroup(name => $name, pid => $pid);
-    }
 }
 
 sub cacheGroupFromEntry {
@@ -762,6 +790,7 @@ sub getError {
 sub rewriteLoginName {
     my ($this, $name) = @_;
 
+    $this->{rewriteLoginNames} = $this->{config}{RewriteLoginNames} || [];
     foreach my $rule (@{$this->{rewriteLoginNames}}) {
         my $pattern = $rule->[0];
         my $subst = $rule->[1];
@@ -1080,8 +1109,9 @@ sub cacheUserFromEntry {
     # SMELL. Applies to Active Directory only
     # See https://support.microsoft.com/en-us/kb/305144
     my $accoundControl = int($entry->get_value('userAccountControl') || 0);
-    my $uacDisabled = $accoundControl & 2;
-    $uacDisabled = $uacDisabled ? 1 : 0;
+    my $deactivated = $accoundControl & 2;
+    $deactivated = $deactivated ? 1 : 0;
+    my $uacDisabled = $deactivated;
 
     # get old data
     my $cuid = $db->selectrow_array("SELECT cuid FROM users WHERE pid=? AND login_name=?", {}, $pid, $loginName);
@@ -1150,13 +1180,15 @@ sub cacheUserFromEntry {
             login_name => $loginName,
             wiki_name => $wikiName,
             display_name => $displayName,
-            uac_disabled => $uacDisabled
+            uac_disabled => $uacDisabled,
+            deactivated => $deactivated,
         });
     } else {
         $uauth->update_user(undef , $cuid, {
             email => $email,
             display_name => $displayName,
-            uac_disabled => $uacDisabled
+            uac_disabled => $uacDisabled,
+            deactivated => $deactivated,
         });
     }
     # fake upsert
@@ -1198,7 +1230,7 @@ sub cacheUserFromEntry {
     #    }
     #  }
     #}
-    return 1;
+    return $cuid;
 }
 
 sub processLoginName {
@@ -1218,34 +1250,17 @@ sub refreshCache {
 
     $this->{_refreshMode} = $mode;
 
-    my %tempData;
-    my %importedGroups;
-
     my $isOk;
 
-    foreach my $userBase (@{$this->{userBase}}) {
-        $isOk = $this->refreshUsersCache(\%tempData, $userBase);
-        last unless $isOk;
-    }
+    $isOk = $this->refreshUsersCache();
 
     if ($isOk && $this->{mapGroups}) {
-        foreach my $groupBase (@{$this->{groupBase}}) {
-            $isOk = $this->refreshGroupsCache(\%tempData, $groupBase, \%importedGroups);
-            last unless $isOk;
-        }
-    }
-
-    # Remove unused groups
-    $this->removeCachedGroups(\%importedGroups);
-    undef %importedGroups;
-
-    unless ($isOk) {    # we had an error: keep the old cache til the error is resolved
-        return 0;
+        $isOk = $this->refreshGroupsCache();
     }
 
     undef $this->{_refreshMode};
 
-    return 1;
+    return $isOk;
 }
 
 sub processLoginData {
@@ -1261,7 +1276,7 @@ sub processLoginData {
 
     $username = $this->processLoginName($username);
 
-    my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND users.pid=?", {}, $username, $pid);
+    my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND users.pid=? AND uac_disabled=0 AND deactivated=0", {}, $username, $pid);
     return undef unless $userinfo;
 
     my $dn = $db->selectrow_array("SELECT dn FROM users_ldap WHERE login=? AND pid=?", {}, $username, $pid);

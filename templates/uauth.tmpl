@@ -16,7 +16,7 @@
 <p>%TMPL:P{"usernamefield"}% %TMPL:P{"usernamefieldhelplink"}%</p>%TMPL:P{"usernamefieldhelpcontents"}%
 </div>%TMPL:END%
 
-%TMPL:DEF{"passwordnote"}%<span class="foswikiUnvisited">[[%SCRIPTURLPATH{view}%/%SYSTEMWEB%/ResetPassword?username=%URLPARAM{usernamestep}%][%MAKETEXT{"I forgot my password"}%]]</span>%TMPL:END%
+%TMPL:DEF{"passwordnote"}%<div class="foswikiFormStep rightAligned"><span class="foswikiUnvisited">[[%SCRIPTURLPATH{view}%/%SYSTEMWEB%/ResetPassword][%MAKETEXT{"I forgot my password"}%]]</span></div>%TMPL:END%
 
 %TMPL:DEF{"statestep"}%<input type="hidden" name="state" value="%UAUTHSTATE%" />%TMPL:END%
 %TMPL:DEF{"uauthloginstep"}%<input type="hidden" name="uauthlogin" value="default" />%TMPL:END%
@@ -32,6 +32,7 @@
 }%%TMPL:P{"passwordstep"}%%{
 }%%TMPL:P{"statestep"}%%{
 }%%TMPL:P{"uauthloginstep"}%%{
+}%%IF{"$SHOWRESETPASSWORD='1'" then="$percntTMPL:P{\"passwordnote\"}$percnt"}%%{
 }%%TMPL:P{"submitstep"}%%{
 }%%IF{"context UA_CHOOSE" then="$percntTMPL:P{\"auth_providers\"}$percnt"}%%{
 }%%TMPL:P{"formend"}%%{

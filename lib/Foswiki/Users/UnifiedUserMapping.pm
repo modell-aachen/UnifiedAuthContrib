@@ -873,9 +873,7 @@ sub addUserToGroup {
         my $statement;
 
         if ($isNested) {
-            my $row = $db->selectrow_hashref(
-                'SELECT cuid FROM groups WHERE name=? OR cuid=?', {}, $cuid, $cuid);
-            $cuid = $row->{cuid};
+            $cuid = $this->{uac}->getCUID($cuid, 1, 0);
             $statement = 'INSERT INTO nested_groups (parent, child) VALUES(?, ?)';
         } else {
             $cuid = $this->_userToCUID($cuid);
@@ -950,9 +948,7 @@ sub removeUserFromGroup {
 
         my $statement;
         if ($isNested) {
-            my $row = $db->selectrow_hashref(
-                'SELECT cuid FROM groups WHERE name=?', {}, $cuid);
-            $cuid = $row->{cuid};
+            $cuid = $this->{uac}->getCUID($cuid, 1, 0);
             $statement = 'DELETE FROM nested_groups WHERE parent=? AND child=?';
         } else {
             $cuid = $this->_userToCUID($cuid);
@@ -1043,7 +1039,12 @@ SQL
     my $meta = Foswiki::Meta->load($this->{session}, $web, $topic);
 
     my @acl;
-    my @canChange = ($topic);
+    my @canChange = ();
+    if($meta->get('PREFERENCE', 'KEYUSER_ADMINISTRATED')) {
+        push @canChange, 'KeyUserGroup';
+    } else {
+        push @canChange, $topic;
+    }
     my $pref = $meta->get('PREFERENCE', 'ALLOWTOPICCHANGE');
 
     @acl = split(/,/, $pref->{value}) if defined $pref && $pref->{value};
