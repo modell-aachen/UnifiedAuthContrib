@@ -256,7 +256,7 @@ disabling authentication on web server basis.
 *Configuring Realms and Subdomains* %BR%
 As stated below the realm configuration takes a Perl regular expression as input. This configuration defines which users can login via SSO
 based on their assigned Kerberos realm. E.g. if you want to allow all users from all subdomains of =EXAMPLE.COM= to login via SSO you would
-set realm to =qr/.*\.EXAMPLE.\COM/=. %RED%%BR%
+set realm to =qr/.*\.EXAMPLE\.COM/=. %RED%%BR%
 ATTENTION: %ENDCOLOR% Allowing multiple subdomains will lead to problems if there are users with the same username in different subdomains.
 This will lead to users being logged in with the wrong user account.
 
