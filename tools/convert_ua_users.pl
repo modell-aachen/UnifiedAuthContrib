@@ -91,7 +91,6 @@ sub readGroupsFromLdap {
 }
 
 sub convert {
-    print STDERR "==> Host: $Foswiki::Contrib::VirtualHostingContrib::VirtualHost::CURRENT \n";
     $session = Foswiki->new('admin');
 
     %users = ();
