@@ -340,6 +340,10 @@ sub refresh {
 }
 
 sub writeDebug {
+    if($Foswiki::Plugins::SESSION->inContext('command_line')) {
+        print STDERR join(', ', @_) . "\n";
+    }
+
     Foswiki::Func::writeWarning(@_);
 }
 
