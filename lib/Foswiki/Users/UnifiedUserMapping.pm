@@ -164,6 +164,20 @@ sub getLoginName {
     return undef;
 }
 
+sub isActive {
+    my ( $this, $cUID ) = @_;
+    ASSERT($cUID) if DEBUG;
+
+    $cUID = $this->{uac}->getCUID($cUID, 0 , 1);
+    if ($cUID) {
+        my ($deactivated, $uac_disabled) = $this->{uac}->db->selectrow_array(
+            "SELECT deactivated, uac_disabled FROM users WHERE cuid=?", {}, $cUID);
+        return 1 unless $deactivated || $uac_disabled;
+    }
+
+    return 0;
+}
+
 =begin TML
 
 ---++ ObjectMethod loginOrGroup2cUID ($login) -> cUID

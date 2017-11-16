@@ -49,6 +49,8 @@ sub makeConfig {
     $this->{port} = $this->{config}{Port} || 389;
     $this->{version} = $this->{config}{Version} || 3;
     $this->{ipv6} = $this->{config}{IPv6} || 0;
+    $this->{referralConfig} = $this->{config}{ReferralConfig};
+    $this->{knownReferralsOnly} = $this->{config}{KnownReferralsOnly};
 
     $this->{userBase} = $this->{config}{UserBase}
         || [$this->{config}{Base}]
@@ -338,6 +340,10 @@ sub refresh {
 }
 
 sub writeDebug {
+    if($Foswiki::Plugins::SESSION->inContext('command_line')) {
+        print STDERR join(', ', @_) . "\n";
+    }
+
     Foswiki::Func::writeWarning(@_);
 }
 
@@ -711,9 +717,7 @@ sub search {
             # follow references
             if ($entry->isa("Net::LDAP::Reference")) {
                 foreach my $link ($entry->references) {
-                    #TODO: This method is not implemented!
-                    #writeDebug("following reference $link");
-                    #$this->_followLink($link, %args);
+                    $this->_followLink($link, %args);
                 }
             } else {
                 # call the orig callback
@@ -722,7 +726,7 @@ sub search {
         };
     }
 
-    if ($Foswiki::cfg{Ldap}{Debug}) {
+    if ($this->{config}->{debug}) {
         my $attrString = join(',', @{$args{attrs}});
         writeDebug("called search(filter=$args{filter}, base=$args{base}, scope=$args{scope}, sizelimit=$args{sizelimit}, attrs=$attrString)");
     }
@@ -753,7 +757,6 @@ sub search {
         unless ($this->{_followingLink}) {
             my @referrals = $msg->referrals;
             foreach my $link (@referrals) {
-                writeDebug("following referral $link");
                 $this->_followLink($link, %args);
             }
         }
@@ -763,6 +766,48 @@ sub search {
     }
 
     return $msg;
+}
+
+sub _followLink {
+  my ($this, $link, %args) = @_;
+
+  writeDebug("following ldap url $link") if $this->{config}->{debug};
+
+  #return if $this->{_followingLink};
+  local $this->{_followingLink} = 1;
+
+  my $uri = URI::ldap->new($this->fromLdapCharSet($link));
+
+  my $refcfg;
+  $refcfg = $this->{referralConfig};
+  $refcfg = $refcfg->{$link} if $refcfg;
+
+  return if $this->{knownReferralsOnly} && !defined $refcfg;
+  $refcfg = {} unless defined $refcfg;
+
+  my $host = $refcfg->{host} || $uri->host;
+  my $port = $refcfg->{port} || $uri->port;
+
+  my @keys = keys %$refcfg;
+  my @vals = values %$refcfg;
+  local @{$this}{@keys} = @vals;
+
+  # remember old connection
+  my $oldLdap = $this->{ldap};
+  my %thisArgs = %args;
+  $thisArgs{base} = $refcfg->{base} || $uri->dn;
+  $thisArgs{port} = $port;
+
+  # trick in new connection
+  $this->connect(undef, undef, $host, $port);
+  $this->search(%thisArgs);
+  $this->disconnect;
+
+  # restore old connection
+  $this->{ldap} = $oldLdap;
+  $this->{isConnected} = 1 if defined $oldLdap;
+
+  writeDebug("done following ldap url $link") if $this->{config}->{debug};
 }
 
 sub checkError {
