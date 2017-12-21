@@ -38,6 +38,29 @@ sub new {
     return $this;
 }
 
+sub finish {
+    my $this = shift;
+
+    eval {
+        $this->complete();
+    };
+    if ($@) {
+        print STDERR "Error while completing LoginManager: $@\nIgnoring!\n";
+        if ($Foswiki::cfg{Sessions}{ExpireAfter} > 0) {
+            Foswiki::LoginManager::expireDeadSessions();
+        }
+    }
+
+    undef $this->{_authScripts};
+    undef $this->{_cgisession};
+    undef $this->{_haveCookie};
+    undef $this->{_MYSCRIPTURL};
+    undef $this->{session};
+
+    undef $this->{uac};
+    undef $this->{tmpls};
+}
+
 # Pack key request parameters into a single value
 # Used for passing meta-information about the request
 # through a URL (without requiring passthrough)
@@ -80,7 +103,12 @@ sub forceAuthentication {
         if ($authid) {
             my $auth = $this->_authProvider($authid);
             if ($auth->enabled && !$auth->useDefaultLogin) {
-                return $auth->initiateLogin(_packRequest($session));
+                my $origin = _packRequest($session);
+                if ($auth->can('initiateExternalLogin')) {
+                    return $auth->initiateExternalLogin($origin);
+                }
+
+                return $auth->initiateLogin($origin);
             }
         }
 
@@ -147,7 +175,6 @@ database, that can then be displayed by referring to
 sub login {
     my ( $this, $query, $session ) = @_;
     my $users = $session->{users};
-
     my (@errors, @banners);
 
     my $cgis = $session->getCGISession();
@@ -164,9 +191,12 @@ sub login {
 
     my @enabledProvider = grep {$_ if $_->enabled} @providers;
     my @earlyProvider = grep {$_ if $_->isEarlyLogin} @enabledProvider;
-
     foreach my $p (@earlyProvider) {
         if ($p->isMyLogin) {
+            if ($p->can('initiateExternalLogin')) {
+                return $p->initiateExternalLogin(_packRequest($session));
+            }
+
             my $result = $this->processProviderLogin($query, $session, $p);
             return $result if defined $result;
         }
@@ -185,7 +215,6 @@ sub login {
     my $uauth_provider = $query->param('uauth_provider');
     if($external && $uauth_provider) {
         $provider = $this->_authProvider($uauth_provider);
-
         return $provider->initiateExternalLogin if $external && $provider->can('initiateExternalLogin');
         return $provider->initiateLogin($query->param('foswiki_origin'));
 
@@ -202,6 +231,12 @@ sub login {
 
     if (my $authid = $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
         my $auth = $this->_authProvider($authid);
+
+        my $uri = $query->{uri};
+        if ($uri =~ /state=/ && $uri =~ /session_state=/) {
+            $auth->processLogin;
+        }
+
         return $auth->initiateLogin(_packRequest($session)) unless $auth->useDefaultLogin();
     }
 
@@ -480,4 +515,3 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 As per the GPL, removal of this notice is prohibited.
-

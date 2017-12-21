@@ -53,10 +53,10 @@ sub _makeOAuth {
 
 sub initiateExternalLogin {
     my $this = shift;
+    my $origin = shift;
 
     my $session = $this->{session};
-    my $cgis = $this->{session}->getCGISession();
-    my $state = $cgis->param('uauth_state');
+    my $state = $this->SUPER::initiateLogin($origin);
 
     my $auth = $this->_makeOAuth;
     my $uri = $auth->authorize(
@@ -74,25 +74,23 @@ sub initiateExternalLogin {
     return 1;
 }
 
-sub initiateLogin {
-    my ($this, $origin) = @_;
-    my $req = $this->{session}{request};
-    return if $req->param('state');
-    return $this->SUPER::initiateLogin($origin);
+sub isEarlyLogin {
+    return 1;
 }
 
 sub isMyLogin {
     my $this = shift;
-    my $req = $this->{session}{request};
-    return $req->param('state') && $req->param('code');
+    return 1;
 }
 
 sub processLogin {
     my $this = shift;
     my $req = $this->{session}{request};
-    my $state = $req->param('state');
+    $req->delete('session_state');
+    $req->delete('authuser');
+    $req->delete('hd');
+    $req->delete('prompt');
     $req->delete('state');
-    die with Error::Simple("You seem to be using an outdated URL. Please try again.\n") unless $this->SUPER::processLogin($state);
 
     my $auth = $this->_makeOAuth;
     my $token = $auth->get_access_token($req->param('code'),
@@ -100,7 +98,7 @@ sub processLogin {
     );
     $req->delete('code');
     if ($token->error) {
-        die with Error::Simple("Login failed: ". $token->error_description ."\n");
+        throw Error::Simple("Login failed: ". $token->error_description ."\n");
     }
     my $tokenType = $token->token_type;
     $token = $token->access_token;
@@ -109,13 +107,19 @@ sub processLogin {
         ['Authorization', "$tokenType $token"]
     ));
     unless ($acc_info->is_success) {
-        die with Error::Simple("Failed to get user information from Google: ". $acc_info->as_string ."\n");
+        throw Error::Simple("Failed to get user information from Google: ". $acc_info->as_string ."\n");
     }
 
     $acc_info = decode_json($acc_info->decoded_content);
     my $enforceDomain = $this->{config}{enforceDomain} || 0;
     if ($this->{config}{domain} && $enforceDomain) {
-        die with Error::Simple("\%BR\%You're *not allowed* to access this site.") unless ($acc_info->{hd} && $acc_info->{hd} eq $this->{config}{domain});
+        my $extra = $this->{config}{extraDomains} || [];
+        $extra = ref($extra) eq 'ARRAY' ? $extra : [$extra];
+        unless ($acc_info->{hd} && $acc_info->{hd} eq $this->{config}{domain}) {
+          unless ($acc_info->{hd} && grep(/$acc_info->{hd}/, @$extra)) {
+            throw Error::Simple("\%BR\%You're *not allowed* to access this site.");
+          }
+        }
     }
 
     # email, name, family_name, given_name
@@ -141,7 +145,7 @@ sub processLogin {
         if ($@) {
             my $err = $@;
             eval { $db->rollback; };
-            die with Error::Simple("Failed to initialize Google account '$user_email' ($err)\n");
+            throw Error::Simple("Failed to initialize Google account '$user_email' ($err)\n");
         }
 
         return $user_id if $this->{config}{identityProvider};
@@ -170,11 +174,13 @@ sub _formatWikiName {
     my $format = $this->{config}{wikiname_format} || '$name';
     _applyFormat($format, $data);
 }
+
 sub _formatDisplayName {
     my ($this, $data) = @_;
     my $format = $this->{config}{displayname_format} || '$name';
     _applyFormat($format, $data);
 }
+
 sub _applyFormat {
     my ($format, $data) = @_;
     for my $k (keys %$data) {

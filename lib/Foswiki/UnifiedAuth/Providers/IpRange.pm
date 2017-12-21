@@ -39,7 +39,15 @@ sub processLogin {
     my $this = shift;
 
     my $config = $this->{config};
-    return $config->{user_id};
+    my $login = $config->{user_id};
+    return undef unless $login;
+
+    my $db = Foswiki::UnifiedAuth->new()->db;
+    my $pid = $this->getPid;
+
+    my $user = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND users.pid=?", {}, $login, $pid);
+    return {cuid => $user->{cuid}, data => {}} if $user;
+    return undef;
 }
 
 1;

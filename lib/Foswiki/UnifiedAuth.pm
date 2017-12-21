@@ -222,7 +222,8 @@ sub add_user {
             };
         return $text;
     }
-    $userinfo->{wiki_name} =~ s/$Foswiki::cfg{NameFilter}/unidecode($_)/gi;
+    $userinfo->{wiki_name} = join '', map {ucfirst} split/\s/, $userinfo->{wiki_name};
+    $userinfo->{wiki_name} =~ s/$Foswiki::cfg{NameFilter}/unidecode($_)/egi;
     $userinfo->{wiki_name} =~ s/$Foswiki::cfg{NameFilter}//gi;
 
     my $db = $this->db;
