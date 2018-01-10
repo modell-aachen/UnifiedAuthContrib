@@ -8,7 +8,6 @@
 
 <script>
 /* global $ foswiki */
-import VueSelect from 'vue-select/src/index.js';
 import debounce from 'lodash/debounce';
 import MaketextMixin from './MaketextMixin.vue'
 export default {
