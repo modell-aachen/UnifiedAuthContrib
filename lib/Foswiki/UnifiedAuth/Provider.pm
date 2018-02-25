@@ -185,6 +185,7 @@ JOIN groups g
 ON g.cuid=gm.g_cuid
 JOIN providers p
 ON p.pid=g.pid
+WHERE u.deactivated=0
 GROUP BY u.cuid;
 SQL
 
