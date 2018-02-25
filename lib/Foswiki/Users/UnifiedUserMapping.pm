@@ -1133,7 +1133,7 @@ sub _expandGroups {
         my $users = $db->selectall_arrayref(<<SQL, {Slice => {}}, $cuid);
 SELECT u.wiki_name FROM users AS u
 JOIN group_members AS g ON u.cuid=g.u_cuid
-WHERE u.deactivated=0 g.g_cuid=?
+WHERE u.deactivated=0 AND g.g_cuid=?
 SQL
 
         foreach my $user ( @$users ) {
