@@ -10,39 +10,44 @@ our @ISA = qw(Foswiki::UnifiedAuth::Provider);
 sub new {
     my ($class, $session, $id, $config) = @_;
     my $this = $class->SUPER::new($session, $id, $config);
+
+    $this->{config}->{identityProvider} = '_all_' unless defined $this->{config}->{identityProvider};
+    $this->{config}->{autoLogin} = 1 unless defined $this->{config}->{autoLogin};
+    $this->{config}->{header} ||= 'X-Remote-User';
+
     return $this;
 }
 
 sub isMyLogin {
     my $this = shift;
+    my $forced = shift;
     my $cgis = $this->{session}->getCGISession;
-    if ($cgis) {
-        my $run = $cgis->param('uauth_envvar_failed') || 0;
-        return 0 if $run;
+
+    if ($cgis->param("uauth_$this->{id}_logged_out") && !$forced) {
+        Foswiki::Func::writeWarning("Skipping EnvVar, because user logged out.") if $this->{config}->{debug} && $this->{config}->{debug} eq 'verbose';
+        return 0;
     }
 
-    my $cfg = $this->{config};
-    $cfg->{identityProvider} ||= '_all_';
+    my $req = $this->{session}{request};
+    my $envvar = $req->header($this->{config}->{header});
+
+    unless (defined $envvar) {
+        Foswiki::Func::writeWarning("$this->{config}->{header} header not set in client request.") if $this->{config}->{debug};
+        return 0;
+    }
     return 1;
+}
+
+sub forceButton {
+    my ($this) = @_;
+
+    return undef if defined $this->{config}->{forcable} && !$this->{config}->{forcable};
+
+    return ($this->{config}->{loginIcon} || '<img src="%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/corporate.svg" style="height: 20; width: 16;" />', $this->{config}->{loginDescription} || '%MAKETEXT{"Corporate login"}%');
 }
 
 sub isEarlyLogin {
     return 1;
-}
-
-sub initiateLogin {
-    my ($this, $origin) = @_;
-    my $req = $this->{session}{request};
-
-    return $this->SUPER::initiateLogin($origin);
-}
-
-sub handleLogout {
-    my ($this, $session) = @_;
-    return unless $session;
-
-    my $cgis = $session->getCGISession();
-    $cgis->param('uauth_envvar_logged_out', 1);
 }
 
 sub processLogin {
@@ -52,15 +57,10 @@ sub processLogin {
     my $cgis = $session->getCGISession();
     my $cfg = $this->{config};
 
-    if ($cgis->param('uauth_envvar_logged_out')) {
-        Foswiki::Func::writeWarning("Skipping EnvVar, because user logged out.") if $cfg->{debug} && $cfg->{debug} eq 'verbose';
-        return 0;
-    }
-
-    my $req    = $session->{request};
+    my $req = $session->{request};
     my $res = $session->{response};
 
-    my $header = $this->{config}->{header} || 'X-Remote-User';
+    my $header = $this->{config}->{header};
     my $envvar = $req->header($header);
     unless (defined $envvar) {
         Foswiki::Func::writeWarning("$header header not set in client request.") if $cfg->{debug};
@@ -70,8 +70,8 @@ sub processLogin {
     my $realm = $this->{config}->{realm} || '';
     $envvar =~ s/\@$realm//;
 
-    Foswiki::Func::writeWarning("User '$envvar' logged in by header X-Remote-User.") if $cfg->{debug};
-    return $envvar;
+    Foswiki::Func::writeWarning("User '$envvar' logged in by header $header.") if $cfg->{debug};
+    return { identity => $envvar };
 }
 
 1;

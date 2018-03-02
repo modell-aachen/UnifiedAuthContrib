@@ -36,24 +36,48 @@
   background-color: #3facc3;
 }
 
-.uauth button {
+.uauth button > .uauthButton {
   background-color: none;
   border: none;
   cursor: pointer;
-  height: 50px;
-  width: 180px;
+  min-height: 50px;
+  min-width: 180px;
 }
 
-.uauth button[name="facebook"] {
-  background-image: url('../facebook.png');
+.foswikiFormStep h3.uauth__force__header {
+  margin-top: 48px;
+  margin-bottom: 16px;
+  text-align: center;
+  width: 100%;
 }
 
-.uauth button[name="google"] {
-  background-image: url('../google.png');
+.uauth__force-button-group {
+  width: 50%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.uauth button[name="steam"] {
-  background-image: url('../steam.png');
-  height: 35px;
-  width: 180px;
+.uauth__force-button {
+  width:100%;
+  margin-bottom: 8px;
+  text-align:left;
+}
+
+.uauth__force-button__icon {
+  line-height: 24px;
+  vertical-align: middle;
+  text-align: center;
+  min-width: 24px;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+.uauth__submit-button {
+  text-align: right;
+}
+
+.uauth__seealsonote {
+  text-align: center;
+  display: inline-block;
+  width: 100%;
 }

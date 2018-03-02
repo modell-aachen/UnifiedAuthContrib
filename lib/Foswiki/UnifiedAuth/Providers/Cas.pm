@@ -31,6 +31,9 @@ sub new {
 
     my $this = $class->SUPER::new($session, $id, $config);
 
+    $this->{config}->{autoLogin} = 1 unless defined $this->{config}->{autoLogin};
+    $this->{config}->{identityProvider} = '_all_' unless defined $this->{config}->{identityProvider};
+
     return $this;
 }
 
@@ -54,25 +57,22 @@ sub handleLogout {
         # redirect to cas logout page
         $session->redirect($this->_getLogoutUrl());
     } else {
-        # This will be checked in 'isMyLogin' and make the wiki not to redirect
-        # to the cas login or process the login.
-        # XXX no way to reset this!
         my $cgis = $session->getCGISession();
-        $cgis->param('uauth_cas_logged_out', 1);
+        $cgis->param("uauth_$this->{id}_logged_out", 1);
     }
 }
 
 # Will redirect us to the cas provider.
 sub initiateExternalLogin {
-    my $this = shift;
+    my ($this, $state) = @_;
 
     my $session = $this->{session};
     my $cgis = $this->{session}->getCGISession();
-    my $state = $cgis->param('uauth_state');
+    $cgis->param("cas_$this->{id}_attempted", 1);
 
     my $cas = $this->_getCas();
 
-    my $casurl = $cas->getServerLoginURL(_fwLoginScript($state));
+    my $casurl = $cas->getServerLoginURL($this->_fwLoginScript($state));
 
     $this->{session}{response}->redirect(
         -url     => $casurl,
@@ -82,40 +82,48 @@ sub initiateExternalLogin {
     return 1;
 }
 
+sub forceButton {
+    my ($this) = @_;
+
+    return undef if defined $this->{config}->{forcable} && !$this->{config}->{forcable};
+
+    return ($this->{config}->{loginIcon} || '<img src="%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/corporate.svg" style="height: 20; width: 16;" />', $this->{config}->{loginDescription} || '%MAKETEXT{"Corporate login"}%');
+}
+
 sub initiateLogin {
-    my ($this, $origin) = @_;
+    my ($this, $state, $forced) = @_;
 
-    my $req = $this->{session}{request};
-    return if $req->param('state');
+    my $cgis = $this->{session}->getCGISession;
 
-    return $this->SUPER::initiateLogin($origin);
+    unless($forced) {
+        return 0 unless $this->{config}->{autoLogin};
+        return 0 if $cgis->param("uauth_$this->{id}_logged_out");
+        return 0 if $cgis->param("cas_$this->{id}_attempted");
+    } else {
+        $cgis->clear("uauth_$this->{id}_logged_out", "cas_$this->{id}_attempted");
+    }
+
+    return $this->initiateExternalLogin($state);
 }
 
 # We always claim this is our login, because if nobody is logged in, we want to
 # redirect to our cas provider - unless the user explicitly logged out.
 sub isMyLogin {
     my $this = shift;
+    my $forced = shift;
 
     my $req = $this->{session}{request};
 
     my $cgis = $this->{session}->getCGISession();
-    return 0 if $cgis->param('uauth_cas_logged_out');
+    return 0 if $cgis->param("uauth_$this->{id}_logged_out") && !$forced;
 
-    # grab this login, if it is not ours, we will initiate an external login
-    return 1;
+    return $req->param('cas_login');
 }
 
 sub isEarlyLogin {
     return 1;
 }
 
-#    * Creates a state if we have none.
-#    * Redirects to cas login if not already done so.
-#    * If we have a ticked: process it and let me in already!
-#       * We will grab the cuid of some user with the same login-name, unless
-#         identityProvider is configured (this will be delegated to
-#         UnifiedLogin->processProviderLogin).
-#
 sub processLogin {
     my $this = shift;
 
@@ -128,32 +136,13 @@ sub processLogin {
     # successful, so we do not redirect in circles
     $req->delete('state', 'cas_login', 'ticket');
 
-    # we may not have a state, because we grabbed any 'isMyLogin' (UnifiedAuth
-    # did not 'initiateLogin').
-    if($state) {
-        unless ($this->SUPER::processLogin($state)) {
-            # this should not happen, the redirect url seems to be mangled
-            undef $state;
-            Foswiki::Func::writeWarning("ERROR: super failed");
-        }
-    } else {
-        # XXX duplicating code from UnifiedLogin.pm
-        $state = $this->initiateLogin($req->param('foswiki_origin') || '');
-    }
-
-    unless($iscas_login) {
-        $this->initiateExternalLogin() unless $req->param('cas_attempted');
-        return 0;
-    }
-
     unless($state && $ticket) {
         die with Error::Simple("You seem to be using an outdated URL. Please try again.\n");
     }
 
     my $cas = $this->_getCas();
-    my $casUser = $cas->validateST( _fwLoginScript($state), $ticket );
+    my $casUser = $cas->validateST( $this->_fwLoginScript($state), $ticket );
     unless ($casUser) {
-        Foswiki::Func::writeWarning("casUser undef");
         die with Error::Simple("CAS login failed (could not validate). Please try again.\n");
     }
 
@@ -167,39 +156,24 @@ sub processLogin {
     my $pid = $this->getPid();
     $uauth->apply_schema('users_cas', @schema_updates);
 
-    # Grab cuid if there is no identityProvider.
-    # XXX When UnifiedLogin does not find any cuid in that identityProvider,
-    # we will be redirected in circles.
-    my $identityProviders = $this->{config}{identityProvider};
-    unless($identityProviders) {
-        # use cuid from any provider
-        my $cuid = $db->selectrow_array("SELECT cuid FROM users WHERE login_name=?", {}, $casUser);
-        unless ($cuid) {
-            Foswiki::Func::writeWarning("Could not find cuid for user $casUser");
-            die with Error::Simple("Could not find your cuid. Please try again.\n");
-        }
+    $req->delete("cas_$this->{id}_attempted");
 
-        $casUser = { cuid => $cuid, data => {} } if $cuid;
-    }
-
-    $req->delete('cas_attempted');
-
-    return $casUser;
+    return {identity => $casUser, state => $state};
 }
 
 # Generate a login-url we can redirect to.
 # It should contain our state and the cas_login marker. Also it will include a
 # cas_attempted flag, which stops us redirecting if anything goes wrong.
 sub _fwLoginScript {
-    my $state = shift;
+    my ($this, $state) = @_;
 
     # Note: in total we need to escape the state twice, because one will be
     # consumed by the redirect from cas
     my $state_escaped = uri_escape($state || '');
 
-    my $login_script = Foswiki::Func::getScriptUrl(undef, undef, 'login');
+    my $login_script = Foswiki::Func::getScriptUrl(undef, undef, 'login', 'cas_login' => 1, "cas_$this->{id}_attempted" => 1, state => $state);
 
-    return uri_escape("$login_script?state=$state_escaped&cas_login=1&cas_attempted=1");
+    return uri_escape($login_script);
 }
 
 # Get url we need to redirect to in order to log out from cas.

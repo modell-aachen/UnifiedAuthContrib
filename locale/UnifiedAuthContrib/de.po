@@ -62,3 +62,18 @@ msgstr "Name oder Email Adresse"
 
 msgid "Active"
 msgstr "Aktiv"
+
+msgid "Or log on with a different method:"
+msgstr "Oder mit einer anderen Möglichkeit anmelden:"
+
+msgid "Login with Office 365"
+msgstr "Mit Office 365 einloggen"
+
+msgid "Login with Steam"
+msgstr "Mit Steam einloggen"
+
+msgid "Corporate login"
+msgstr "Unternehmens-Login"
+
+msgid "Login with Google"
+msgstr "Mit Google einloggen"

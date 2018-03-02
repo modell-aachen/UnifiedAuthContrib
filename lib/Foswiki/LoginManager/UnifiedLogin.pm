@@ -16,6 +16,7 @@ use JSON;
 use Unicode::Normalize;
 use Error ':try';
 use Error::Simple;
+use Digest::SHA qw(sha1_base64);
 
 use Foswiki::LoginManager ();
 use Foswiki::Users::BaseUserMapping;
@@ -61,26 +62,58 @@ sub finish {
     undef $this->{tmpls};
 }
 
-# Pack key request parameters into a single value
-# Used for passing meta-information about the request
-# through a URL (without requiring passthrough)
-# Copied from TemplateLogin
 sub _packRequest {
-    my ( $uri, $method, $action ) = @_;
-    return '' unless $uri;
-    if ( ref($uri) ) {    # first parameter is a $session
-        my $r = $uri->{request};
-        $uri    = $r->uri();
-        $method = $r->method() || 'UNDEFINED';
-        $action = $r->action();
+    my ( $this ) = @_;
+
+    my $cgis = $this->{session}->getCGISession();
+    die with Error::Simple("Login requires a valid session; do you have cookies disabled?") if !$cgis;
+
+    my $request = $this->{session}->{request};
+    my $uri = $request->uri();
+    my $method = $request->method() || 'UNDEFINED';
+    my $action = $request->action();
+
+    my $origin = "$method,$action,$uri";
+
+    my $states = $cgis->param('uauth_state') || {};
+    eval {
+        while (my ($oldState, $oldValue) = each (%$states)) {
+            if($oldValue eq $origin) {
+                return $oldState;
+            }
+        }
+    };
+    if($@) {
+        Foswiki::Func::writeWarning("Could not read old states, resetting to blank");
+        $states = {};
     }
-    return "$method,$action,$uri";
+
+    my $state = sha1_base64(rand(). "$$ $0");
+    $states->{$state} = $origin;
+    $cgis->param('uauth_state', $states);
+
+    $cgis->flush;
+    die $cgis->errstr if $cgis->errstr;
+
+    return $state;
 }
 
 # Unpack single value to key request parameters
 sub _unpackRequest {
-    my $packed = shift || '';
-    my ( $method, $action, $uri ) = split( ',', $packed, 3 );
+    my ($this, $state) = @_;
+    return unless $state;
+
+    my $cgis = $this->{session}->getCGISession();
+    die with Error::Simple("Login requires a valid session; do you have cookies disabled?") if !$cgis;
+
+    my $saved = $cgis->param('uauth_state') || {};
+    my $savedValue = $saved->{$state};
+    unless($savedValue) {
+        Foswiki::Func::writeWarning("Could not find state in cgi session");
+        return 0;
+    }
+
+    my ( $method, $action, $uri ) = split( ',', $savedValue, 3 );
     return ( Foswiki::urlDecode($uri), $method, $action );
 }
 
@@ -98,17 +131,13 @@ sub forceAuthentication {
     unless ( $session->inContext('authenticated') ) {
         my $query    = $session->{request};
         my $response = $session->{response};
+        my $state = $this->_packRequest();
 
         my $authid = $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider};
         if ($authid) {
-            my $auth = $this->_authProvider($authid);
-            if ($auth->enabled && !$auth->useDefaultLogin) {
-                my $origin = _packRequest($session);
-                if ($auth->can('initiateExternalLogin')) {
-                    return $auth->initiateExternalLogin($origin);
-                }
-
-                return $auth->initiateLogin($origin);
+            my $provider = $this->_authProvider($authid);
+            if ($provider->enabled && !$provider->useDefaultLogin) {
+                return $this->_initiateProviderLogin($provider, $state);
             }
         }
 
@@ -123,7 +152,7 @@ sub forceAuthentication {
 
         $query->param(
             -name  => 'foswiki_origin',
-            -value => _packRequest($session)
+            -value => $state,
         );
 
         # Throw back the login page with the 401
@@ -140,7 +169,7 @@ sub loginUrl {
     my $topic   = $session->{topicName};
     my $web     = $session->{webName};
     return $session->getScriptUrl( 0, 'login', $web, $topic,
-        foswiki_origin => _packRequest($session) );
+        foswiki_origin => $this->_packRequest() );
 }
 
 sub _loadTemplate {
@@ -174,76 +203,119 @@ database, that can then be displayed by referring to
 
 sub login {
     my ( $this, $query, $session ) = @_;
-    my $users = $session->{users};
-    my (@errors, @banners);
 
-    my $cgis = $session->getCGISession();
-    my $provider;
-    $provider = $query->param('uauth_provider');
-    $provider = $cgis->param('uauth_provider') if $cgis && $provider;
+    my $providers = $this->_getProviders();
 
-    my @providers;
-    push @providers, $provider if $provider;
-    push @providers, keys %{$Foswiki::cfg{UnifiedAuth}{Providers}} unless $provider;
+    my $forcedProvider = $query->param('uauth_force_provider');
+
+    my $result = $this->_processProviderLogin($query, $session, $providers, $forcedProvider);
+    return $result if $result;
+
+    return $this->_initiateLogin($query, $session, $providers, $forcedProvider);
+}
+
+sub _initiateProviderLogin {
+    my ($this, $provider, $state, $providers, $force) = @_;
+
+    my $result = $provider->initiateLogin($state, $force);
+    if($result == $Foswiki::UnifiedAuth::Provider::INITIATE_LOGIN_RENDERDEFAULT) {
+        $this->_initiateDefaultLogin($state, $providers);
+    }
+    return $result;
+}
+
+sub _initiateDefaultLogin {
+    my ($this, $state, $providers) = @_;
+
+    $providers ||= $this->_getProviders();
+
+    return $this->_authProvider('__default')->initiateLogin($state, 0, $providers);
+}
+
+sub _initiateLogin {
+    my ( $this, $query, $session, $providers, $forcedProvider ) = @_;
+
+    my $state = $this->_packRequest();
+
+    $query->delete('validation_key');
+    if ($forcedProvider) {
+        if (!exists $Foswiki::cfg{UnifiedAuth}{Providers}{$forcedProvider}) {
+            die "Invalid authentication source requested";
+        }
+        my $forcedState = $query->param('state') || $state;
+        my $provider = $this->_authProvider($forcedProvider);
+        return $this->_initiateProviderLogin($provider, $forcedState, $providers, 1);
+    }
+
+    foreach my $provider (@$providers) {
+        next if $provider->useDefaultLogin();
+        my $initLogin = $this->_initiateProviderLogin($provider, $state, $providers);
+        return $initLogin if $initLogin;
+    }
+
+    if (my $authid = $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
+        my $provider = $this->_authProvider($authid);
+
+        return $this->_initiateProviderLogin($provider, $state) unless $provider->useDefaultLogin();
+    }
+
+    return $this->_initiateDefaultLogin($state, $providers);
+}
+
+sub _processProviderLogin {
+    my ($this, $query, $session, $providers, $forcedProvider) = @_;
+
+    my $errors = [];
+    my $result;
+    foreach my $provider (@$providers) {
+        next if $forcedProvider && $forcedProvider ne $provider->{id};
+        eval {
+            if ($provider->isMyLogin($forcedProvider)) {
+                $result = $this->processProviderLogin($query, $session, $provider, $errors);
+            }
+        };
+        if($@) {
+            if (ref($@) && $@->isa("Error")) {
+                push @$errors, $@->text;
+            } else {
+                push @$errors, $@;
+            }
+        }
+        last if defined $result && $result ne '';
+    }
+
+    if(@$errors) {
+        my $tmpl = $this->_loadTemplate;
+        my $banner = '';
+        $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE');
+
+        $session->{prefs}->setSessionPreferences(UAUTH_AUTH_FAILURE_MESSAGE => join('<br/>', @$errors), BANNER => $banner);
+    }
+
+    return $result;
+}
+
+sub _getProviders {
+    my ( $this ) = @_;
+
+    my @providers = sort keys %{$Foswiki::cfg{UnifiedAuth}{Providers}};
     push @providers, '__baseuser';
     push @providers, '__default';
     @providers = map {$this->_authProvider($_)} @providers;
 
-    my @enabledProvider = grep {$_ if $_->enabled} @providers;
-    my @earlyProvider = grep {$_ if $_->isEarlyLogin} @enabledProvider;
-    foreach my $p (@earlyProvider) {
-        if ($p->isMyLogin) {
-            if ($p->can('initiateExternalLogin')) {
-                return $p->initiateExternalLogin(_packRequest($session));
-            }
-
-            my $result = $this->processProviderLogin($query, $session, $p);
-            return $result if defined $result;
+    my @sortedProviders = ();
+    foreach my $provider (@providers) {
+        next unless $provider->enabled();
+        if($provider->isEarlyLogin()) {
+            unshift @sortedProviders, $provider; # XXX reverses order of early providers
+        } else {
+            push @sortedProviders, $provider;
         }
     }
 
-    my $external = $query->param('uauth_external') || 0;
-
-    foreach my $p (@enabledProvider) {
-        $provider = $p;
-        if (!$provider->isEarlyLogin && $provider->isMyLogin) {
-            my $result = $this->processProviderLogin($query, $session, $provider);
-            return $result if defined $result;
-        }
-    }
-
-    my $uauth_provider = $query->param('uauth_provider');
-    if($external && $uauth_provider) {
-        $provider = $this->_authProvider($uauth_provider);
-        return $provider->initiateExternalLogin if $external && $provider->can('initiateExternalLogin');
-        return $provider->initiateLogin($query->param('foswiki_origin'));
-
-    }
-
-    $session->{request}->delete('validation_key');
-    if (my $forceauthid = $session->{request}->param('uauth_force_provider')) {
-        if (!exists $Foswiki::cfg{UnifiedAuth}{Providers}{$forceauthid}) {
-            die "Invalid authentication source requested";
-        }
-        my $auth = $this->_authProvider($forceauthid);
-        return $auth->initiateLogin(_packRequest($session));
-    }
-
-    if (my $authid = $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider}) {
-        my $auth = $this->_authProvider($authid);
-
-        my $uri = $query->{uri};
-        if ($uri =~ /state=/ && $uri =~ /session_state=/) {
-            $auth->processLogin;
-        }
-
-        return $auth->initiateLogin(_packRequest($session)) unless $auth->useDefaultLogin();
-    }
-
-    # render default dialog
-    return $this->_authProvider('__default')->initiateLogin(_packRequest($session));
-
+    return (\@sortedProviders);
 }
+
 
 sub loadSession {
     my $this = shift;
@@ -265,7 +337,6 @@ sub loadSession {
 
     if ($logout) {
         if ($cgis) {
-            $cgis->clear(['uauth_provider']);
             $cgis->clear(['uauth_state']);
         }
 
@@ -330,20 +401,23 @@ sub loadSession {
 }
 
 sub processProviderLogin {
-    my ($this, $query, $session, $provider) = @_;
+    my ($this, $query, $session, $provider, $errors) = @_;
 
     my $context = Foswiki::Func::getContext();
     my $topic  = $session->{topicName};
     my $web    = $session->{webName};
 
     my $loginResult;
-    my $error = '';
     eval {
         $loginResult = $provider->processLogin();
-        if ($loginResult && $loginResult eq 'wait for next step') { # XXX it would be better to return a hash with a status
+        if (!$loginResult) {
+            # do nothing, login failed
+        } elsif ($loginResult->{cuid}) {
+            # do nothing, login success
+        } elsif ($loginResult->{'wait for next step'}) {
             Foswiki::Func::writeWarning("Waiting for client to get back to us.") if defined $provider->{config}->{debug} && $provider->{config}->{debug} eq 'verbose';
             undef $loginResult;
-        } elsif ($loginResult && $provider->{config}->{identityProvider}) {
+        } elsif ($loginResult->{identity} && $provider->{config}->{identityProvider}) {
             my $providerConfig = $provider->{config}->{identityProvider};
             my @providers;
             if($providerConfig eq '_all_') {
@@ -360,36 +434,37 @@ sub processProviderLogin {
             foreach my $providerName ( @providers ) {
                 my $provider = $this->_authProvider($providerName);
                 if ($provider->isa('Foswiki::UnifiedAuth::IdentityProvider')) {
-                    $providersResult = $provider->identify($loginResult);
+                    $providersResult = $provider->identify($loginResult->{identity});
                     last if $providersResult;
                 }
             }
             if($providersResult) {
-                $loginResult = $providersResult;
+                $loginResult = {%$loginResult, %$providersResult};
             } else {
                 if($provider->{config}->{debug}) {
-                    Foswiki::Func::writeWarning("Login '$loginResult' supplied by '$provider->{id}' could not be found in identity provider '$provider->{config}->{identityProvider}'"); # do not use $id_provider, because it might have been _all_
-                    $error = $session->i18n->maketext("Your user account is not configured for the authentication with this wiki. Please contact your administrator for further assistance.");
+                    Foswiki::Func::writeWarning("Login '$loginResult->{identity}' supplied by '$provider->{id}' could not be found in identity provider '$provider->{config}->{identityProvider}'"); # do not use $id_provider, because it might have been _all_
                 }
+                push @$errors, $session->i18n->maketext("Your user account is not configured for the authentication with this wiki. Please contact your administrator for further assistance.");
                 undef $loginResult;
             }
         }
     };
     if ($@) {
-        $error = $@;
         if (ref($@) && $@->isa("Error")) {
-            $error = $@->text if ref($@) && $@->isa("Error");
+            push @$errors, $@->text;
         } else {
-            Foswiki::Func::writeWarning($error);
+            Foswiki::Func::writeWarning($@);
         }
     }
 
-    if (ref($loginResult) eq 'HASH' && $loginResult->{cuid}) {
+    if ($loginResult && $loginResult->{cuid}) {
 
         # NOTE: This is just a safety net, each provider MUST check if the
         # login is active or not. Otherwise a deactivated provider will also
         # invalidate following providers.
         my $deactivated = $this->{uac}->{db}->selectrow_array("SELECT deactivated FROM users WHERE cuid=?", {}, $loginResult->{cuid});
+
+        my ( $origurl, $origmethod, $origaction ) = $this->_unpackRequest($loginResult->{state});
 
         unless ($deactivated) {
             $this->userLoggedIn($loginResult->{cuid});
@@ -403,15 +478,13 @@ sub processProviderLogin {
             );
             $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
               if $this->{_cgisession};
-            my ( $origurl, $origmethod, $origaction ) = _unpackRequest($provider->origin);
-            if (!$origurl || $origaction eq 'login') {
+            if (!$origaction || $origaction eq 'login') {
                 $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
+                $origmethod = 'GET';
+                $origaction = 'view';
                 $session->{request}->delete_all;
             } else {
-                # Unpack params encoded in the origurl and restore them
-                # to the query. If they were left in the query string they
-                # would be lost if we redirect with passthrough.
-                # First extract the params, ignoring any trailing fragment.
+                # Restore url
                 if ( $origurl =~ s/\?([^#]*)// ) {
                     foreach my $pair ( split( /[&;]/, $1 ) ) {
                         if ( $pair =~ /(.*?)=(.*)/ ) {
@@ -419,12 +492,11 @@ sub processProviderLogin {
                         }
                     }
                 }
-
-                # Restore the action too
-                $session->{request}->action($origaction) if $origaction;
             }
             $session->{request}->method($origmethod);
+            $session->{request}->action($origaction);
             $session->redirect($origurl, 1);
+
             return $loginResult->{cuid};
         }
     }
@@ -442,14 +514,6 @@ sub processProviderLogin {
             extra    => "AUTHENTICATION FAILURE",
         }
     );
-
-    my $tmpl = $this->_loadTemplate;
-    my $banner = '';
-    $banner = $this->{tmpls}->expandTemplate('AUTH_FAILURE');
-
-    if($error) {
-        $session->{prefs}->setSessionPreferences(UAUTH_AUTH_FAILURE_MESSAGE => $error, BANNER => $banner);
-    }
 
     return undef;
 }

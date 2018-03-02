@@ -34,9 +34,8 @@
 }%%TMPL:P{"uauthloginstep"}%%{
 }%%IF{"$SHOWRESETPASSWORD='1'" then="$percntTMPL:P{\"passwordnote\"}$percnt"}%%{
 }%%TMPL:P{"submitstep"}%%{
-}%%IF{"context UA_CHOOSE" then="$percntTMPL:P{\"auth_providers\"}$percnt"}%%{
+}%%TMPL:P{"auth_providers"}%%{
 }%%TMPL:P{"formend"}%%{
-}%<hr>%{
 }%%TMPL:P{"seealsostep"}%%{
   }%</div>
   </div>
@@ -47,20 +46,22 @@
 
 %TMPL:DEF{"passwordfieldnoteremember"}%%TMPL:P{"passwordfield"}%%TMPL:END%
 
+%TMPL:DEF{"submitstep"}%<div class="foswikiFormStep uauth__submit-button"><p>%TMPL:P{"submit"}%</p></div>%TMPL:END%
+
 %TMPL:DEF{"auth_providers"}%%{
-}%<hr><div class="foswikiFormStep">
-<h3>%MAKETEXT{"Log on with a social network"}%</h3>
-%TMPL:P{context="UA_FACEBOOK" then="auth_buttons" provider="facebook"}%
-%TMPL:P{context="UA_GOOGLE" then="auth_buttons" provider="google"}%
-%TMPL:P{context="UA_STEAM" then="auth_buttons" provider="steam"}%
-<input type="hidden" name="uauth_provider" value="" />
-<input type="hidden" name="uauth_external" value="" />
-</div>%{
+}%%FORMATLIST{"%UAUTH_FORCIBLE_PROVIDERS{default=""}%" header="<div class=\"foswikiFormStep\">
+<h3 class=\"uauth__force__header\">%MAKETEXT{"Or log on with a different method:"}%</h3><div class=\"uauth__force-button-group\">"
+format="<button class=\"uauth__force-button\" type=\"submit\" name=\"uauth_force_provider\" value=\"$1\"><span><span class=\"uauth__force-button__icon\">$percentUAUTH_$1_BUTTON_ICON$percent</span><span class=\"uauth__force-button__text\">$percentUAUTH_$1_BUTTON_TEXT$percent</span></span></button>"
+separator="%BR%"
+footer="</div></div>"
+}%%{
 }%%TMPL:END%
 
 %TMPL:DEF{"auth_buttons"}%%{
-}%<button class="social_provider" type="submit" name="%provider%"></button>%{
+}%%{
 }%%TMPL:END%
+
+%TMPL:DEF{"seealsonote"}%<span class="uauth__seealsonote"> %TMPL:PREV% </span>%TMPL:END%
 
 %TMPL:DEF{"link_retry"}%<div id="foswikiLogin">
 <div class="foswikiFormSteps">

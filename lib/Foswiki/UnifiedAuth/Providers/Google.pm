@@ -34,6 +34,14 @@ sub new {
     return $this;
 }
 
+sub forceButton {
+    my ($this) = @_;
+
+    return undef if defined $this->{config}->{forcable} && !$this->{config}->{forcable};
+
+    return ($this->{config}->{loginIcon} || '<img src="%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/logo_google.svg" />', $this->{config}->{loginDescription} || '%MAKETEXT{"Login with Google"}%');
+}
+
 sub _makeOAuth {
     my $this = shift;
     my $ua = LWP::UserAgent->new;
@@ -53,14 +61,13 @@ sub _makeOAuth {
 
 sub initiateExternalLogin {
     my $this = shift;
-    my $origin = shift;
+    my $state = shift;
 
     my $session = $this->{session};
-    my $state = $this->SUPER::initiateLogin($origin);
 
     my $auth = $this->_makeOAuth;
     my $uri = $auth->authorize(
-        redirect_uri => $this->processUrl(),
+        redirect_uri => $this->processUrl('google_login' => 1),
         scope => 'openid email profile',
         state => $state,
         hd => $this->{config}{domain},
@@ -74,18 +81,36 @@ sub initiateExternalLogin {
     return 1;
 }
 
+sub initiateLogin {
+    my ($this, $state, $forced) = @_;
+
+    my $cgis = $this->{session}->getCGISession;
+
+    unless($forced) {
+        return 0 unless $this->{config}->{autoLogin};
+        return 0 if $cgis->param("uauth_$this->{id}_logged_out");
+        return 0 if $cgis->param("uauth_$this->{id}_attempted");
+    } else {
+        $cgis->clear("uauth_$this->{id}_logged_out", "uauth_$this->{id}_attempted");
+    }
+
+    return $this->initiateExternalLogin($state);
+}
+
 sub isEarlyLogin {
     return 1;
 }
 
 sub isMyLogin {
     my $this = shift;
-    return 1;
+    my $req = $this->{session}{request};
+    return $req->param('google_login');
 }
 
 sub processLogin {
     my $this = shift;
     my $req = $this->{session}{request};
+    my $state = $req->param('state');
     $req->delete('session_state');
     $req->delete('authuser');
     $req->delete('hd');
@@ -94,7 +119,7 @@ sub processLogin {
 
     my $auth = $this->_makeOAuth;
     my $token = $auth->get_access_token($req->param('code'),
-        redirect_uri => $this->processUrl(),
+        redirect_uri => $this->processUrl('google_login' => 1),
     );
     $req->delete('code');
     if ($token->error) {
@@ -122,15 +147,22 @@ sub processLogin {
         }
     }
 
+    my $user_email = $acc_info->{email};
+
+    if ( $this->{config}{identityProvider} ) {
+        my $user_id = $user_email;
+        $user_id =~ s/\@.*// unless $this->{config}->{identifyWithRealm};
+        return { identity => $user_id };
+    }
+
     # email, name, family_name, given_name
     my $uauth = Foswiki::UnifiedAuth->new();
     my $db = $uauth->db;
     my $pid = $this->getPid();
     $uauth->apply_schema('users_google', @schema_updates);
-    my $exist = $db->selectrow_array("SELECT COUNT(login_name) FROM users WHERE login_name=? AND pid=?", {}, $acc_info->{email}, $pid);
-    if ($exist == 0) {
+    my $exist = $uauth->getCUIDByLoginAndPid($acc_info->{email}, $pid);
+    unless ($exist) {
         my $user_id;
-        my $user_email = $acc_info->{email};
         eval {
             $db->begin_work;
             $user_id = $uauth->add_user('UTF-8', $pid, {
@@ -148,7 +180,6 @@ sub processLogin {
             throw Error::Simple("Failed to initialize Google account '$user_email' ($err)\n");
         }
 
-        return $user_id if $this->{config}{identityProvider};
         return {
             cuid => $user_id,
             data => $acc_info,

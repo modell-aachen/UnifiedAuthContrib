@@ -1,6 +1,5 @@
 package Foswiki::UnifiedAuth::Providers::Default;
 
-use Digest::SHA qw(sha1_base64);
 use Error;
 
 use strict;
@@ -17,11 +16,11 @@ sub new {
 }
 
 sub useDefaultLogin {
-    return 0;
+    return 1;
 }
 
 sub initiateLogin {
-    my ($this, $origin) = @_;
+    my ($this, $state, $force, $providers) = @_;
 
     my $session = $this->{session};
     my $query = $session->{request};
@@ -29,15 +28,13 @@ sub initiateLogin {
     my $topic  = $session->{topicName};
     my $web    = $session->{webName};
 
-    my $state = $this->SUPER::initiateLogin($origin);
-
     my $path_info = $query->path_info();
     if ( $path_info =~ m/['"]/g ) {
         $path_info = substr( $path_info, 0, ( ( pos $path_info ) - 1 ) );
     }
 
     $session->{prefs}->setSessionPreferences(
-        FOSWIKI_ORIGIN => Foswiki::entityEncode($origin),
+        FOSWIKI_ORIGIN => '',
         PATH_INFO => Foswiki::entityEncode($path_info),
         UAUTHSTATE => $state
     );
@@ -46,7 +43,17 @@ sub initiateLogin {
     my $topicObject = Foswiki::Meta->new( $session, $web, $topic );
     $context->{uauth_login_default} = 1;
 
-    $tmpl = $topicObject->expandMacros($tmpl);
+    my @forcables = ();
+    foreach my $provider (@$providers) {
+        my ($icon, $text) = $provider->forceButton();
+        next unless $text;
+        Foswiki::Func::setPreferencesValue('UAUTH_' . $provider->{id} . '_BUTTON_ICON', $icon);
+        Foswiki::Func::setPreferencesValue('UAUTH_' . $provider->{id} . '_BUTTON_TEXT', $text);
+        push @forcables, $provider->{id};
+    }
+    Foswiki::Func::setPreferencesValue('UAUTH_FORCIBLE_PROVIDERS', join(',', @forcables));
+
+    $tmpl = $topicObject->expandMacros($tmpl); # TODO: hide user/password inputs when no provider supports it
     $tmpl = $topicObject->renderTML($tmpl);
     $tmpl =~ s/<nop>//g;
     $session->writeCompletePage($tmpl);
@@ -74,21 +81,21 @@ sub supportsRegistration {
 }
 
 sub processLogin {
-    my ($this, $state) = @_;
+    my ($this) = @_;
 
     my $session = $this->{session};
     my $req = $session->{request};
     my $cgis = $session->getCGISession();
     die with Error::Simple("Login requires a valid session; do you have cookies disabled?") if !$cgis;
-    my $saved = $cgis->param('uauth_state') || '';
 
     my $username = $req->param('username') || '';
     my $password = $req->param('password') || '';
-    $req->delete('username', 'password', 'state', 'uauthlogin', 'uauth_provider', 'validation_key', 'uauth_external');
+    my $state = $req->param('state');
+    $req->delete('username', 'password', 'state', 'uauthlogin', 'validation_key', 'uauth_external');
 
     my $uauth = Foswiki::UnifiedAuth->new();
 
-    my @providers = keys %{$Foswiki::cfg{UnifiedAuth}{Providers}};
+    my @providers = sort keys %{$Foswiki::cfg{UnifiedAuth}{Providers}};
     push @providers, '__baseuser' unless grep(/^__baseuser$/, @providers);
     foreach my $name (@providers) {
         next if $name eq '__default';
@@ -98,7 +105,9 @@ sub processLogin {
         next unless $provider->useDefaultLogin();
 
         my $result = $provider->processLoginData($username, $password);
-        return $result if $result;
+        next unless $result;
+        $result->{state} = $state;
+        return $result;
     }
     my $error = $session->i18n->maketext("Wrong username or password");
     throw Error::Simple($error);

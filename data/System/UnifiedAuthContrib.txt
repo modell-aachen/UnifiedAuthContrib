@@ -122,6 +122,7 @@ For now UnifiedAuthContrib ships with the following modules:
 | Google | Google accounts, as well as Google's G Suite |
 | Cas | Single Sign-on using CAS |
 | !EnvVar | Authentication based on header X-Remote-User |
+| !MSOnline | Office365 accounts |
 
 *Note*: Module names are *case sensitive*.
 
@@ -142,6 +143,14 @@ which are shared across all providers.
 | deny | Comma separated list of IPs | |
 | debug | Set to =1= for debug output in error logs and =verbose= for even _more_ debug output. | |
 | description | String to define a more user friendly name | |
+
+These options are available to providers that can automatically log in or redirect to an external page.
+
+| *Preference* | *Description* | *Default* |
+| loginDescription | Button text on the login page, to force this provider | _different for each provider_ |
+| loginIcon | Button icon (html) on the login page, to force this provider | _different for each provider_ |
+| autoLogin | Automatically sign in with this provider | _1 for most sso providers_ |
+| forcable | Offer a button on the login page to use this provider | _1 for most sso providers_ |
 
 Any authentication provider may be disabled by setting its =enabled= attribute
 to a falsely value (0).%BR%

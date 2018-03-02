@@ -157,6 +157,15 @@ sub guid {
     lc(Data::GUID->guid);
 }
 
+sub getCUIDByLoginAndPid {
+    my ($this, $login, $pid) = @_;
+
+    return unless (defined $login) && (defined $pid);
+
+    my $db = $this->db;
+    return $db->selectrow_array("SELECT cuid FROM users WHERE login_name=? AND pid=?", {}, $login, $pid);
+}
+
 sub getCUID {
     my ($this, $user, $noUsers, $noGroups) = @_;
 
