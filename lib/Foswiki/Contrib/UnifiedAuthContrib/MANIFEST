@@ -24,11 +24,21 @@ lib/Foswiki/Users/UnifiedAuthUser.pm 0644 Password manager
 lib/Foswiki/Users/UnifiedUserMapping.pm 0644 User mapping
 lib/Foswiki/Contrib/UnifiedAuthContrib/Config.spec 0644 Config options
 locale/UnifiedAuthContrib/de.po 0644 German translation
+pub/System/UnifiedAuthContrib/MSOnline_Create-key-saved.png 0444
+pub/System/UnifiedAuthContrib/MSOnline_Create-key.png 0444
+pub/System/UnifiedAuthContrib/MSOnline_CreateApp_create.png 0444
+pub/System/UnifiedAuthContrib/MSOnline_CreateApp_initial-data.png 0444
+pub/System/UnifiedAuthContrib/MSOnline_Open-Settings.png 0444
+pub/System/UnifiedAuthContrib/MSOnline_Permissions.png 0444
+pub/System/UnifiedAuthContrib/MSOnline_Properties.png 0444
+pub/System/UnifiedAuthContrib/MSOnline_Providers.png 0444
+pub/System/UnifiedAuthContrib/MSOnline_RegisteredApp.png 0444
+pub/System/UnifiedAuthContrib/MSOnline_ReplyURLs.png 0444
 pub/System/UnifiedAuthContrib/corporate.svg 0444
-pub/System/UnifiedAuthContrib/terminal.svg 0444
 pub/System/UnifiedAuthContrib/logo_google.svg 0444
 pub/System/UnifiedAuthContrib/logo_office.svg 0444
 pub/System/UnifiedAuthContrib/logo_steam.svg 0444
+pub/System/UnifiedAuthContrib/terminal.svg 0444
 pub/System/UnifiedAuthContrib/css/uauth.css 0444
 pub/System/UnifiedAuthContrib/js/userAdministration.js 0444
 pub/System/UnifiedAuthContrib/js/jsi18n.UnifiedAuth.de.js 0444
