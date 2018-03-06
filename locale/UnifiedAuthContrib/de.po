@@ -80,3 +80,18 @@ msgstr "Mit Google einloggen"
 
 msgid "Your login is not allowed in this wiki. Please contact your administrator for further assistance."
 msgstr "Ihr Zugang ist in diesem Wiki nicht erlaubt. Bitte kontaktieren Sie ihen Administrator für weitere Hilfe."
+
+msgid "There was an error while logging you in: (%1) %2"
+msgstr "Es gab einen Fehler beim anmelden: (%1) %2"
+
+msgid "You seem to be using an outdated URL. Please try again."
+msgstr "Sie scheinen eine abgelaufene URL zu benutzen. Bitte versuchen Sie es erneut."
+
+msgid "Could not read user data"
+msgstr "Nutzerdaten konnten nicht gelesen werden"
+
+msgid "Did not receive user data"
+msgstr "Keine Nutzerdaten erhalten"
+
+msgid "Unable to decode user data"
+msgstr "Konnte Nutzerdaten nicht entschlüsseln"

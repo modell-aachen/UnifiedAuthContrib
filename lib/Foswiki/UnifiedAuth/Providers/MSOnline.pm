@@ -126,14 +126,13 @@ sub processLogin {
         my $description = $req->param('error_description') || '(no details provided)';
         $error = 'no code was provided' unless $error || $code;
         $req->delete('error_description');
-        my $message = "User came back with an error: ($error) $description";
-        Foswiki::Func::writeWarning($message) if $this->{config}->{debug};
-        die with Error::Simple($message);
+        Foswiki::Func::writeWarning("User came back with an error: ($error) $description") if $this->{config}->{debug};
+        die with Error::Simple($this->{session}->i18n->maketext("There was an error while logging you in: ([_1]) [_2]", $error, $description));
     }
 
     unless ($state) {
         Foswiki::Func::writeWarning("Could not validate secret") if $this->{config}->{debug};
-        die with Error::Simple("You seem to be using an outdated URL. Please try again.\n");
+        die with Error::Simple($this->{session}->i18n->maketext("You seem to be using an outdated URL. Please try again."));
     }
 
     my $tenant = $this->{config}->{tenant} || 'common';
@@ -163,7 +162,7 @@ sub processLogin {
 
     unless ($resp->is_success) {
         Foswiki::Func::writeWarning("Could not request token", $resp->decoded_content) if $this->{config}->{debug};
-        die with Error::Simple($resp->status_line) unless ($resp->is_success);
+        die with Error::Simple($resp->status_line);
     }
 
     my $data;
@@ -172,12 +171,12 @@ sub processLogin {
     };
     if($@) {
         Foswiki::Func::writeWarning("Could not decode response when redeeming token", $@, $resp->decoded_content);
-        die with Error::Simple("Could not read user data");
+        die with Error::Simple($this->{session}->i18n->maketext("Could not read user data"));
     }
 
     if(!$data->{id_token}) {
         Foswiki::Func::writeWarning("Response is missing id_token", $resp->decoded_content);
-        die with Error::Simple("Did not receive user data");
+        die with Error::Simple($this->{session}->i18n->maketext("Did not receive user data"));
     }
     # This is a JSON Web Token http://self-issued.info/docs/draft-ietf-oauth-json-web-token.html
     my ($headerBase64, $claimBase64, $junkBase64) = split(/\./, $data->{id_token});
@@ -188,7 +187,7 @@ sub processLogin {
     };
     if($@) {
         Foswiki::Func::writeWarning("Could not decode id_token", $@, $data->{id_token});
-        die with Error::Simple("Unable to decode user data");
+        die with Error::Simple($this->{session}->i18n->maketext("Unable to decode user data"));
     }
 
     my $uniqueName = $userData->{unique_name};
@@ -219,7 +218,7 @@ sub processLogin {
     }
 
     Foswiki::Func::writeWarning("User $uniqueName not valid in $this->{id}") if $this->{config}->{debug};
-    die with Error::Simple("Your login is not allowed in this wiki. Please contact your administrator for further assistance.");
+    die with Error::Simple($this->{session}->i18n->maketext("Your login is not allowed in this wiki. Please contact your administrator for further assistance."));
 }
 
 1;
