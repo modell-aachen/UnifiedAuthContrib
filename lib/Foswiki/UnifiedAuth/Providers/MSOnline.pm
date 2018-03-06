@@ -115,16 +115,12 @@ sub processLogin {
     my $req = $this->{session}{request};
 
     my $secret = $req->param('state');
+    my $state = $this->validateSecret($secret);
     my $code = $req->param('code');
     my $error = $req->param('error');
     $req->delete('state');
     $req->delete('code');
     $req->delete('error');
-
-    unless($this->validateSecret($secret)) {
-        Foswiki::Func::writeWarning("Could not validate secret") if $this->{config}->{debug};
-        die with Error::Simple("You seem to be using an outdated URL. Please try again.\n");
-    }
 
     if($error || !$code) {
         my $description = $req->param('error_description') || '(no details provided)';
@@ -133,6 +129,11 @@ sub processLogin {
         my $message = "User came back with an error: ($error) $description";
         Foswiki::Func::writeWarning($message) if $this->{config}->{debug};
         die with Error::Simple($message);
+    }
+
+    unless ($state) {
+        Foswiki::Func::writeWarning("Could not validate secret") if $this->{config}->{debug};
+        die with Error::Simple("You seem to be using an outdated URL. Please try again.\n");
     }
 
     my $tenant = $this->{config}->{tenant} || 'common';
@@ -209,16 +210,16 @@ sub processLogin {
 
             my $identity = $uniqueName;
             $identity =~ s/\@.*// unless $this->{config}->{identifyWithRealm};
-            return {identity => $identity, state => $secret};
+            return {identity => $identity, state => $state};
         }
     } else {
         Foswiki::Func::writeWarning("User $uniqueName logged in with $this->{id}") if $this->{config}->{debug};
 
-        return {identity => $uniqueName, state => $secret};
+        return {identity => $uniqueName, state => $state};
     }
 
     Foswiki::Func::writeWarning("User $uniqueName not valid in $this->{id}") if $this->{config}->{debug};
-    return undef;
+    die with Error::Simple("Your login is not allowed in this wiki. Please contact your administrator for further assistance.");
 }
 
 1;

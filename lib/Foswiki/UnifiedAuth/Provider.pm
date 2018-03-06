@@ -49,19 +49,28 @@ sub forceButton {
     return undef;
 }
 
+# Generates a secret, that a provider can use as a nonce.
+# In contrast to the state, this secret will differ for every request.
+# The state will be stored in the session and can be retrieved with
+# validateSecret.
 sub generateSecret {
     my ($this, $prefix, $state) = @_;
 
     my $cgis = $this->{session}->getCGISession();
     my $secret = $prefix . "_" . sha1_base64(rand() . $state);
-    $secret =~ s#[+/=]#_#g;
+    $secret =~ s#([+/=])#ord($1)#ge;
+
+    my $encodedState = $state =~ s#[=,]#'='.ord($1).'='#ger;
 
     my $cgiKey = "uauth_$this->{id}_secret";
     my $storedSecrets = $cgis->param($cgiKey) || '';
-    $cgis->param($cgiKey, $storedSecrets . ',' . $secret);
+    $cgis->param($cgiKey, "$storedSecrets,$secret=$encodedState");
     return $secret;
 }
 
+# Returns the associated state, if the secret is valid and also invalidates
+# the secret.
+# Returns undef, if the secret is invalid.
 sub validateSecret {
     my ($this, $secret) = @_;
 
@@ -71,7 +80,13 @@ sub validateSecret {
     my $cgiKey = "uauth_$this->{id}_secret";
     my $storedSecrets = $cgis->param($cgiKey);
     return undef unless $storedSecrets;
-    return $storedSecrets =~ m#(?:^|,)\Q$secret\E(?:,|$)#;
+    return undef unless $storedSecrets =~ s#(?:^|,)\Q$secret\E=([^,]*)(,|$)#$2#;
+    my $encodedSecret = $1;
+
+    # Invalidate the nonce, to we can no longer use it in replays.
+    $cgis->param($cgiKey, $storedSecrets);
+
+    return $encodedSecret =~ s#=(\d+)=#chr($1)#ger;
 }
 
 sub useDefaultLogin {

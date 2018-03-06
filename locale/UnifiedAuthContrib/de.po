@@ -77,3 +77,6 @@ msgstr "Unternehmens-Login"
 
 msgid "Login with Google"
 msgstr "Mit Google einloggen"
+
+msgid "Your login is not allowed in this wiki. Please contact your administrator for further assistance."
+msgstr "Ihr Zugang ist in diesem Wiki nicht erlaubt. Bitte kontaktieren Sie ihen Administrator für weitere Hilfe."
