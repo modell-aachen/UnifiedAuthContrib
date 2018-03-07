@@ -215,7 +215,7 @@ sub login {
 
     my $forcedProvider = $query->param('uauth_force_provider');
 
-    my $result = $this->_processProviderLogin($query, $session, $providers, $forcedProvider);
+    my $result = $this->_checkProvidersForLoginAttempt($query, $session, $providers, $forcedProvider);
     return $result if $result;
 
     return $this->_initiateLogin($query, $session, $providers, $forcedProvider);
@@ -269,7 +269,7 @@ sub _initiateLogin {
     return $this->_initiateDefaultLogin($state, $providers);
 }
 
-sub _processProviderLogin {
+sub _checkProvidersForLoginAttempt {
     my ($this, $query, $session, $providers, $forcedProvider) = @_;
 
     my $errors = [];
