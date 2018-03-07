@@ -62,7 +62,12 @@ sub finish {
     undef $this->{tmpls};
 }
 
-sub _packRequest {
+# Stores important request parameters in the session and returns a key to
+# access them.
+# The parameters can be retrieved with _stateToRequest.
+# Only return the key, to prevent information disclosure or the possibility to
+# forge and inject a request.
+sub _requestToState {
     my ( $this ) = @_;
 
     my $cgis = $this->{session}->getCGISession();
@@ -89,6 +94,7 @@ sub _packRequest {
     }
 
     my $state = sha1_base64(rand(). "$$ $0");
+    $state =~ tr#+/=#-_~#; # make it url-friendly, so providers do not need to encode this
     $states->{$state} = $origin;
     $cgis->param('uauth_state', $states);
 
@@ -98,8 +104,9 @@ sub _packRequest {
     return $state;
 }
 
-# Unpack single value to key request parameters
-sub _unpackRequest {
+# Returns the method, action and uri that are associated with the state, so the
+# request can be restored.
+sub _stateToRequest {
     my ($this, $state) = @_;
     return unless $state;
 
@@ -131,7 +138,7 @@ sub forceAuthentication {
     unless ( $session->inContext('authenticated') ) {
         my $query    = $session->{request};
         my $response = $session->{response};
-        my $state = $this->_packRequest();
+        my $state = $this->_requestToState();
 
         my $authid = $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider};
         if ($authid) {
@@ -169,7 +176,7 @@ sub loginUrl {
     my $topic   = $session->{topicName};
     my $web     = $session->{webName};
     return $session->getScriptUrl( 0, 'login', $web, $topic,
-        foswiki_origin => $this->_packRequest() );
+        foswiki_origin => $this->_requestToState() );
 }
 
 sub _loadTemplate {
@@ -235,7 +242,7 @@ sub _initiateDefaultLogin {
 sub _initiateLogin {
     my ( $this, $query, $session, $providers, $forcedProvider ) = @_;
 
-    my $state = $this->_packRequest();
+    my $state = $this->_requestToState();
 
     $query->delete('validation_key');
     if ($forcedProvider) {
@@ -464,7 +471,7 @@ sub processProviderLogin {
         # invalidate following providers.
         my $deactivated = $this->{uac}->{db}->selectrow_array("SELECT deactivated FROM users WHERE cuid=?", {}, $loginResult->{cuid});
 
-        my ( $origurl, $origmethod, $origaction ) = $this->_unpackRequest($loginResult->{state});
+        my ( $origurl, $origmethod, $origaction ) = $this->_stateToRequest($loginResult->{state});
 
         unless ($deactivated) {
             $this->userLoggedIn($loginResult->{cuid});

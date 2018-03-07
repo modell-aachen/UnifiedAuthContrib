@@ -58,9 +58,9 @@ sub generateSecret {
 
     my $cgis = $this->{session}->getCGISession();
     my $secret = $prefix . "_" . sha1_base64(rand() . $state);
-    $secret =~ s#([+/=])#ord($1)#ge;
+    $secret =~ tr#+/=#-_~#;
 
-    my $encodedState = $state =~ s#[=,]#'='.ord($1).'='#ger;
+    my $encodedState = $state =~ s#[=,]#'='.ord($1).'='#ger; # If this is a state as provided by _requestToState, this does nothing. However we can not be sure whats being passed in here.
 
     my $cgiKey = "uauth_$this->{id}_secret";
     my $storedSecrets = $cgis->param($cgiKey) || '';
