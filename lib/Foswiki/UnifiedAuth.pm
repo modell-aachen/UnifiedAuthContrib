@@ -390,13 +390,14 @@ sub update_wikiname {
 # Does not yet support different fiels (login, email, ...).
 sub queryUser {
     my ($this, $opts) = @_;
-    my ($term, $maxrows, $page, $fields, $type, $basemapping) = (
+    my ($term, $maxrows, $page, $fields, $type, $basemapping, $offset) = (
         $opts->{term},
         $opts->{limit},
         $opts->{page},
         $opts->{searchable_fields},
         $opts->{type},
         $opts->{basemapping},
+        $opts->{offset},
     );
 
     my $options = {Slice => {}};
@@ -413,7 +414,7 @@ sub queryUser {
 
     my $list;
     my $count;
-    my $offset = $maxrows * $page;
+    $offset = $maxrows * $page unless $offset;
 
     my $u_join = ''; # this will hold the join clause and 'ON' condition for
                      # users when the 'ingroup' option is active.
