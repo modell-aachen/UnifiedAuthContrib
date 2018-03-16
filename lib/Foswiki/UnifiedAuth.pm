@@ -473,7 +473,7 @@ sub queryUser {
         my $statement_count;
         if ($type eq 'any') {
             $statement = <<SQL;
-SELECT
+(SELECT
     'user' AS type,
     cuid AS cUID,
     login_name AS loginName,
@@ -482,17 +482,19 @@ SELECT
     email
     FROM users $u_join
     WHERE deactivated=0 AND uac_disabled=0 AND ($u_condition)
-UNION
-SELECT
+)
+UNION ALL
+(SELECT
     'group' AS type,
     cuid AS cUID,
+    name AS loginName,
     name AS wikiName,
     name AS displayName,
-    '' AS loginName,
-    '' AS email
+    ' ' AS email
     FROM groups
     WHERE ($g_condition)
-ORDER BY displayName
+)
+ORDER BY displayName ASC
 OFFSET $offset
 SQL
             $statement_count = <<SQL;
@@ -503,7 +505,7 @@ SELECT
     cuid
     FROM users $u_join
     WHERE deactivated=0 AND uac_disabled=0 AND ($u_condition)
-UNION
+UNION ALL
 SELECT
     cuid
     FROM groups
