@@ -386,7 +386,7 @@ sub refreshUsersCache {
         next if $seenCuids{$cuid};
 
         Foswiki::Func::writeWarning("Disabling user, because we can no longer find her/him: $cuid");
-        $db->do('UPDATE users SET uac_disabled=1, deactivated=1 WHERE pid=? AND cuid=?', {}, $pid, $cuid);
+        $db->do('UPDATE users SET uac_disabled=1 WHERE pid=? AND cuid=?', {}, $pid, $cuid);
     }
 
     return 1;
@@ -1172,9 +1172,7 @@ sub cacheUserFromEntry {
     # SMELL. Applies to Active Directory only
     # See https://support.microsoft.com/en-us/kb/305144
     my $accoundControl = int($entry->get_value('userAccountControl') || 0);
-    my $deactivated = $accoundControl & 2;
-    $deactivated = $deactivated ? 1 : 0;
-    my $uacDisabled = $deactivated;
+    my $uacDisabled = ($accoundControl & 2) ? 1 : 0;
 
     # get old data
     my $cuid = $db->selectrow_array("SELECT cuid FROM users WHERE pid=? AND login_name=?", {}, $pid, $loginName);
@@ -1244,14 +1242,12 @@ sub cacheUserFromEntry {
             wiki_name => $wikiName,
             display_name => $displayName,
             uac_disabled => $uacDisabled,
-            deactivated => $deactivated,
         });
     } else {
         $uauth->update_user(undef , $cuid, {
             email => $email,
             display_name => $displayName,
             uac_disabled => $uacDisabled,
-            deactivated => $deactivated,
         });
     }
     # fake upsert
