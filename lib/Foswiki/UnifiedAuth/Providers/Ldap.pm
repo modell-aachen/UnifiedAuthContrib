@@ -350,19 +350,6 @@ sub writeDebug {
 sub getData {
     my ($this, %args) = @_;
 
-    # use the control LDAP extension only if a valid pageSize value has been provided
-    my $page;
-    my $cookie;
-    if ($this->{pageSize} > 0) {
-        require Net::LDAP::Control::Paged;
-        $page = Net::LDAP::Control::Paged->new(size => $this->{pageSize});
-        $args{control} = [$page];
-        writeDebug("reading users from cache with page size=$this->{pageSize}");
-    } else {
-        writeDebug("reading users from cache in one chunk");
-    }
-
-    # read pages
     my $gotError = 0;
 
     my $fromLdap = [];
@@ -372,45 +359,12 @@ sub getData {
         push @$fromLdap, $entry;
     };
 
-    while (1) {
-
-        # perform search
-        my $mesg = $this->search(%args);
-        unless ($mesg) {
-            writeDebug("error refreshing the cache: " . $this->getError());
-            my $code = $this->getCode();
-            $gotError = 1 if !defined($code) || $code != LDAP_SIZELIMIT_EXCEEDED;    # continue on sizelimit exceeded
-            last;
-        }
-
-        # only use cookies and pages if we are using this extension
-        if ($page) {
-            # get cookie from paged control to remember the offset
-            my ($resp) = $mesg->control(LDAP_CONTROL_PAGED) or last;
-
-            $cookie = $resp->cookie or last;
-            if ($cookie) {
-                # set cookie in paged control
-                $page->cookie($cookie);
-            } else {
-                # found all
-                #writeDebug("ok, no more cookie");
-                last;
-            }
-        } else {
-            # one chunk ends here
-            last;
-        }
-    }    # end reading pages
-
-    #writeDebug("done reading pages");
-
-    # clean up
-    if ($cookie) {
-        $page->cookie($cookie);
-        $page->size(0);
-        $this->search(%args);
+    my $mesg = $this->search(%args);
+    unless ($mesg) {
+        my $code = $this->getCode();
+        $gotError = 1 if !defined($code) || $code != LDAP_SIZELIMIT_EXCEEDED;    # continue on sizelimit exceeded
     }
+
     return ($fromLdap, $gotError);
 }
 
@@ -704,6 +658,19 @@ sub search {
     $args{sizelimit} = 0 unless $args{sizelimit};
     $args{attrs} = ['*'] unless $args{attrs};
 
+    # use the control LDAP extension only if a valid pageSize value has been provided
+    my $page;
+    my $cookie;
+    my $mesg;
+    if ($this->{pageSize} > 0) {
+        require Net::LDAP::Control::Paged;
+        $page = Net::LDAP::Control::Paged->new(size => $this->{pageSize});
+        $args{control} = [$page];
+        writeDebug("reading users from cache with page size=$this->{pageSize}") if $this->{config}{debug};
+    } else {
+        writeDebug("reading users from cache in one chunk") if $this->{config}{debug};
+    }
+
     if (defined($args{callback}) && !defined($args{_origCallback})) {
 
         $args{_origCallback} = $args{callback};
@@ -726,7 +693,55 @@ sub search {
         };
     }
 
-    if ($this->{config}->{debug}) {
+    my $gotError;
+    # read pages
+    while (1) {
+
+        # perform search
+        writeDebug("reading page") if $this->{config}{debug};
+        $mesg = $this->_searchSinglePage(%args);
+        unless ($mesg) {
+            writeDebug("error refreshing the cache: " . $this->getError());
+            last;
+        }
+
+        # only use cookies and pages if we are using this extension
+        if ($page) {
+            # get cookie from paged control to remember the offset
+            my ($resp) = $mesg->control(LDAP_CONTROL_PAGED);
+
+            $cookie = $resp->cookie;
+            if ($cookie) {
+                writeDebug("setting cookie for next page") if $this->{config}{debug};
+                # set cookie in paged control
+                $page->cookie($cookie);
+            } else {
+                # found all
+                writeDebug("ok, no more cookie") if $this->{config}{debug};
+                last;
+            }
+        } else {
+            # one chunk ends here
+            last;
+        }
+    }    # end reading pages
+
+    writeDebug("done reading pages");
+
+    # clean up
+    if ($cookie) {
+        writeDebug("Cookie was not consumed... attempting to read the rest");
+        $page->cookie($cookie);
+        $page->size(0);
+        $this->search(%args);
+    }
+    return $mesg;
+}
+
+sub _searchSinglePage {
+    my ($this, %args) = @_;
+
+    if ($Foswiki::cfg{Ldap}{Debug}) {
         my $attrString = join(',', @{$args{attrs}});
         writeDebug("called search(filter=$args{filter}, base=$args{base}, scope=$args{scope}, sizelimit=$args{sizelimit}, attrs=$attrString)");
     }
@@ -800,7 +815,7 @@ sub _followLink {
 
   # trick in new connection
   $this->connect(undef, undef, $host, $port);
-  $this->search(%thisArgs);
+  my $msg = $this->search(%thisArgs);
   $this->disconnect;
 
   # restore old connection
@@ -808,6 +823,9 @@ sub _followLink {
   $this->{isConnected} = 1 if defined $oldLdap;
 
   writeDebug("done following ldap url $link") if $this->{config}->{debug};
+  $this->{_followingLink} = 0;
+
+  return $msg;
 }
 
 sub checkError {
