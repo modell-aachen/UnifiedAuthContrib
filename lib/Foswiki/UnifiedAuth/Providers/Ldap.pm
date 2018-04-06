@@ -445,7 +445,7 @@ sub refreshGroupsCache {
     # might want to configure multiple ldaps for multiple branches, but still
     # have groups containing users from all branches. The DNs should be enough
     # to distinguish members coming from different ldaps entirely.
-    my $users = $db->selectall_hashref('SELECT dn, cuid FROM users_ldap', 'dn', {});
+    my $users = $db->selectall_hashref('SELECT dn, users_ldap.cuid FROM users_ldap JOIN users ON users.cuid=users_ldap.cuid WHERE uac_disabled=0', 'dn', {});
     $this->_processGroups($groupsCache, $groupsCacheDN, $users);
     $this->_processVirtualGroups($groupsCache, $users);
 
