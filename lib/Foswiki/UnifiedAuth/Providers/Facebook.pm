@@ -24,6 +24,14 @@ my @schema_updates = (
     ]
 );
 
+sub forceButton {
+    my ($this) = @_;
+
+    return undef if defined $this->{config}->{forcable} && !$this->{config}->{forcable};
+
+    return ($this->{config}->{loginIcon} || '<img src="%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/logo_facebook.svg" style="height: 16px; width: 16;" />', $this->{config}->{loginDescription} || '%MAKETEXT{"Login with Facebook"}%');
+}
+
 sub new {
     my ($class, $session, $id, $config) = @_;
     my $this = $class->SUPER::new($session, $id, $config);
@@ -32,6 +40,7 @@ sub new {
 
 sub initiateLogin {
     my ($this, $origin) = @_;
+    return 0;
 }
 
 sub isMyLogin {

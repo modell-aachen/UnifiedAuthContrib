@@ -90,8 +90,7 @@ sub enabled {
 
 sub initiateLogin {
     my ($this, $origin) = @_;
-    my $state = $this->SUPER::initiateLogin($origin);
-    return $state;
+    return 0; # use default login
 }
 
 sub useDefaultLogin {

@@ -122,6 +122,7 @@ For now UnifiedAuthContrib ships with the following modules:
 | Google | Google accounts, as well as Google's G Suite |
 | Cas | Single Sign-on using CAS |
 | !EnvVar | Authentication based on header X-Remote-User |
+| !MSOnline | Office365 accounts |
 
 *Note*: Module names are *case sensitive*.
 
@@ -142,6 +143,14 @@ which are shared across all providers.
 | deny | Comma separated list of IPs | |
 | debug | Set to =1= for debug output in error logs and =verbose= for even _more_ debug output. | |
 | description | String to define a more user friendly name | |
+
+These options are available to providers that can automatically log in or redirect to an external page.
+
+| *Preference* | *Description* | *Default* |
+| loginDescription | Button text on the login page, to force this provider | _different for each provider_ |
+| loginIcon | Button icon (html) on the login page, to force this provider | _different for each provider_ |
+| autoLogin | Automatically sign in with this provider | _1 for most sso providers_ |
+| forcable | Offer a button on the login page to use this provider | _1 for most sso providers_ |
 
 Any authentication provider may be disabled by setting its =enabled= attribute
 to a falsely value (0).%BR%
@@ -618,6 +627,31 @@ This provider has to be used aside of an idnetity provider, e.g. LDAP.
 }
 </verbatim>
 
+---+++ MSOnline (Office365)
+The =MSOnline= provider will authenticate you with =login.microsoftonline.com=.
+It uses the oauth2 interface.
+
+This guide will assume that you use https://portal.azure.com to configure the
+app.
+
+   * Create a new provider entry in ={UnifiedAuth}{Providers}= and set =module= to =MSOnline=.
+   * Create a new app on the azure portal; click _Azure Active Directory_ &rarr; _App registrations_ &rarr; _New application registration_ %TWISTY{mode="span" showlink="(show picture)"}%<img src="%ATTACHURLPATH%/MSOnline_CreateApp_create.png" />%ENDTWISTY%.
+   * Enter a fitting name and sign-on url (where the link on the portal should point to); leave _Application type_ as _Web app / API_; then click _create_ %TWISTY{mode="span" showlink="(show picture)"}%<img src="%ATTACHURLPATH%/MSOnline_CreateApp_initial-data.png" />%ENDTWISTY%.
+   * You will be redirected to your app %TWISTY{mode="span" showlink="(show picture)"}%<img src="%ATTACHURLPATH%/MSOnline_RegisteredApp.png" />%ENDTWISTY%. If you want to access this screen at a later time, you can find it under _Azure Active Directory_ &rarr; _App registrations_ &rarr; select your app from the list.
+   * Open _Settings_ &rarr; _Properties_. Enter these values in your provider's configuration %TWISTY{mode="span" showlink="(show picture)"}%<img src="%ATTACHURLPATH%/MSOnline_Properties.png" />%ENDTWISTY%.
+      * _Application ID_: this is your _client_id_
+      * _App ID URI_: this is your _app_id_uri_
+   * Open _Reply URLs_ and enter =https://hostname/bin/login= for each valid hostname (http is allowed, as are wildcards for the first level). Then click _Save_. %TWISTY{mode="span" showlink="(show picture)"}%<img src="%ATTACHURLPATH%/MSOnline_ReplyURLs.png" />%ENDTWISTY%
+   * In the _Settings_ open _Required permissions_ &rarr; _Windows Azure Active Directory_ and make sure that under _DELEGATED PERMISSIONS_ the item _Sign in and read user profile_ is checked. Then click _Save_ and _Grand Permissions_ (important, do this even if there are no changes). %TWISTY{mode="span" showlink="(show picture)"}%<img src="%ATTACHURLPATH%/MSOnline_Permissions.png" />%ENDTWISTY%
+   * In the _Settings_ open _Keys_ and under _Passwords_ create a new secret %TWISTY{mode="span" showlink="(show picture)"}%<img src="%ATTACHURLPATH%/MSOnline_Create-key.png" />%ENDTWISTY%.
+      * Enter any description
+      * Enter a sensible expiry date
+      * Once you press _Save_, you will be presented with the _VALUE_. Enter this as =client_secret= in the provider's config and *do it now* (there is no way to retrieve this value at a later time) %TWISTY{mode="span" showlink="(show picture)"}%<img src="%ATTACHURLPATH%/MSOnline_Create-key-saved.png" />%ENDTWISTY%
+   * In your provider's config you will most likely want to set the following settings:
+      * forcable: 1 (for button on login page)
+      * domains: String or array of strings for each domain that may log-in with this provider (if your email is admin@example.org you want to set this to =example.org=; if you also want to allow =anyone@beispiel.de= set it to =['example.org', 'beispiel.de']=)
+      * autoLogin: 1 or 0, if this provider should automatically log in (default: 1)
+   * The =Providers= config should now look like this %TWISTY{mode="span" showlink="(show picture)"}%<img src="%ATTACHURLPATH%/MSOnline_Providers.png" />%ENDTWISTY%
 
 ---++ Refreshing User Information
 =UnifiedAuth= caches information about known users within its database.

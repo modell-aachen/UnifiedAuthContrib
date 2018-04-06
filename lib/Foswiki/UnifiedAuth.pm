@@ -157,6 +157,15 @@ sub guid {
     lc(Data::GUID->guid);
 }
 
+sub getCUIDByLoginAndPid {
+    my ($this, $login, $pid) = @_;
+
+    return unless (defined $login) && (defined $pid);
+
+    my $db = $this->db;
+    return $db->selectrow_array("SELECT cuid FROM users WHERE login_name=? AND pid=?", {}, $login, $pid);
+}
+
 sub getCUID {
     my ($this, $user, $noUsers, $noGroups) = @_;
 
@@ -222,7 +231,8 @@ sub add_user {
             };
         return $text;
     }
-    $userinfo->{wiki_name} =~ s/$Foswiki::cfg{NameFilter}/unidecode($_)/gi;
+    $userinfo->{wiki_name} = join '', map {ucfirst} split/\s/, $userinfo->{wiki_name};
+    $userinfo->{wiki_name} =~ s/$Foswiki::cfg{NameFilter}/unidecode($_)/egi;
     $userinfo->{wiki_name} =~ s/$Foswiki::cfg{NameFilter}//gi;
 
     my $db = $this->db;
@@ -380,13 +390,14 @@ sub update_wikiname {
 # Does not yet support different fiels (login, email, ...).
 sub queryUser {
     my ($this, $opts) = @_;
-    my ($term, $maxrows, $page, $fields, $type, $basemapping) = (
+    my ($term, $maxrows, $page, $fields, $type, $basemapping, $offset) = (
         $opts->{term},
         $opts->{limit},
         $opts->{page},
         $opts->{searchable_fields},
         $opts->{type},
         $opts->{basemapping},
+        $opts->{offset},
     );
 
     my $options = {Slice => {}};
@@ -403,7 +414,7 @@ sub queryUser {
 
     my $list;
     my $count;
-    my $offset = $maxrows * $page;
+    $offset = $maxrows * $page unless $offset;
 
     my $u_join = ''; # this will hold the join clause and 'ON' condition for
                      # users when the 'ingroup' option is active.
@@ -462,7 +473,7 @@ sub queryUser {
         my $statement_count;
         if ($type eq 'any') {
             $statement = <<SQL;
-SELECT
+(SELECT
     'user' AS type,
     cuid AS cUID,
     login_name AS loginName,
@@ -471,17 +482,19 @@ SELECT
     email
     FROM users $u_join
     WHERE deactivated=0 AND uac_disabled=0 AND ($u_condition)
-UNION
-SELECT
+)
+UNION ALL
+(SELECT
     'group' AS type,
     cuid AS cUID,
+    name AS loginName,
     name AS wikiName,
     name AS displayName,
-    '' AS loginName,
-    '' AS email
+    ' ' AS email
     FROM groups
     WHERE ($g_condition)
-ORDER BY displayName
+)
+ORDER BY displayName ASC
 OFFSET $offset
 SQL
             $statement_count = <<SQL;
@@ -492,7 +505,7 @@ SELECT
     cuid
     FROM users $u_join
     WHERE deactivated=0 AND uac_disabled=0 AND ($u_condition)
-UNION
+UNION ALL
 SELECT
     cuid
     FROM groups

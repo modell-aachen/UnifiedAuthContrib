@@ -91,5 +91,7 @@ foreach my $key (keys(%$oldConfig)){
 		delete $oldConfig->{$key};
 	}
 }
+#Set MapGroups parameter per default to 1, to ensure groups get imported
+$oldConfig->{MapGroups} = 1;
 my $result = Dumper($oldConfig);
 print $result;

@@ -17,24 +17,39 @@ sub new {
     my $this = $class->SUPER::new($session, $id, $config);
 
     $this->{config}->{identityProvider} = '_all_' unless defined $this->{config}->{identityProvider};
+    $this->{config}->{autoLogin} = 1 unless defined $this->{config}->{autoLogin};
 
     return $this;
 }
 
+sub forceButton {
+    my ($this) = @_;
+
+    return undef if defined $this->{config}->{forcable} && !$this->{config}->{forcable};
+
+    return ($this->{config}->{loginIcon} || '<img src="%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/corporate.svg" style="height: 20; width: 16;" />', $this->{config}->{loginDescription} || '%MAKETEXT{"Corporate login"}%');
+}
+
 sub isMyLogin {
     my $this = shift;
-    my $cgis = $this->{session}->getCGISession;
-    if ($cgis) {
-        my $run = $cgis->param('uauth_kerberos_failed') || 0;
-        return 0 if $run;
-    }
+    my $forced = shift;
 
-    my $cfg = $this->{config};
-    unless ($cfg->{realm} && $cfg->{keytab}) {
-        Foswiki::Func::writeWarning("Please specify realm and keytab in configure") if $cfg->{debug};
+    my $req = $this->{session}->{request};
+    my $cgis = $this->{session}->getCGISession;
+    return 0 unless $cgis;
+
+    return 0 if ($cgis->param("uauth_$this->{id}_failed") || $cgis->param("uauth_$this->{id}_logged_out"))  && !$forced; # Note: browser might add authorization token, even if we did not ask for it in initiateLogin
+
+    my $token = $req->header('authorization');
+    unless (defined $token) {
+        if($cgis->param("uauth_$this->{id}_run")) {
+            my $message = "Client did not send an authorization token, please add wiki to 'Local intranet'";
+            Foswiki::Func::writeWarning($message) if $this->{config}->{debug};
+            throw Error::Simple($this->{session}->i18n->maketext($message));
+        }
         return 0;
     }
-    $cfg->{identityProvider} ||= '_all_';
+
     return 1;
 }
 
@@ -43,18 +58,46 @@ sub isEarlyLogin {
 }
 
 sub initiateLogin {
-    my ($this, $origin) = @_;
-    my $req = $this->{session}{request};
+    my ($this, $state, $forced) = @_;
 
-    return $this->SUPER::initiateLogin($origin);
-}
+    my $cgis = $this->{session}->getCGISession();
 
-sub handleLogout {
-    my ($this, $session) = @_;
-    return unless $session;
+    unless ($this->{config}->{realm} && $this->{config}->{keytab}) {
+        Foswiki::Func::writeWarning("Please specify realm and keytab in configure") if $this->{config}->{debug};
+        return $Foswiki::UnifiedAuth::Provider::INITIATE_LOGIN_CONTINUE;
+    }
 
-    my $cgis = $session->getCGISession();
-    $cgis->param('uauth_kerberos_logged_out', 1);
+    if($forced) {
+        $cgis->clear(["uauth_$this->{id}_failed", "uauth_$this->{id}_logged_out"]);
+    } else {
+        return $Foswiki::UnifiedAuth::Provider::INITIATE_LOGIN_CONTINUE unless $this->{config}->{autoLogin};
+        if ($cgis->param("uauth_$this->{id}_failed")) {
+            Foswiki::Func::writeWarning("Skipping Kerberos $this->{id}, because it failed before") if $this->{config}->{debug};
+            return $Foswiki::UnifiedAuth::Provider::INITIATE_LOGIN_CONTINUE;
+        }
+        if ($cgis->param("uauth_$this->{id}_logged_out")) {
+            Foswiki::Func::writeWarning("Skipping Kerberos $this->{id}, because user logged out") if $this->{config}->{debug} && $this->{config}->{debug} eq 'verbose';
+            return $Foswiki::UnifiedAuth::Provider::INITIATE_LOGIN_CONTINUE;
+        }
+    }
+
+    Foswiki::Func::writeWarning("Asking for kerberos authentification") if $this->{config}->{debug} && $this->{config}->{debug} eq 'verbose';
+    $cgis->param("uauth_$this->{id}_run", 1);
+
+    my $res = $this->{session}->{response};
+    $res->deleteHeader('WWW-Authenticate');
+    $res->header(-status => 401, -WWW_Authenticate => 'Negotiate');
+    $res->body('');
+    # XXX
+    # Unfortunately the user will be presented with an empty page when all
+    # these conditions apply (Edge bug?):
+    #    * Edge
+    #    * not configured for kerberos (local sites)
+    #    * user presses 'esc' when NTLM challenge appears
+    # This is not because of the body(''), rather the browser gets a
+    # complete page but chooses to ignore the body.
+
+    return $Foswiki::UnifiedAuth::Provider::INITIATE_LOGIN_RENDERDEFAULT;
 }
 
 sub processLogin {
@@ -64,44 +107,11 @@ sub processLogin {
     my $cgis = $session->getCGISession();
     my $cfg = $this->{config};
 
-    if ($cgis->param('uauth_kerberos_failed')) {
-        Foswiki::Func::writeWarning("Skipping Kerberos, because it failed before") if $cfg->{debug};
-        return 0;
-    }
-    if ($cgis->param('uauth_kerberos_logged_out')) {
-        Foswiki::Func::writeWarning("Skipping Kerberos, because user logged out") if $cfg->{debug} && $cfg->{debug} eq 'verbose';
-        return 0;
-    }
 
-    my $req    = $session->{request};
+    my $req = $session->{request};
     my $res = $session->{response};
 
-
-    my $tried = $cgis->param('uauth_kerberos_run');
-    if (!$tried) {
-        Foswiki::Func::writeWarning("Asking for kerberos authentification") if $cfg->{debug} && $cfg->{debug} eq 'verbose';
-        $cgis->param('uauth_kerberos_run', 1);
-        $cgis->param('uauth_provider', $this->{id});
-
-        $res->deleteHeader('WWW-Authenticate');
-        $res->header(-status => 401, -WWW_Authenticate => 'Negotiate');
-        $res->body('');
-        # XXX
-        # Unfortunately the user will be presented with an empty page when all
-        # these conditions apply (Edge bug?):
-        #    * Edge
-        #    * not configured for kerberos (local sites)
-        #    * user presses 'esc' when NTLM challenge appears
-        # This is not because of the body(''), rather the browser gets a
-        # complete page but chooses to ignore the body.
-        return 'wait for next step';
-    }
-
-    my $token = $req->header('authorization');
-    unless (defined $token) {
-        Foswiki::Func::writeWarning("Client did not send an authorization token, please add wiki to 'Local intranet'") if $cfg->{debug};
-        return 0;
-    }
+    my $token = $req->header('authorization'); # existence was checked in 'isMyLogin'
 
     $token =~ s/^Negotiate //;
     if ($token =~ m#^TlRMT#) {
@@ -155,10 +165,9 @@ sub processLogin {
         }
 
         $principal = Encode::decode_utf8($principal);
-        # ToDo. place an option in configure whether to strip off the realm
-        $principal =~ s/\@$cfg->{realm}//;
+        $principal =~ s/\@$cfg->{realm}// unless $this->{config}->{identifyWithRealm};
         Foswiki::Func::writeWarning("Kerberos identified user as '$principal'") if $cfg->{debug};
-        return $principal;
+        return {identity => $principal};
     }
 
     Foswiki::Func::writeWarning("Client sent malformed authorization token");

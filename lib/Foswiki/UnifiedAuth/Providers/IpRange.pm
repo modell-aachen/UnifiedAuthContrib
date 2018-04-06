@@ -10,23 +10,32 @@ use Foswiki::UnifiedAuth;
 use Foswiki::UnifiedAuth::Provider;
 our @ISA = qw(Foswiki::UnifiedAuth::Provider);
 
-my @schema_updates = (
-    [
-    ]
-);
-
 sub new {
     my ($class, $session, $id, $config) = @_;
 
     my $this = $class->SUPER::new($session, $id, $config);
 
+    $config->{identityProvider} ||= '_all_';
+
     return $this;
+}
+
+sub forceButton {
+    my ($this) = @_;
+
+    return undef if defined $this->{config}->{forcable} && !$this->{config}->{forcable};
+
+    return ($this->{config}->{loginIcon} || '<img src="%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/terminal.svg" />', $this->{config}->{loginDescription} || '%MAKETEXT{"Terminal login"}%');
 }
 
 sub isMyLogin {
     my $this = shift;
+    my $forced = shift;
 
-    # $this->enabled() did all the work for us...
+    my $cgis = $this->{session}->getCGISession;
+    return 0 if $cgis->param("uauth_$this->{id}_logged_out") && !$forced && !$this->{config}->{ignoreLogout};
+
+    # $this->enabled() did the rest for us...
 
     return 1;
 }
@@ -39,7 +48,7 @@ sub processLogin {
     my $this = shift;
 
     my $config = $this->{config};
-    return $config->{user_id};
+    return {identity => $config->{user_id}};
 }
 
 1;
