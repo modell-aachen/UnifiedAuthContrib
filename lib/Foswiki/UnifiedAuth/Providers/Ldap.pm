@@ -1372,7 +1372,7 @@ sub identify {
     $login = $this->processLoginName($login);
     my $db = Foswiki::UnifiedAuth->new()->db;
     my $pid = $this->getPid;
-    my $user = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND users.pid=?", {}, $login, $pid);
+    my $user = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND uac_disabled=0 AND deactivated=0 AND users.pid=?", {}, $login, $pid);
 
     return {cuid => $user->{cuid}, data => {}} if $user;
     return undef;

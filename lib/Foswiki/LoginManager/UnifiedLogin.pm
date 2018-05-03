@@ -469,11 +469,11 @@ sub processProviderLogin {
         # NOTE: This is just a safety net, each provider MUST check if the
         # login is active or not. Otherwise a deactivated provider will also
         # invalidate following providers.
-        my $deactivated = $this->{uac}->{db}->selectrow_array("SELECT deactivated FROM users WHERE cuid=?", {}, $loginResult->{cuid});
+        my ($deactivated, $uac_disabled) = $this->{uac}->{db}->selectrow_array("SELECT deactivated, uac_disabled FROM users WHERE cuid=?", {}, $loginResult->{cuid});
 
         my ( $origurl, $origmethod, $origaction ) = $this->_stateToRequest($loginResult->{state});
 
-        unless ($deactivated) {
+        unless ($deactivated || $uac_disabled) {
             $this->userLoggedIn($loginResult->{cuid});
             $session->logger->log(
                 {
