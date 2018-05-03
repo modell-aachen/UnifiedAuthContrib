@@ -19,6 +19,7 @@ our @ISA = qw(Foswiki::UnifiedAuth::IdentityProvider);
 
 my @schema_updates = (
     [
+        "INSERT INTO meta (type, version) VALUES('users_ldap', 0)",
         "CREATE TABLE IF NOT EXISTS users_ldap (
             pid INTEGER NOT NULL,
             info JSONB NOT NULL,
@@ -27,9 +28,9 @@ my @schema_updates = (
             dn TEXT NOT NULL,
             PRIMARY KEY (login,pid)
         )",
+        "ALTER TABLE users_ldap ADD COLUMN referral TEXT",
     ]
 );
-my $schema_xxx = "INSERT INTO meta (type, version) VALUES('users_ldap', 1)"; # XXX must fake upsert
 
 sub new {
     my ($class, $session, $id, $config) = @_;
@@ -175,10 +176,6 @@ sub makeConfig {
 
     $this->{uauth} = Foswiki::UnifiedAuth->new();
     $this->{displayNameFormat} = $this->{config}{DisplayNameFormat} || '$cn';
-    my @xxx = @schema_updates;
-    unless($this->{uauth}->db->selectrow_array("SELECT COUNT(version) FROM meta WHERE type='users_ldap'")) {
-        push @xxx, $schema_xxx;
-    }
     $this->{uauth}->apply_schema('users_ldap', @schema_updates);
 
     return $this;
@@ -671,9 +668,10 @@ sub search {
         writeDebug("reading users from cache in one chunk") if $this->{config}{debug};
     }
 
-    if (defined($args{callback}) && !defined($args{_origCallback})) {
+    if (defined($args{callback})) {
 
         $args{_origCallback} = $args{callback};
+        my $referral = $args{_uauthReferral};
 
         $args{callback} = sub {
             my ($ldap, $entry) = @_;
@@ -687,6 +685,8 @@ sub search {
                     $this->_followLink($link, %args);
                 }
             } else {
+                $entry->add('_uauthReferral', $referral) if $referral;
+                my $dn = $entry->dn;
                 # call the orig callback
                 $args{_origCallback}($ldap, $entry);
             }
@@ -802,6 +802,8 @@ sub _followLink {
 
   my $host = $refcfg->{host} || $uri->host;
   my $port = $refcfg->{port} || $uri->port;
+  my $dn = $refcfg->{BindDN};
+  my $passwd = $refcfg->{BindPassword};
 
   my @keys = keys %$refcfg;
   my @vals = values %$refcfg;
@@ -812,9 +814,10 @@ sub _followLink {
   my %thisArgs = %args;
   $thisArgs{base} = $refcfg->{base} || $uri->dn;
   $thisArgs{port} = $port;
+  $thisArgs{_uauthReferral} = $link;
 
   # trick in new connection
-  $this->connect(undef, undef, $host, $port);
+  $this->connect($dn, $passwd, $host, $port);
   my $msg = $this->search(%thisArgs);
   $this->disconnect;
 
@@ -1174,6 +1177,8 @@ sub cacheUserFromEntry {
     my $accoundControl = int($entry->get_value('userAccountControl') || 0);
     my $uacDisabled = ($accoundControl & 2) ? 1 : 0;
 
+    my $referredFrom = $entry->get_value('_uauthReferral');
+
     # get old data
     my $cuid = $db->selectrow_array("SELECT cuid FROM users WHERE pid=? AND login_name=?", {}, $pid, $loginName);
 
@@ -1256,10 +1261,10 @@ sub cacheUserFromEntry {
     my $row = $oldData->[0];
     if($row && @$row) {
         if($row->[0] ne $dn || $row->[1] ne $info) {
-            $db->do("UPDATE users_ldap SET dn=?, cuid=?, info=? where pid=? AND login=?", {}, $dn, $cuid, $info, $pid, $loginName);
+            $db->do("UPDATE users_ldap SET dn=?, cuid=?, info=?, referral=? WHERE pid=? AND login=?", {}, $dn, $cuid, $info, $referredFrom, $pid, $loginName);
         }
     } else {
-        $db->do("INSERT INTO users_ldap (pid, login, dn, cuid, info) VALUES (?,?,?,?,?)", {}, $pid, $loginName, $dn, $cuid, $info);
+        $db->do("INSERT INTO users_ldap (pid, login, dn, cuid, info, referral) VALUES (?,?,?,?,?,?)", {}, $pid, $loginName, $dn, $cuid, $info, $referredFrom);
     }
     $db->commit;
 
@@ -1338,11 +1343,24 @@ sub processLoginData {
     my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND users.pid=? AND uac_disabled=0 AND deactivated=0", {}, $username, $pid);
     return undef unless $userinfo;
 
-    my $dn = $db->selectrow_array("SELECT dn FROM users_ldap WHERE login=? AND pid=?", {}, $username, $pid);
+    my ($dn, $referral) = $db->selectrow_array("SELECT dn, referral FROM users_ldap WHERE login=? AND pid=?", {}, $username, $pid);
     return undef unless $dn;
 
+    my ($host, $port);
+    if($referral) {
+        my $refcfg = $this->{referralConfig};
+        $refcfg = $refcfg->{$referral} if $refcfg;
+        $refcfg ||= {};
+
+        return undef if $this->{knownReferralsOnly} && !defined $refcfg;
+
+        my $uri = URI::ldap->new($this->fromLdapCharSet($referral));
+        $host = $refcfg->{host} || $uri->host;
+        $port = $refcfg->{port} || $uri->port;
+    }
+
     $this->makeConfig();
-    return undef unless $this->connect($dn, $password);
+    return undef unless $this->connect($dn, $password, $host, $port);
 
     return { cuid => $userinfo->{cuid}, data => {} };
 }
