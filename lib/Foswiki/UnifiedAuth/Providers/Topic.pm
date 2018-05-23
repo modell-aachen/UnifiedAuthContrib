@@ -93,7 +93,7 @@ sub setPassword {
 
     my $uauth = Foswiki::UnifiedAuth->new();
     my $db = $uauth->db;
-    my $userinfo = $db->selectrow_hashref("SELECT * FROM users WHERE users.login_name=?", {}, $login);
+    my $userinfo = $db->selectrow_hashref("SELECT * FROM users WHERE users.login_name=? and pid=?", {}, $login, $this->pid);
     # XXX UTF-8
     my $pwHash;
     if ($newUserPassword) {
