@@ -20,6 +20,8 @@ our @ISA = qw(Foswiki::UnifiedAuth::IdentityProvider);
 my @schema_updates = (
     [
         "INSERT INTO meta (type, version) VALUES('users_ldap', 0)",
+    ],
+    [
         "CREATE TABLE IF NOT EXISTS users_ldap (
             pid INTEGER NOT NULL,
             info JSONB NOT NULL,
@@ -28,8 +30,14 @@ my @schema_updates = (
             dn TEXT NOT NULL,
             PRIMARY KEY (login,pid)
         )",
-        "ALTER TABLE users_ldap ADD COLUMN referral TEXT",
-    ]
+        'DO $$
+         BEGIN
+             ALTER TABLE users_ldap ADD COLUMN  referral TEXT;
+             EXCEPTION WHEN OTHERS THEN
+             RAISE NOTICE \'% %\', SQLERRM, SQLSTATE;
+         END;
+         $$ language \'plpgsql\';', # when we upgrade to 9.6 we can use 'ALTER TBALE users_ldap ADD COLUMN IF NOT EXISTS referral TEXT'
+    ],
 );
 
 sub new {
