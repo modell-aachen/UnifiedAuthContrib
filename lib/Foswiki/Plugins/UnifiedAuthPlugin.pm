@@ -24,6 +24,7 @@ sub initPlugin {
     Foswiki::Func::registerTagHandler('AUTHPROVIDERS',\&_AUTHPROVIDERS);
     Foswiki::Func::registerTagHandler('TOTALUSERS', \&_TOTALUSERS);
     Foswiki::Func::registerTagHandler('SHOWRESETPASSWORD', \&_SHOWRESETPASSWORD);
+    Foswiki::Func::registerTagHandler('SHOWGROUPMEMBERSHIPS', \&_SHOWGROUPMEMBERSHIPS);
 
     Foswiki::Func::registerRESTHandler( 'registerUser',
         # \&_registerUser,
@@ -205,6 +206,45 @@ sub _registerUser {
     $topicProvider->indexUser($cuid);
 
     return to_json({status => "ok"});
+}
+
+sub _SHOWGROUPMEMBERSHIPS {
+    my($session, $params, $topic, $web, $topicObject) = @_;
+
+    unless ($session->{users}->{mapping}->can('getMembershipsCUID')) {
+        Foswiki::Func::writeWarning("Please use UnifiedAuth as user manager", $session->{users}->{mapping});
+        return 'not supported by your user manager';
+    }
+
+    my $user = $params->{_DEFAULT} || Foswiki::Func::getCanonicalUserID();
+
+    my @memberships = @{ $session->{users}->{mapping}->getMembershipsCUID($user) };
+
+    unless (scalar @memberships || Foswiki::Func::isTrue($params->{show_no_results})) {
+        return Foswiki::Func::decodeFormatTokens((defined $params->{no_results} ? $params->{no_results} : ''));
+    }
+
+    my $formattedMembers;
+    if(Foswiki::Func::isTrue($params->{as_json})) {
+        $formattedMembers = to_json(\@memberships);
+    } else {
+        if ($params->{format}) {
+            my $format = Foswiki::Func::decodeFormatTokens($params->{format});
+            @memberships = map{
+                $format =~ s#\$cuid#$_#gr =~ s#\$name#$session->{users}->{mapping}->getDisplayName($_)#ger;
+            } @memberships;
+        }
+        my $separator = Foswiki::Func::decodeFormatTokens($params->{separator} || ', ');
+        $formattedMembers = join($separator, @memberships);
+    }
+
+    if (defined $params->{header}) {
+        $formattedMembers = Foswiki::Func::decodeFormatTokens($params->{header}) . $formattedMembers;
+    }
+    if (defined $params->{footer}) {
+        $formattedMembers = $formattedMembers . Foswiki::Func::decodeFormatTokens($params->{footer});
+    }
+    return $formattedMembers;
 }
 
 sub _RESTusers {

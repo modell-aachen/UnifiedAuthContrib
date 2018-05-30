@@ -136,6 +136,11 @@ sub refresh {
             my $pref = $meta->get('PREFERENCE', 'GROUP');
             next unless $pref;
             my @entries = map{ $_ =~ s#^\s*##r =~ s#\s*$##r } split(/,/, $pref->{value} || '');
+            if($topic eq 'AdminGroup') {
+                push @entries, 'AdminUser';
+            } elsif($topic eq 'BaseGroup') {
+                push @entries, qw(AdminUser WikiGuest UnknownUser ProjectContributor RegistrationAgent);
+            }
             my @users = ();
             my @nested = ();
             foreach my $entry ( @entries ) {
