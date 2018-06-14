@@ -86,12 +86,24 @@ Default is *false*
 sub supportsRegistration {
     my $this = shift;
 
-
     my $providerId = $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider};
     return 0 unless $providerId;
+
     my $provider = $this->{uac}->authProvider($this->{session}, $providerId);
     return 0 unless $provider;
+
     return $provider->supportsRegistration();
+}
+
+sub userMayRegisterUsers {
+    my ($this, $user) = @_;
+    my $mayRegisterUsers = $Foswiki::cfg{UnifiedAuth}{MayRegisterUsers};
+    if(defined $mayRegisterUsers && $mayRegisterUsers ne '' && !Foswiki::Func::isAnAdmin()) {
+        my $cuid = Foswiki::Func::getCanonicalUserID($user);
+        my @list = split(/\s*,\s*/, $mayRegisterUsers =~ s/^\s*//r =~ s/\s*$//r);
+        return $Foswiki::Plugins::SESSION->{users}->isInUserList($cuid, \@list);
+    }
+    return 1;
 }
 
 =begin TML
@@ -227,12 +239,18 @@ sub addUser {
 
     my $addTo = $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider};
     unless($addTo) {
-        throw Error::Simple('Failed to add user: adding users is not supported');
+        throw Error::Simple('Failed to add user: adding users is not supported, please configure {UnifiedAuth}{AddUsersToProvider}');
     }
+
     my $provider = $this->{uac}->authProvider($this->{session}, $addTo);
     unless($provider) {
         throw Error::Simple('Failed to add user: could not get provider: '.$provider);
     }
+
+    unless ($this->userMayRegisterUsers()) {
+        throw Error::Simple("User " . Foswiki::Func::getWikiName() . " is not allowed to register new users.");
+    }
+
     return $provider->addUser($login, $wikiname, $password, $emails);
 }
 

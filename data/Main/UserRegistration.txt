@@ -1,0 +1,19 @@
+%META:TOPICINFO{author="ProjectContributor" comment="" date="1452812379" format="1.1" version="1"}%
+<noautolink>
+<!--
+
+DO NOT EDIT THIS TOPIC.
+Part of UnifiedAuthContrib.
+
+  * %SET{"REGISTRATION_DISABLED" value="%IF{"$USERMAYREGISTERUSERS" then="okidoky" else="DISABLED"}%"}%
+  * %SET{"REGPARTS" value="%SYSTEMWEB%.UnifiedAuthUserRegistrationParts"}%
+-->
+
+%INCLUDE{"%REGPARTS%" section="title" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}%
+%INCLUDE{"%REGPARTS%" section="notes" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}% <!-- Required: conditional notes & warnings -->
+%INCLUDE{"%REGPARTS%" section="privacyInformation" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}% <!-- Optional -->
+%INCLUDE{"%REGPARTS%" section="resources" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}% <!-- Required: JavaScript and CSS components -->
+%INCLUDE{"%REGPARTS%" section="form" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}% <!-- Required: The actual registration form -->
+%INCLUDE{"%REGPARTS%" section="help" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}% <!-- Optional: Help text -->
+
+</noautolink>

@@ -25,6 +25,7 @@ sub initPlugin {
     Foswiki::Func::registerTagHandler('TOTALUSERS', \&_TOTALUSERS);
     Foswiki::Func::registerTagHandler('SHOWRESETPASSWORD', \&_SHOWRESETPASSWORD);
     Foswiki::Func::registerTagHandler('SHOWGROUPMEMBERSHIPS', \&_SHOWGROUPMEMBERSHIPS);
+    Foswiki::Func::registerTagHandler('USERMAYREGISTERUSERS', \&_USERMAYREGISTERUSERS);
 
     Foswiki::Func::registerRESTHandler( 'registerUser',
         # \&_registerUser,
@@ -245,6 +246,16 @@ sub _SHOWGROUPMEMBERSHIPS {
         $formattedMembers = $formattedMembers . Foswiki::Func::decodeFormatTokens($params->{footer});
     }
     return $formattedMembers;
+}
+
+sub _USERMAYREGISTERUSERS {
+    my($session, $params, $topic, $web, $topicObject) = @_;
+
+    my $context = Foswiki::Func::getContext();
+    return 0 unless $context->{registration_supported} && $context->{registration_enabled};
+
+    return 1 unless $session->{users}->{mapping}->can('userMayRegisterUsers');
+    return $session->{users}->{mapping}->userMayRegisterUsers() ? 1 : 0;
 }
 
 sub _RESTusers {

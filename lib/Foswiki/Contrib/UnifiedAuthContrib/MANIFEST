@@ -1,6 +1,8 @@
 # Release manifest for UnifiedAuthContrib
 !noci
+data/Main/UserRegistration.txt 0644
 data/System/UnifiedAuthContrib.txt 0644 Documentation
+data/System/UnifiedAuthUserRegistrationParts.txt 0644 Documentation
 data/System/UserAdministration.txt 0644 Documentation
 data/System/UserAdministrationViewTemplate.txt 0644 Documentation
 data/System/VarSHOWGROUPMEMBERSHIPS.txt 0644 Documentation
