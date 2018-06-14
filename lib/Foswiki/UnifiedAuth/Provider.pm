@@ -28,6 +28,12 @@ sub new {
     }, $class;
 }
 
+# Signal if this provider allows changing the email address.
+# For providers with external sources (ldap) this does not make sense.
+sub supportsEmailChange {
+    return 0;
+}
+
 # Called by UnifiedLoading::loadSession when the user logged out
 sub handleLogout {
     my ($this, $session) = @_;
