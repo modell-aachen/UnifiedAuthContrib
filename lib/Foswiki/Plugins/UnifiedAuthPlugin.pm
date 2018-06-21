@@ -11,6 +11,7 @@ use Foswiki::Contrib::PostgreContrib;
 use Foswiki::UnifiedAuth;
 use Foswiki::Contrib::MailTemplatesContrib;
 use JSON;
+use Digest::MD5 qw(md5_hex);
 
 require Foswiki::Users;
 
@@ -24,6 +25,8 @@ sub initPlugin {
     Foswiki::Func::registerTagHandler('AUTHPROVIDERS',\&_AUTHPROVIDERS);
     Foswiki::Func::registerTagHandler('TOTALUSERS', \&_TOTALUSERS);
     Foswiki::Func::registerTagHandler('SHOWRESETPASSWORD', \&_SHOWRESETPASSWORD);
+    Foswiki::Func::registerTagHandler('USERREGISTRATION', \&_USERREGISTRATION);
+    Foswiki::Func::registerTagHandler('GROUPREGISTRATION', \&_GROUPREGISTRATION);
 
     Foswiki::Func::registerRESTHandler( 'registerUser',
         # \&_registerUser,
@@ -83,6 +86,7 @@ sub initPlugin {
         validate => 0,
         http_allow => 'POST',
     );
+
     return 1;
 }
 
@@ -550,6 +554,33 @@ sub _getConnection {
     return $connection if $connection && !$connection->{finished};
     $connection = Foswiki::Contrib::PostgreContrib::getConnection('foswiki_users');
     $connection->{db};
+}
+
+sub _USERREGISTRATION {
+    my ( $session, $attributes, $topic, $web, $meta ) = @_;
+    my $allowChangeLoginname = $attributes->{allow_change_loginname};
+
+    my $clientId = "UnifiedAuth_User_" . substr(md5_hex(rand), -6);
+    my $clientToken = Foswiki::Plugins::VueJSPlugin::registerClient( $clientId );
+    return sprintf(
+        '<p id="userRegistration" data-vue-client-id="%s" data-vue-client-token="%s"><user-registration show-user-loginname="%s"></user-registration></p>',
+        $clientId,
+        $clientToken,
+        $allowChangeLoginname
+    );
+}
+
+sub _GROUPREGISTRATION {
+    my ( $session, $attributes, $topic, $web, $meta ) = @_;
+
+    my $clientId = "UnifiedAuth_Group_" . substr(md5_hex(rand), -6);
+    my $clientToken = Foswiki::Plugins::VueJSPlugin::registerClient( $clientId );
+
+    return sprintf(
+        '<p id="groupRegistration" data-vue-client-id="%s" data-vue-client-token="%s"><group-registration></group-registration></p>',
+        $clientId,
+        $clientToken
+    );
 }
 
 1;
