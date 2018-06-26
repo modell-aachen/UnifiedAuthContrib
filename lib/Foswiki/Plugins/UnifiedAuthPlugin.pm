@@ -560,27 +560,23 @@ sub _USERREGISTRATION {
     my ( $session, $attributes, $topic, $web, $meta ) = @_;
     my $allowChangeLoginname = $attributes->{allow_change_loginname};
 
-    my $clientId = "UnifiedAuth_User_" . substr(md5_hex(rand), -6);
-    my $clientToken = Foswiki::Plugins::VueJSPlugin::registerClient( $clientId );
-    return sprintf(
-        '<p id="userRegistration" data-vue-client-id="%s" data-vue-client-token="%s"><user-registration show-user-loginname="%s"></user-registration></p>',
-        $clientId,
-        $clientToken,
-        $allowChangeLoginname
-    );
+    my $clientToken = Foswiki::Plugins::VueJSPlugin::getClientToken();
+    return <<HTML;
+        <p id="userRegistration" data-vue-client-token="$clientToken">
+            <user-registration show-user-loginname="$allowChangeLoginname"></user-registration>
+        </p>
+HTML
 }
 
 sub _GROUPREGISTRATION {
     my ( $session, $attributes, $topic, $web, $meta ) = @_;
 
-    my $clientId = "UnifiedAuth_Group_" . substr(md5_hex(rand), -6);
-    my $clientToken = Foswiki::Plugins::VueJSPlugin::registerClient( $clientId );
-
-    return sprintf(
-        '<p id="groupRegistration" data-vue-client-id="%s" data-vue-client-token="%s"><group-registration></group-registration></p>',
-        $clientId,
-        $clientToken
-    );
+    my $clientToken = Foswiki::Plugins::VueJSPlugin::getClientToken();
+    return <<HTML;
+        <p id="groupRegistration" data-vue-client-token="$clientToken">
+            <group-registration></group-registration>
+        </p>
+HTML
 }
 
 1;
