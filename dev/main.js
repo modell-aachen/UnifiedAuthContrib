@@ -60,10 +60,6 @@ Vue.component("GroupRegistration", {
     }
 });
 $(function(){
-    new Vue({
-        el: "#userRegistration",
-    });
-    new Vue({
-        el: "#groupRegistration",
-    });
+    Vue.instantiateEach("#userRegistration", {});
+    Vue.instantiateEach("#groupRegistration", {});
 });

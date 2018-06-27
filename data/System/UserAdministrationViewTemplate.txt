@@ -6,7 +6,9 @@
 %TAB{"%MAKETEXT{"Users"}%"}%
 <p>%MAKETEXT{"This site presents an overview of currently all available users within this wiki. Deactivated users may also be shown."}%<p>
 <strong>%MAKETEXT{"Current number of active users:"}% %TOTALUSERS{exclude_deactivated="1"}%</strong>
-<p id="userRegistration"><user-registration show-user-loginname="%USER_CREATE_ALLOW_CHANGE_LOGINNAME%"></user-registration></p>
+
+%USERREGISTRATION{allow_change_loginname="%USER_CREATE_ALLOW_CHANGE_LOGINNAME%"}%
+
 %SEARCHGRID{
   "type:ua_user !mainprovidername_s:__*"
   headers="Name,Source systems,Email address,Status"
@@ -22,7 +24,9 @@
 %ENDTAB%
 %TAB{"%MAKETEXT{"Groups"}%"}%
 <p>%MAKETEXT{"This site presents an overview of all groups which which are available for access control definitions in [_1]." args="%WIKITOOLNAME%"}%<p>
-<p id="groupRegistration"><group-registration></group-registration></p>
+
+%GROUPREGISTRATION%
+
 %SEARCHGRID{
   "type:ua_group"
   headers="Group name,Active,Source systems,Users"
