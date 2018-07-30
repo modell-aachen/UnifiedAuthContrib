@@ -473,16 +473,29 @@ sub mapper_getEmails {
     return split(';', $addr);
 }
 
-# TODO add support for changing user e-mail addresses
+sub setEmails {
+    my $this = shift;
+
+    return $this->mapper_setEmails(@_);
+}
 
 sub mapper_setEmails {
     my $this = shift;
     my $cuid = shift;
     my $mails = join( ';', @_ );
-    $cuid = $this->_userToCUID($cuid);
 
-    my $uac = Foswiki::UnifiedAuth->new();
-    $uac->db->do("UPDATE users SET email=? WHERE cuid=?", {}, $mails, $cuid);
+    my $db = $this->{uac}->db();
+
+    $cuid = $this->_userToCUID($cuid);
+    my $providerName = $db->selectrow_array("SELECT providers.name FROM providers JOIN users USING (pid) WHERE users.cuid=?", {}, $cuid);
+    my $provider = $this->{uac}->authProvider($this->{session}, $providerName);
+
+    unless($provider->supportsEmailChange()) {
+        my $error = Foswiki::Func::expandCommonVariables('%MAKETEXT{"Unfortunately the email can not be changed for your type of user."}%');
+        throw Error::Simple($error);
+    }
+
+    return $db->do("UPDATE users SET email=? WHERE cuid=?", {}, $mails, $cuid);
 }
 
 =begin TML

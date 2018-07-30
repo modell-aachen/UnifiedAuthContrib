@@ -45,6 +45,10 @@ sub new {
     return $this;
 }
 
+sub supportsEmailChange {
+    return 1;
+}
+
 sub supportsRegistration {
     1; # TODO: check if PasswordManager allows registration
 }

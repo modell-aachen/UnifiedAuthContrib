@@ -11,6 +11,7 @@ use Foswiki::Contrib::PostgreContrib;
 use Foswiki::UnifiedAuth;
 use Foswiki::Contrib::MailTemplatesContrib;
 use JSON;
+use Digest::MD5 qw(md5_hex);
 
 require Foswiki::Users;
 
@@ -26,6 +27,8 @@ sub initPlugin {
     Foswiki::Func::registerTagHandler('SHOWRESETPASSWORD', \&_SHOWRESETPASSWORD);
     Foswiki::Func::registerTagHandler('SHOWGROUPMEMBERSHIPS', \&_SHOWGROUPMEMBERSHIPS);
     Foswiki::Func::registerTagHandler('USERMAYREGISTERUSERS', \&_USERMAYREGISTERUSERS);
+    Foswiki::Func::registerTagHandler('USERREGISTRATION', \&_USERREGISTRATION);
+    Foswiki::Func::registerTagHandler('GROUPREGISTRATION', \&_GROUPREGISTRATION);
 
     Foswiki::Func::registerRESTHandler( 'registerUser',
         # \&_registerUser,
@@ -85,6 +88,7 @@ sub initPlugin {
         validate => 0,
         http_allow => 'POST',
     );
+
     return 1;
 }
 
@@ -601,6 +605,29 @@ sub _getConnection {
     return $connection if $connection && !$connection->{finished};
     $connection = Foswiki::Contrib::PostgreContrib::getConnection('foswiki_users');
     $connection->{db};
+}
+
+sub _USERREGISTRATION {
+    my ( $session, $attributes, $topic, $web, $meta ) = @_;
+    my $allowChangeLoginname = $attributes->{allow_change_loginname};
+
+    my $clientToken = Foswiki::Plugins::VueJSPlugin::getClientToken();
+    return <<HTML;
+        <p id="userRegistration" data-vue-client-token="$clientToken">
+            <user-registration show-user-loginname="$allowChangeLoginname"></user-registration>
+        </p>
+HTML
+}
+
+sub _GROUPREGISTRATION {
+    my ( $session, $attributes, $topic, $web, $meta ) = @_;
+
+    my $clientToken = Foswiki::Plugins::VueJSPlugin::getClientToken();
+    return <<HTML;
+        <p id="groupRegistration" data-vue-client-token="$clientToken">
+            <group-registration></group-registration>
+        </p>
+HTML
 }
 
 1;
