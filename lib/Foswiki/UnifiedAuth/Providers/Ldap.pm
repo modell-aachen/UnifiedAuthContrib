@@ -1166,7 +1166,7 @@ sub cacheUserFromEntry {
     $displayName =~ s#\$\{(\w+)\}#$this->fromLdapCharSet($entry->get_value($1)) || "\$$1"#ge;
 
     # store extra display fields
-    # 
+    #
     # 'DisplayAttributes' => 'cn,mail',
     # 'DisplayNameFormat' => '$cn - $mail',
     #
@@ -1385,7 +1385,7 @@ sub identify {
     return {cuid => $user->{cuid}, data => {}} if $user;
     return undef;
 }
-=pod 
+=pod
 
 ---++ getDisplayAttributesOfLogin($login, $data) -> $displayAttributes
 

@@ -372,7 +372,7 @@ parameters:
 | !BindPassword | The password used when binding to the LDAP server | |
 | !CharSet | Set this to the charset encoding of data coming from the LDAP server. | utf-8 |
 | !DefaultAutocompleteFields | Comma-separated list of fields to search in when using autocomplete | sn,givenName,sAMAccountName |
-| !DisplayNameFormat | Formatting string for generating a "display name" (human-friendly label for a user). | $displayName |
+| !DisplayNameFormat | Formatting string for generating a "display name" (human-friendly label for a user). | $cn |
 | !GroupAttribute | This is the name of the attribute that holds the name of the group in a group record. | cn |
 | !GroupBase | A list of trees where to search for group records. | |
 | !GroupFilter | Filter to be used to find groups. Compare to !LoginFilter. | objectClass=group |
@@ -382,7 +382,7 @@ parameters:
 | !LoginAttribute | The user login name attribute. This is the attribute name that is used to login. | sAMAccountName |
 | !LoginFilter | Filter to be used to find login accounts. Compare to =GroupFilter= above | objectClass=person |
 | !MailAttribute | The user mail attribute. This is the attribute name used to fetch users e-mail. | mail |
-| !MapGroups | Enable use of LDAP groups. | 1 |
+| !MapGroups | Enable use of LDAP groups. | 0 |
 | !MemberIndirection | Flag indicating wether the !MemberAttribute of a group stores a DN. | 1 |
 | Port | Port used when binding to the LDAP server | 389 |
 | !PrimaryGroupAttribute | This is the name of the attribute that holds the primary group attribute. | gidNumber |
@@ -416,7 +416,7 @@ sudo -u www-data ./synchronize_ldap_to_uac --provider ldap_provider
          'DefaultCacheExpire' => 0,
          'DisplayAttributes' => 'cn,mail',
          'DisplayNameFormat' => '$cn',
-         'Exclude' => 'WikiGuest, ProjectContributor, RegistrationAgent, UnknownUser, AdminGroup, NobodyGroup, AdminUser, admin, guest,Administrator,administrator',
+         'Exclude' => 'WikiGuest, ProjectContributor, RegistrationAgent, AdminGroup, NobodyGroup',
          'GroupAttribute' => 'cn',
          'GroupBase' => [
              'ou=Groups,dc=example,dc=com'
@@ -435,15 +435,15 @@ sudo -u www-data ./synchronize_ldap_to_uac --provider ldap_provider
          'LoginAttribute' => 'sAMAccountName',
          'LoginFilter' => 'objectClass=user',
          'MailAttribute' => 'mail',
-         'MapGroups' => 1,
-         'MaxCacheAge' => 86400,
+         'MapGroups' => 0,
+         'MaxCacheAge' => '',
          'MemberAttribute' => 'member',
          'MemberIndirection' => 1,
          'MergeGroups' => 0,
          'NormalizeGroupNames' => 0,
          'NormalizeLoginNames' => 0,
          'NormalizeWikiNames' => 1,
-         'PageSize' => 500,
+         'PageSize' => 200,
          'PersonAttribures' => {
             'c' => 'Country',
             'company' => 'OrganisationName',
@@ -468,7 +468,7 @@ sudo -u www-data ./synchronize_ldap_to_uac --provider ldap_provider
          'Port' => 389,
          'Precache' => 1,
          'PreferLocalSettings' => 1,
-         'PrimaryGroupAttribute' => 'cn',
+         'PrimaryGroupAttribute' => 'gidNumber',
          'PrimaryGroupMapping' => {},
          'ReferralConfig' => {},
          'RewriteGroups' => {},
