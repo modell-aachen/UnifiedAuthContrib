@@ -465,13 +465,10 @@ sub processProviderLogin {
     }
 
     if ($loginResult && $loginResult->{cuid}) {
-
         # NOTE: This is just a safety net, each provider MUST check if the
         # login is active or not. Otherwise a deactivated provider will also
         # invalidate following providers.
         my ($deactivated, $uac_disabled) = $this->{uac}->{db}->selectrow_array("SELECT deactivated, uac_disabled FROM users WHERE cuid=?", {}, $loginResult->{cuid});
-
-        my ( $origurl, $origmethod, $origaction ) = $this->_stateToRequest($loginResult->{state});
 
         unless ($deactivated || $uac_disabled) {
             $this->userLoggedIn($loginResult->{cuid});
@@ -485,24 +482,12 @@ sub processProviderLogin {
             );
             $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
               if $this->{_cgisession};
-            if (!$origaction || $origaction eq 'login') {
-                $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
-                $origmethod = 'GET';
-                $origaction = 'view';
-                $session->{request}->delete_all;
+
+            if($loginResult->{state}){
+                $this->_restoreSessionFromState($loginResult->{state}, $session); 
             } else {
-                # Restore url
-                if ( $origurl =~ s/\?([^#]*)// ) {
-                    foreach my $pair ( split( /[&;]/, $1 ) ) {
-                        if ( $pair =~ /(.*?)=(.*)/ ) {
-                            $session->{request}->param( $1, TAINT($2) );
-                        }
-                    }
-                }
+                $session->redirect($query->{uri}, 1);
             }
-            $session->{request}->method($origmethod);
-            $session->{request}->action($origaction);
-            $session->redirect($origurl, 1);
 
             return $loginResult->{cuid};
         }
@@ -512,7 +497,6 @@ sub processProviderLogin {
         $context->{uauth_failed_nochoose} = 1;
     }
 
-    # $session->{response}->status(200);
     $session->logger->log(
         {
             level    => 'info',
@@ -523,6 +507,34 @@ sub processProviderLogin {
     );
 
     return undef;
+}
+
+sub _restoreSessionFromState {
+    my ($this, $state, $session) = @_;
+
+    my ( $origurl, $origmethod, $origaction ) = $this->_stateToRequest($state);
+
+    my $topic  = $session->{topicName};
+    my $web    = $session->{webName};
+
+    if (!$origaction || $origaction eq 'login') {
+        $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
+        $origmethod = 'GET';
+        $origaction = 'view';
+        $session->{request}->delete_all;
+    } else {
+        # Restore url
+        if ( $origurl =~ s/\?([^#]*)// ) {
+            foreach my $pair ( split( /[&;]/, $1 ) ) {
+                if ( $pair =~ /(.*?)=(.*)/ ) {
+                    $session->{request}->param( $1, TAINT($2) );
+                }
+            }
+        }
+    }
+    $session->{request}->method($origmethod);
+    $session->{request}->action($origaction);
+    $session->redirect($origurl, 1);
 }
 
 # Like the super method, but checks if the topic exists (to avoid dead links).
