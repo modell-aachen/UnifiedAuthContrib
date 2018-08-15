@@ -97,7 +97,7 @@ sub makeConfig {
     $this->{innerGroupAttribute} = $this->{config}{InnerGroupAttribute} || 'member';
     $this->{bindDN} = $this->{config}{BindDN} || '';
     $this->{bindPassword} = $this->{config}{BindPassword} || '';
-    $this->{mapGroups} = $this->{config}{MapGroups} || 0;
+    $this->{mapGroups} = defined($this->{config}{MapGroups}) ? $this->{config}{MapGroups} : 1;
     $this->{rewriteGroups} = $this->{config}{RewriteGroups} || {};
     $this->{rewriteWikiNames} = $this->{config}{RewriteWikiNames} ||  { '^(.*)@.*$' => '$1' };
     $this->{mergeGroups} = $this->{config}{MergeGroups} || 0;
