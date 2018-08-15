@@ -403,7 +403,6 @@ sudo -u www-data ./synchronize_ldap_to_uac --provider ldap_provider
 {UnifiedAuth}{Providers} = {
    'topic' => {
       'config' => {
-         'AllowChangePassword' => 1,
          'Base' => 'dc=example,dc=com',
          'BindDN' => 'cn=ldap_bind,ou=Users,dc=example,dc=com',
          'BindPassword' => 'bind_password',
