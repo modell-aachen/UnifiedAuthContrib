@@ -366,7 +366,6 @@ In a production environment you have to specify at least the following
 parameters:
 
 | *Preference* | *Description* | *Default* |
-| !AllowChangePassword | Allow/disallow changing the LDAP password using the !ChangePassword feature | 0 |
 | Base | Base DN to use in searches | |
 | !BindDN | The DN to use when binding to the LDAP server; if undefined anonymous binding will be used.%BR%Example 'cn=proxyuser,dc=my,dc=domain,dc=com' | |
 | !BindPassword | The password used when binding to the LDAP server | |
@@ -389,7 +388,6 @@ parameters:
 | !RewriteWikiNames | A hash mapping of rewrite rules. Rules are separated by commas. | { '^(.*)@.*$' => '$1' } |
 | !UserBase | A list of trees where to search for users records. | |
 | !UserScope | The scope of the search for users starting at !UserBase. | sub |
-| !WikiGroupsBackoff | Flag indicating wether we fallback to !WikiGroups. | 1 |
 | !WikiNameAttributes | The user's wiki name attribute. This is the attribute to generate the !WikiName from. | givenName,sn |
 
 If you migrate from an existing LdapContrib configuration, you can import the old WikiNames using =tools/synchronize_ldap_to_uac=. Copy the old _cache.db_ to the appropriate place in your =work_area= and execute the tool with the provider id as parameter '--provider'. By default the script performs a dryrun. To save the changes run it with '--nodry'.
@@ -425,7 +423,6 @@ sudo -u www-data ./synchronize_ldap_to_uac --provider ldap_provider
          'GroupScope' => 'sub',
          'Host' => 'ldap_server.example.com',
          'IPv6' => 0,
-         'IgnorePrivateGroups' => 1,
          'IgnoreViewRightsInSearch' => 0,
          'IndexEmails' => 1,
          'InnerGroupAttribute' => 'member',
@@ -436,34 +433,12 @@ sudo -u www-data ./synchronize_ldap_to_uac --provider ldap_provider
          'LoginFilter' => 'objectClass=user',
          'MailAttribute' => 'mail',
          'MapGroups' => 0,
-         'MaxCacheAge' => '',
          'MemberAttribute' => 'member',
-         'MemberIndirection' => 1,
          'MergeGroups' => 0,
          'NormalizeGroupNames' => 0,
          'NormalizeLoginNames' => 0,
          'NormalizeWikiNames' => 1,
          'PageSize' => 200,
-         'PersonAttribures' => {
-            'c' => 'Country',
-            'company' => 'OrganisationName',
-            'department' => 'Department',
-            'division' => 'Division',
-            'facsimileTelephoneNumber' => 'Telefax',
-            'givenName' => 'FirstName',
-            'l' => 'Location',
-            'mail' => 'Email',
-            'manager' => 'Manager',
-            'mobile' => 'Mobile',
-            'physicalDeliveryOfficeName' => 'Address',
-            'postalAddress' => 'Address',
-            'sAMAccountName' => 'LoginName',
-            'sn' => 'LastName',
-            'streetAddress' => 'Address',
-            'telephoneNumber' => 'Telephone',
-            'title' => 'Title',
-            'uid' => 'LoginName'
-         },
          'PersonDataForm' => 'UserForm',
          'Port' => 389,
          'Precache' => 1,
@@ -488,10 +463,8 @@ sudo -u www-data ./synchronize_ldap_to_uac --provider ldap_provider
          'UserBase' => [
             'ou=Users,dc=example,dc=com'
          ],
-         'UserMappingTopic' => '',
          'UserScope' => 'sub',
          'Version' => 3,
-         'WikiGroupsBackoff' => 1,
          'WikiNameAliases' => '',
          'WikiNameAttributes' => 'cn'
       },
