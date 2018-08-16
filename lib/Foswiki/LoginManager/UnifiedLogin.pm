@@ -508,14 +508,14 @@ sub processProviderLogin {
 sub _setRedirect {
     my ($this, $session, $query, $loginResult) = @_;
 
+    if($loginResult->{state}){
+        $this->_redirectFromState($loginResult->{state}, $session);
+    } else {
+        $session->redirect($query->{uri}, 1);
+    }
+
     if($this->_isLoginAction($session->{request})) {
         $this->_redirectFromLoginAction($session); #Breaks an infinite login loop
-    } else {
-        if($loginResult->{state}){
-            $this->_redirectFromState($loginResult->{state}, $session);
-        } else {
-            $session->redirect($query->{uri}, 1);
-        }
     }
 }
 
