@@ -483,11 +483,7 @@ sub processProviderLogin {
             $this->{_cgisession}->param( 'VALIDATION', encode_json($loginResult->{data} || {}) )
               if $this->{_cgisession};
 
-            if($loginResult->{state}){
-                $this->_restoreSessionFromState($loginResult->{state}, $session); 
-            } else {
-                $session->redirect($query->{uri}, 1);
-            }
+            $this->_setRedirect($session, $query, $loginResult);
 
             return $loginResult->{cuid};
         }
@@ -509,32 +505,53 @@ sub processProviderLogin {
     return undef;
 }
 
-sub _restoreSessionFromState {
+sub _setRedirect {
+    my ($this, $session, $query, $loginResult) = @_;
+
+    if($loginResult->{state}){
+        $this->_redirectFromState($loginResult->{state}, $session);
+    } else {
+        $session->redirect($query->{uri}, 1);
+    }
+
+    if($this->_isLoginAction($session->{request})) {
+        $this->_redirectFromLoginAction($session); #Breaks an infinite login loop
+    }
+}
+
+sub _isLoginAction {
+    my (undef, $request) = @_;
+    return $request->action() eq 'login';
+}
+
+sub _redirectFromState {
     my ($this, $state, $session) = @_;
 
     my ( $origurl, $origmethod, $origaction ) = $this->_stateToRequest($state);
 
-    my $topic  = $session->{topicName};
-    my $web    = $session->{webName};
-
-    if (!$origaction || $origaction eq 'login') {
-        $origurl = $session->getScriptUrl(0, 'view', $web, $topic);
-        $origmethod = 'GET';
-        $origaction = 'view';
-        $session->{request}->delete_all;
-    } else {
-        # Restore url
-        if ( $origurl =~ s/\?([^#]*)// ) {
-            foreach my $pair ( split( /[&;]/, $1 ) ) {
-                if ( $pair =~ /(.*?)=(.*)/ ) {
-                    $session->{request}->param( $1, TAINT($2) );
-                }
+    # Restore url
+    if ( $origurl =~ s/\?([^#]*)// ) {
+        foreach my $pair ( split( /[&;]/, $1 ) ) {
+            if ( $pair =~ /(.*?)=(.*)/ ) {
+                $session->{request}->param( $1, TAINT($2) );
             }
         }
     }
+
     $session->{request}->method($origmethod);
     $session->{request}->action($origaction);
     $session->redirect($origurl, 1);
+}
+
+sub _redirectFromLoginAction {
+    my ($this, $session) = @_;
+    my $topic  = $session->{topicName};
+    my $web    = $session->{webName};
+    $session->{request}->method('get');
+    $session->{request}->action('view');
+    $session->{request}->delete_all;
+
+    $session->redirect($session->getScriptUrl(0, 'view', $web, $topic), 1);
 }
 
 # Like the super method, but checks if the topic exists (to avoid dead links).
