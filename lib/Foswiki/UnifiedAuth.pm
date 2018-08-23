@@ -66,6 +66,8 @@ my @schema_updates = (
         "ALTER TABLE users ADD COLUMN reset_id Char(20), ADD COLUMN reset_limit INTEGER",
     ], [
         "ALTER TABLE IF EXISTS users ADD COLUMN uac_disabled INTEGER DEFAULT 0",
+    ], [
+        "ALTER TABLE users ADD COLUMN password_version INTEGER DEFAULT 1",
     ]
 );
 
