@@ -547,7 +547,7 @@ sub _toggleUserState {
 }
 
 sub finishPlugin {
-    $connection->finish if $connection;
+    Foswiki::UnifiedAuth::finish();
 }
 
 sub _getConnection {
