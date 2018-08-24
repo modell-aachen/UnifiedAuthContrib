@@ -76,7 +76,6 @@ sub makeConfig {
         || 'sub';
 
     $this->{loginAttribute} = $this->{config}{LoginAttribute} || 'sAMAccountName';
-    $this->{allowChangePassword} = $this->{config}{AllowChangePassword} || 0;
 
     $this->{wikiNameAttribute} = $this->{config}{WikiNameAttributes}
         || $this->{config}{WikiNameAttribute}
@@ -84,13 +83,10 @@ sub makeConfig {
 
     $this->{wikiNameAliases} = $this->{config}{WikiNameAliases} || '';
 
-    $this->{userMappingTopic} = $this->{config}{UserMappingTopic} || '';
-
     $this->{normalizeWikiName} = $this->{config}{NormalizeWikiNames} || 1;
     $this->{normalizeLoginName} = $this->{config}{NormalizeLoginNames} || 0;
     $this->{caseSensitiveLogin} = $this->{config}{CaseSensitiveLogin} || 0;
     $this->{normalizeGroupName} = $this->{config}{NormalizeGroupNames} || 0;
-    $this->{ignorePrivateGroups} = $this->{config}{IgnorePrivateGroups} || 1;
 
     $this->{loginFilter} = $this->{config}{LoginFilter} || 'objectClass=person';
 
@@ -99,11 +95,9 @@ sub makeConfig {
     $this->{groupFilter} = $this->{config}{GroupFilter} || 'objectClass=group';
     $this->{memberAttribute} = $this->{config}{MemberAttribute} || 'member';
     $this->{innerGroupAttribute} = $this->{config}{InnerGroupAttribute} || 'member';
-    $this->{memberIndirection} = $this->{config}{MemberIndirection} || 1;
-    $this->{nativeGroupsBackoff} = $this->{config}{WikiGroupsBackoff} || 1;
     $this->{bindDN} = $this->{config}{BindDN} || '';
     $this->{bindPassword} = $this->{config}{BindPassword} || '';
-    $this->{mapGroups} = $this->{config}{MapGroups} || 0;
+    $this->{mapGroups} = defined($this->{config}{MapGroups}) ? $this->{config}{MapGroups} : 1;
     $this->{rewriteGroups} = $this->{config}{RewriteGroups} || {};
     $this->{rewriteWikiNames} = $this->{config}{RewriteWikiNames} ||  { '^(.*)@.*$' => '$1' };
     $this->{mergeGroups} = $this->{config}{MergeGroups} || 0;
@@ -116,7 +110,6 @@ sub makeConfig {
 
     $this->{pageSize} = $this->{config}{PageSize};
     $this->{isConnected} = 0;
-    $this->{maxCacheAge} = $this->{config}{MaxCacheAge};
 
     $this->{useSASL} = $this->{config}{UseSASL} || 0;
     $this->{saslMechanism} = $this->{config}{SASLMechanism} || 'PLAIN CRAM-MD4 EXTERNAL ANONYMOUS';
@@ -176,9 +169,6 @@ sub makeConfig {
         }
     }
     $this->{wikiNameAliases} = \%aliasMap;
-
-    # default value for cache expiration is every 24h
-    $this->{maxCacheAge} = 86400 unless defined $this->{maxCacheAge};
 
     #writeDebug("constructed a new LdapContrib object");
 
@@ -450,7 +440,7 @@ sub refreshGroupsCache {
     # might want to configure multiple ldaps for multiple branches, but still
     # have groups containing users from all branches. The DNs should be enough
     # to distinguish members coming from different ldaps entirely.
-    my $users = $db->selectall_hashref('SELECT dn, cuid FROM users_ldap', 'dn', {});
+    my $users = $db->selectall_hashref('SELECT dn, users_ldap.cuid FROM users_ldap JOIN users ON users.cuid=users_ldap.cuid WHERE uac_disabled=0', 'dn', {});
     $this->_processGroups($groupsCache, $groupsCacheDN, $users);
     $this->_processVirtualGroups($groupsCache, $users);
 
@@ -1166,7 +1156,7 @@ sub cacheUserFromEntry {
     $displayName =~ s#\$\{(\w+)\}#$this->fromLdapCharSet($entry->get_value($1)) || "\$$1"#ge;
 
     # store extra display fields
-    # 
+    #
     # 'DisplayAttributes' => 'cn,mail',
     # 'DisplayNameFormat' => '$cn - $mail',
     #
@@ -1380,12 +1370,12 @@ sub identify {
     $login = $this->processLoginName($login);
     my $db = Foswiki::UnifiedAuth->new()->db;
     my $pid = $this->getPid;
-    my $user = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND users.pid=?", {}, $login, $pid);
+    my $user = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND uac_disabled=0 AND deactivated=0 AND users.pid=?", {}, $login, $pid);
 
     return {cuid => $user->{cuid}, data => {}} if $user;
     return undef;
 }
-=pod 
+=pod
 
 ---++ getDisplayAttributesOfLogin($login, $data) -> $displayAttributes
 

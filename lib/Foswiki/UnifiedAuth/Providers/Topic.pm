@@ -45,6 +45,10 @@ sub new {
     return $this;
 }
 
+sub supportsEmailChange {
+    return 1;
+}
+
 sub supportsRegistration {
     1; # TODO: check if PasswordManager allows registration
 }
@@ -64,7 +68,7 @@ sub _generatePwHash {
         iterations => 10000,
         salt_len => 10,
     );
-    return $pbkdf2->generate($password);
+    return $pbkdf2->generate(Foswiki::encode_utf8($password));
 }
 
 sub rndStr{
@@ -100,7 +104,8 @@ sub setPassword {
         $pwHash = _generatePwHash($newUserPassword);
     }
     my $cuid = $uauth->update_user('UTF-8', $userinfo->{cuid}, {
-        password => $pwHash
+        password => $pwHash,
+        password_version => 2,
     });
     my $cgis = $this->{session}->getCGISession();
     $cgis->param('force_set_pw', 0);
@@ -273,7 +278,8 @@ sub addUser {
             login_name => $login,
             wiki_name => $wikiname,
             display_name => $wikiname,
-            password => $pwHash
+            password => $pwHash,
+            password_version => 2,
         });
 
         my $addedWikiName = $this->{session}->{users}->getWikiName($cuid);
@@ -319,12 +325,20 @@ sub _checkPassword {
 
     my $pid = $this->getPid();
 
-    my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name, password FROM users WHERE users.login_name=? AND users.pid=?", {}, $login, $pid);
+    my $userinfo = $db->selectrow_hashref("SELECT cuid, wiki_name, password, password_version FROM users WHERE users.login_name=? AND users.pid=?", {}, $login, $pid);
     return (undef, undef, 'notFound') unless $userinfo;
     my $change_password;
     if( $userinfo->{password} ) {
         my $pbkdf2 = Crypt::PBKDF2->new;
-        return (undef, undef, 'wrongPassword') unless $pbkdf2->validate( $userinfo->{password}, $password );
+        my $passwordValidated;
+        if($userinfo->{password_version} == 1) {
+            eval {
+                $passwordValidated = $pbkdf2->validate( $userinfo->{password}, $password ) unless $passwordValidated;
+            }; # swallow wide character warnings
+        } else {
+            $passwordValidated = $pbkdf2->validate( $userinfo->{password}, Foswiki::encode_utf8($password) );
+        }
+        return (undef, undef, 'wrongPassword') unless $passwordValidated;
     } else {
         my $topicPwManager = Foswiki::Users::HtPasswdUser->new($this->{session});
         return (undef, undef, 'wrongPassword') unless $topicPwManager->checkPassword( $login, $password );
