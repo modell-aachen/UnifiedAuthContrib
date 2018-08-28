@@ -6,6 +6,7 @@ use utf8;
 
 use DBI;
 use Encode;
+use Error ':try';
 
 use Foswiki::Contrib::PostgreContrib;
 use Data::GUID;
@@ -208,6 +209,25 @@ sub isCUID {
     return $login =~ /^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$/;
 }
 
+sub convertToValidWikiName {
+    my ($string) = @_;
+
+    my @normalizers = split(/\s*,\s*/, $Foswiki::cfg{UnifiedAuth}{WikiNameNormalizers} || '');
+    foreach my $n (@normalizers) {
+        next if $n =~ /^\s*$/;
+        $string = $normalizers{$n}->($string) if $string;
+    }
+
+    $string = join '', map {ucfirst} split/\s/, $string;
+
+    eval {
+        require Text::Unidecode;
+        $string =~ s/$Foswiki::cfg{NameFilter}/Text::Unidecode::unidecode($_)/egi;
+    };
+    $string =~ s/$Foswiki::cfg{NameFilter}//gi;
+
+    return $string;
+}
 
 sub add_user {
     my $this = shift;
@@ -216,24 +236,7 @@ sub add_user {
     $userinfo->{cuid} = $this->guid unless defined $userinfo->{cuid};
     $userinfo->{pid} = $authdomainid;
 
-    my @normalizers = split(/\s*,\s*/, $Foswiki::cfg{UnifiedAuth}{WikiNameNormalizers} || '');
-    foreach my $n (@normalizers) {
-        next if $n =~ /^\s*$/;
-        $userinfo->{wiki_name} = $normalizers{$n}->($userinfo->{wiki_name}) if $userinfo->{wiki_name};
-    }
-
-    # make sure we have a valid topic name
-    sub unidecode {
-        my $text = shift;
-            eval {
-                require Text::Unidecode;
-                $text = Text::Unidecode::unidecode($text);
-            };
-        return $text;
-    }
-    $userinfo->{wiki_name} = join '', map {ucfirst} split/\s/, $userinfo->{wiki_name};
-    $userinfo->{wiki_name} =~ s/$Foswiki::cfg{NameFilter}/unidecode($_)/egi;
-    $userinfo->{wiki_name} =~ s/$Foswiki::cfg{NameFilter}//gi;
+    $userinfo->{wiki_name} = convertToValidWikiName($userinfo->{wiki_name});
 
     my $db = $this->db;
     my $has = sub {
