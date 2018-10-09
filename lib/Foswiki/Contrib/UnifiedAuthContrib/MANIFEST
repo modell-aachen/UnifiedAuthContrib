@@ -2,8 +2,10 @@
 !noci
 data/Main/UserRegistration.txt 0644
 data/System/UnifiedAuthContrib.txt 0644 Documentation
+data/System/UnifiedAuthUserRegistrationParts.txt 0644 Documentation
 data/System/UserAdministration.txt 0644 Documentation
 data/System/UserAdministrationViewTemplate.txt 0644 Documentation
+data/System/VarSHOWGROUPMEMBERSHIPS.txt 0644 Documentation
 lib/Foswiki/Contrib/UnifiedAuthContrib.pm 0644 Contrib base module
 lib/Foswiki/LoginManager/UnifiedLogin.pm 0644 Login manager
 lib/Foswiki/Plugins/UnifiedAuthPlugin.pm 0644 Tag handlers

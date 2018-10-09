@@ -1,27 +1,23 @@
+%META:TOPICINFO{author="ProjectContributor" comment="" date="1452812379" format="1.1" version="1"}%
 <noautolink>
 <!--
 
-DO NOT MODIFY
+DO NOT EDIT THIS TOPIC.
+Part of UnifiedAuthContrib.
 
-This topic is part of UnifiedAuthContrib and does not permit customization.
+  * %SET{"REGISTRATION_DISABLED" value="%IF{"$USERMAYREGISTERUSERS" then="okidoky" else="DISABLED"}%"}%
+  * %SET{"REGPARTS" value="%SYSTEMWEB%.UnifiedAuthUserRegistrationParts"}%
 
-      * %SET{"REGPARTS" value="%WEB%.%TOPIC%,%SYSTEMWEB%.UserRegistrationParts"}%
-
-      * %SET{"CSSJSTOPIC" value="%SYSTEMWEB%.UserRegistrationParts"}%
-
-   %SET{"REGISTRATION_DISABLED" value="%IF{"context registration_supported" then="%IF{"context registration_enabled" then="" else="DISABLED"}%" else="DISABLED"}%"}%
-
-%STARTSECTION{"requiredField_wikiName"}%<li><label class="desc" for="Fwk1WikiName"><span class="required">*</span>%MAKETEXT{"<nop>WikiName:"}%</label>
+  %STARTSECTION{"requiredField_wikiName"}%<li><label class="desc" for="Fwk1WikiName"><span class="required">*</span>%MAKETEXT{"<nop>WikiName:"}%</label>
 <div><input type="text" id="Fwk1WikiName" name="Fwk1WikiName" size="40" class="foswikiInputField {%IF{"defined WIKIWORD_ALLOWED" then="allow:'$percentWIKIWORD_ALLOWED$percent', "}%transliterate:1, wikify_own_inputs:1}" value="" tabindex="3" /><label class="expl">%MAKETEXT{"Your name as displayed by [_1]." args="%WIKITOOLNAME%"}% %POPUPWINDOW{"%SYSTEMWEB%.WikiName" label="%MAKETEXT{"This must be a unique WikiName."}%"}%</label></div></li>%JQREQUIRE{"popupwindow"}%%ENDSECTION{"requiredField_wikiName"}%
-
 -->
 
-%INCLUDE{"%REGPARTS%" section="title"}%
-%INCLUDE{"%REGPARTS%" section="notes"}% <!-- Required: conditional notes & warnings -->
-%INCLUDE{"%REGPARTS%" section="privacyInformation"}% <!-- Optional -->
-%INCLUDE{"%REGPARTS%" section="resources"}% <!-- Required: JavaScript and CSS components -->
-%INCLUDE{"%REGPARTS%" section="form"}% <!-- Required: The actual registration form -->
-%INCLUDE{"%REGPARTS%" section="help"}% <!-- Optional: Help text -->
+%INCLUDE{"%REGPARTS%" section="title" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}%
+%INCLUDE{"%REGPARTS%" section="notes" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}% <!-- Required: conditional notes & warnings -->
+%INCLUDE{"%REGPARTS%" section="privacyInformation" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}% <!-- Optional -->
+%INCLUDE{"%REGPARTS%" section="resources" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}% <!-- Required: JavaScript and CSS components -->
+%INCLUDE{"%REGPARTS%" section="form" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}% <!-- Required: The actual registration form -->
+%INCLUDE{"%REGPARTS%" section="help" REGISTRATION_DISABLED="%REGISTRATION_DISABLED%" CSSJSTOPIC="%SYSTEMWEB%.UserRegistrationParts"}% <!-- Optional: Help text -->
 
 </noautolink>
 

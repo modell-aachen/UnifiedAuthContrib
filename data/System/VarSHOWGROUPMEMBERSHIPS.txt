@@ -1,0 +1,36 @@
+%META:TOPICINFO{author="ProjectContributor" date="1527669182" format="1.1" version="1"}%
+---+ SHOWGROUPMEMBERSHIPS -- list all groups a users is a member of
+This is part of UnifiedAuthPlugin and requires your UserMapper to be UnifiedUserMapping.
+
+It will list all groups, the user is a member of.
+
+---++ Parameters
+
+| *name* | *default* | *description* |
+| =_DEFAULT= | _current user_ | The user you want to get the group memberships of. |
+| =header= | _none_ | This string will be prefixed *if there are results*. Will be omitted when there are no results and _show_no_results_ is not set. |
+| =footer= | _none_ | This string will be appended *if there are results*. Will be omitted when there are no results and _show_no_results_ is not set. |
+| =separator= | ',&nbsp;' | Separator for each result. |
+| =format= | =$cuid= | Format string for each item. The following placeholders are supported:%BR% =$cuid=: cuid of the group %BR% =$name=: group name |
+| =show_no_results= | _false_ | Return formatted string, even when there are no results (including footer and header; overrides =no_results=). You may want this for json data. |
+| =as_json= | _false_ | Format item list as json array of the cuids. |
+| =no_results= | _empty string_ | Show this text when there are no results (without header and footer) |
+
+All text parameters (=header=, =footer=, =separator=, =format= and =no_results=) support standard format tokens.
+
+---++ Examples
+
+Show groups of current user as list of cuids:
+<pre>%<nop>SHOWGROUPMEMBERSHIPS%</pre>
+
+Show groups of admin user as list of cuids:
+<pre>%<nop>SHOWGROUPMEMBERSHIPS{"3abfa98b-f92b-42ab-986e-872abca52a49"}% or %<nop>SHOWGROUPMEMBERSHIPS{"admin"}% or %<nop>SHOWGROUPMEMBERSHIPS{"AdminUser"}%</pre>
+
+Show groups of admin user as list of readable groups names:
+<pre>%<nop>SHOWGROUPMEMBERSHIPS{"admin" format="$name"}%</pre>
+
+Send groups so solr and do not get any results, if there are no groups (dummy:dummy):
+<pre>%<nop>SOLRSEARCH{".... %<nop>SHOWGROUPMEMBERSHIPS{header="my_group_field:(" separator=" OR " footer=")" no_results="dummy:dummy"}%"}%</pre>
+
+Return a json object:
+<pre>{%<nop>SHOWGROUPMEMBERSHIPS{header="\"my_groups\":" show_no_results="1" as_json="1"}%}<nop>
