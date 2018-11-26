@@ -27,6 +27,7 @@ sub initPlugin {
     Foswiki::Func::registerTagHandler('SHOWRESETPASSWORD', \&_SHOWRESETPASSWORD);
     Foswiki::Func::registerTagHandler('USERREGISTRATION', \&_USERREGISTRATION);
     Foswiki::Func::registerTagHandler('GROUPREGISTRATION', \&_GROUPREGISTRATION);
+    Foswiki::Func::registerTagHandler('USERINLIST', \&USERINLIST);
 
     Foswiki::Func::registerRESTHandler( 'registerUser',
         # \&_registerUser,
@@ -577,6 +578,16 @@ sub _GROUPREGISTRATION {
             <group-registration></group-registration>
         </p>
 HTML
+}
+
+sub USERINLIST {
+    my ( $session, $attributes ) = @_;
+
+    my $user = $attributes->{cuid} || Foswiki::Func::getCanonicalUserID();
+    my $listString = $attributes->{_DEFAULT} || $attributes->{list};
+    $listString =~ s#\s##g;
+    my @list = split(/,/, $listString);
+    return $Foswiki::Plugins::SESSION->{users}->isInUserList($user, \@list) ? '1' : '0';
 }
 
 1;

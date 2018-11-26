@@ -666,6 +666,9 @@ WikiPreferences:
 
 When a (template) group has the setting =KEYUSER_ADMINISTRATED= set to perl-true (=1=) on its group-topic, it will not add the group to the =ALLOWTOPICCHANGE= setting automatically. Instead the =KeyUserGroup= will be added.
 
+---++ Additional macros
+---+++ [[VarUSERINLIST][USERINLIST]]
+
 ---++ Query User Information
 The following form provides a convenient way to print user information by his
 login name, wikiname or cUID. Just fill the textbox and submit the form.

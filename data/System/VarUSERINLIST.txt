@@ -1,0 +1,14 @@
+%META:TOPICINFO{author="BaseUserMapping_999" date="1476196880" format="1.1" version="1"}%
+%META:TOPICPARENT{name="UnifiedAuthContrib"}%
+---+ USERINLIST -- check if user is in a list of users / groups
+
+%TOC%
+
+---++ Parameters
+| *Parameter* | *Description* | *Default* |
+| =_DEFAULT=, =list= | A list of users or groups (cuids, login-names, ...) | _none_ |
+| =cuid= | CUID of user to check, if he/she is part of the list. | _current user_ |
+
+---++ Return value
+If user was found in list: =1=, otherwise: =0=.
+
