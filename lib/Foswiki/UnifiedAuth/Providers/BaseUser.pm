@@ -68,7 +68,7 @@ my @schema_updates = (
     [
         "INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email)
             VALUES
-                ('$CUIDs{BaseUserMapping_Migration}', '%pid%', 'BaseUserMapping_Migration', '$modacBaseUserWikiNames->{BaseUserMapping_Migration}', 'Internal Migration User', '')",
+                ('$CUIDs{BaseUserMapping_Migration}', '%pid%', 'BaseUserMapping_Migration', '$modacBaseUserWikiNames->{BaseUserMapping_Migration}', 'Automatic System Migration', '')",
         "INSERT INTO merged_users (primary_cuid, mapped_cuid, primary_provider, mapped_provider)
             VALUES
                 ('$CUIDs{BaseUserMapping_Migration}', '$CUIDs{BaseUserMapping_Migration}', '%pid%', '%pid%')",
