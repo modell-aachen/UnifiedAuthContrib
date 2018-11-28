@@ -635,7 +635,7 @@ sub _processVirtualGroups {
         }
         my @members;
         foreach my $entry ( @$fromLdap ) {
-            my $userDn = $entry->dn();
+            my $userDn = $this->fromLdapCharSet($entry->dn());
             if($users->{$userDn}){
                 push @members, $users->{$userDn}->{cuid};
             }
