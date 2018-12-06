@@ -103,7 +103,7 @@ sub db {
 sub connect {
     my $this = shift;
     return $this->{db} if defined $this->{db};
-    my $connection = Foswiki::Contrib::PostgreContrib::getConnection('foswiki_users');
+    my $connection = Foswiki::Contrib::PostgreContrib::getConnection('foswiki_users', 1);
     $this->{connection} = $connection;
     $this->{db} = $connection->{db};
     $this->{schema_versions} = {};
