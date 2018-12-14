@@ -667,6 +667,8 @@ WikiPreferences:
 When a (template) group has the setting =KEYUSER_ADMINISTRATED= set to perl-true (=1=) on its group-topic, it will not add the group to the =ALLOWTOPICCHANGE= setting automatically. Instead the =KeyUserGroup= will be added.
 
 ---++ Additional macros
+
+---+++ [[VarSHOWGROUPMEMBERSHIPS][SHOWGROUPMEMBERSHIPS]]
 ---+++ [[VarUSERINLIST][USERINLIST]]
 
 ---++ Query User Information

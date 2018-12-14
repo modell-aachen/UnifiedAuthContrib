@@ -16,6 +16,7 @@ use Foswiki::UnifiedAuth::Provider;
 use Foswiki::Users::TopicUserMapping;
 use Foswiki::Users::UnifiedAuthUser;
 use Foswiki::Users::HtPasswdUser;
+use Foswiki::OopsException;
 our @ISA = qw(Foswiki::UnifiedAuth::Provider);
 
 my @schema_updates = (
@@ -141,6 +142,11 @@ sub refresh {
             my $pref = $meta->get('PREFERENCE', 'GROUP');
             next unless $pref;
             my @entries = map{ $_ =~ s#^\s*##r =~ s#\s*$##r } split(/,/, $pref->{value} || '');
+            if($topic eq 'AdminGroup') {
+                push @entries, 'AdminUser';
+            } elsif($topic eq 'BaseGroup') {
+                push @entries, qw(AdminUser WikiGuest UnknownUser ProjectContributor RegistrationAgent);
+            }
             my @users = ();
             my @nested = ();
             foreach my $entry ( @entries ) {
@@ -224,17 +230,36 @@ MSG
 sub addUser {
     my ( $this, $login, $wikiname, $password, $emails, $import ) = @_;
 
-    # XXX not thread save
-    # TODO: be transactional
+    my $sanitizedWikiName = Foswiki::UnifiedAuth::convertToValidWikiName($wikiname);
+    if($sanitizedWikiName ne $wikiname) {
+        Foswiki::Func::writeWarning("Registration cancelled: Invalid wikiname: $wikiname sanitized to $sanitizedWikiName");
+        throw Foswiki::OopsException(
+            'register',
+            def => 'bad_wikiname_uauth',
+            params => [$wikiname, $sanitizedWikiName],
+        );
+    }
     my $auth = Foswiki::UnifiedAuth->new();
     my $cuid;
     my $usedBy = $this->{session}->{users}->findUserByWikiName($wikiname);
     if($usedBy && scalar @$usedBy) {
-        throw Error::Simple("Failed to add user: WikiName ($wikiname) already in use by: ".join(', ', @$usedBy));
+        my $users = join(', ', @$usedBy);
+        Foswiki::Func::writeWarning("WikiName $wikiname already in use by $users");
+        throw Foswiki::OopsException(
+            'register',
+            def => 'duplicate_wikiname',
+            params => $wikiname,
+        );
     }
+
     $usedBy = $this->{session}->{users}->getLoginName($login);
     if($usedBy) {
-        throw Error::Simple("Failed to add user: login ($login) already in use by $usedBy");
+        Foswiki::Func::writeWarning("LoginName $login already in use by $usedBy");
+        throw Foswiki::OopsException(
+            'register',
+            def => 'already_exists',
+            params => $login,
+        );
     }
 
     my $pid = $this->getPid();
@@ -268,11 +293,12 @@ sub addUser {
         if(ref $emails eq 'ARRAY') {
             $emails = $emails->[0];
         }
-        # XXX UTF-8
+
         my $pwHash;
         if (!$import && $password) {
             $pwHash = _generatePwHash($password);
         }
+
         $cuid = $auth->add_user(undef, $pid, {
             email => $emails,
             login_name => $login,
@@ -284,7 +310,7 @@ sub addUser {
 
         my $addedWikiName = $this->{session}->{users}->getWikiName($cuid);
         unless($addedWikiName eq $wikiname) {
-            $auth->delete_user($cuid);
+            $auth->delete_user($cuid); # XXX Unfortunately I can not do a rollback here, because add_user already did a commit
             throw Error::Simple("Failed to add user: WikiName ($wikiname) already in use");
         }
     }
@@ -333,7 +359,7 @@ sub _checkPassword {
         my $passwordValidated;
         if($userinfo->{password_version} == 1) {
             eval {
-                $passwordValidated = $pbkdf2->validate( $userinfo->{password}, $password ) unless $passwordValidated;
+                $passwordValidated = $pbkdf2->validate( $userinfo->{password}, $password );
             }; # swallow wide character warnings
         } else {
             $passwordValidated = $pbkdf2->validate( $userinfo->{password}, Foswiki::encode_utf8($password) );

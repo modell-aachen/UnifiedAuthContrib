@@ -86,12 +86,24 @@ Default is *false*
 sub supportsRegistration {
     my $this = shift;
 
-
     my $providerId = $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider};
     return 0 unless $providerId;
+
     my $provider = $this->{uac}->authProvider($this->{session}, $providerId);
     return 0 unless $provider;
+
     return $provider->supportsRegistration();
+}
+
+sub userMayRegisterUsers {
+    my ($this, $user) = @_;
+    my $mayRegisterUsers = $Foswiki::cfg{UnifiedAuth}{MayRegisterUsers};
+    if(defined $mayRegisterUsers && $mayRegisterUsers ne '' && !Foswiki::Func::isAnAdmin()) {
+        my $cuid = Foswiki::Func::getCanonicalUserID($user);
+        my @list = split(/\s*,\s*/, $mayRegisterUsers =~ s/^\s*//r =~ s/\s*$//r);
+        return $Foswiki::Plugins::SESSION->{users}->isInUserList($cuid, \@list);
+    }
+    return 1;
 }
 
 =begin TML
@@ -227,12 +239,18 @@ sub addUser {
 
     my $addTo = $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider};
     unless($addTo) {
-        throw Error::Simple('Failed to add user: adding users is not supported');
+        throw Error::Simple('Failed to add user: adding users is not supported, please configure {UnifiedAuth}{AddUsersToProvider}');
     }
+
     my $provider = $this->{uac}->authProvider($this->{session}, $addTo);
     unless($provider) {
         throw Error::Simple('Failed to add user: could not get provider: '.$provider);
     }
+
+    unless ($this->userMayRegisterUsers()) {
+        throw Error::Simple("User " . Foswiki::Func::getWikiName() . " is not allowed to register new users.");
+    }
+
     return $provider->addUser($login, $wikiname, $password, $emails);
 }
 
@@ -597,33 +615,43 @@ sub eachGroupMember {
             \&Foswiki::Sandbox::validateTopicName );
     }
 
-    if (!$expand && defined($this->{singleGroupMembers}->{$group})) {
-        return new Foswiki::ListIterator($this->{singleGroupMembers}->{$group});
-    }
+    my $cache = $expand ? 'eachGroupMember' : 'singleGroupMembers';
 
-    if ($expand && defined( $this->{eachGroupMember}->{$group})) {
-        return new Foswiki::ListIterator( $this->{eachGroupMember}->{$group} );
+    if (defined($this->{$cache}->{$group})) {
+        return new Foswiki::ListIterator($this->{$cache}->{$group});
     }
 
     my $db = $this->{uac}->db;
     my ($cuid, $name);
     if(_isCUID($group)) {
         $cuid = $group;
-        $name = $this->{uac}->db->selectrow_array(
+        $name = $db->selectrow_array(
             'SELECT name FROM groups WHERE cuid=?', {}, $group);
     } else {
         $name = $group;
-        $cuid = $this->{uac}->db->selectrow_array(
+        $cuid = $db->selectrow_array(
             'SELECT cuid FROM groups WHERE name=?', {}, $group);
     }
     return new Foswiki::ListIterator() unless $cuid && $name;
 
-    my $expanded = $this->_expandGroup($cuid, $expand);
-    my @members = sort @{$expanded};
+    my $entries;
+    if($expand) {
+        $entries = $this->_expandGroupRecursive($cuid);
+    } else {
+        $entries = $db->selectcol_arrayref(<<'SQL', {}, $cuid);
+SELECT wiki_name FROM users
+JOIN group_members
+    ON (group_members.u_cuid=users.cuid AND group_members.g_cuid=$1)
+UNION
+    SELECT name FROM groups
+        JOIN nested_groups
+            ON (groups.cuid=nested_groups.child AND nested_groups.parent=$1)
+ORDER BY wiki_name
+SQL
+    }
 
-    my $cache = $expand ? 'eachGroupMember' : 'singleGroupMembers';
-    $this->{$cache}->{$name} = \@members;
-    $this->{$cache}->{$cuid} = \@members;
+    $this->{$cache}->{$name} = $entries;
+    $this->{$cache}->{$cuid} = $entries;
     return new Foswiki::ListIterator($this->{$cache}->{$cuid});
 }
 
@@ -714,65 +742,47 @@ Not official foswiki API, but useful for checking acls.
 sub getMembershipsCUID {
     my ($this, $user) = @_;
     my $cuid = $this->_userToCUID($user);
-    my %grpCuids = ();
-    my @groups = ();
 
-    my $doCheck;
-    $doCheck = sub {
-        foreach my $grp ( @{$_[0]} ) {
-            next if $grpCuids{$grp->[1]};
-            $grpCuids{$grp->[1]} = 1;
-            push @groups, $grp->[1];
-
-            my $nested = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $grp->[1]);
-SELECT groups.name, groups.cuid FROM nested_groups JOIN groups ON nested_groups.parent=groups.cuid WHERE nested_groups.child=?
+    my $sql = <<'SQL';
+WITH RECURSIVE r(parent) AS (
+    SELECT g_cuid as parent
+        FROM group_members
+        WHERE u_cuid=$1
+    UNION
+    SELECT n.parent as parent
+        FROM r
+        INNER JOIN nested_groups n
+        ON r.parent=n.child
+)
+SELECT * FROM r
 SQL
 
-            &$doCheck($nested) if $nested;
-        }
-    };
-
-    my $directMemberships = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $cuid);
-SELECT name, cuid FROM groups AS g
-JOIN group_members AS m ON g.cuid=m.g_cuid
-WHERE m.u_cuid=?
-SQL
-
-    &$doCheck($directMemberships);
-
-    return \@groups;
+    return $this->{uac}->db->selectcol_arrayref($sql, {}, $cuid);
 }
 
 sub getMemberships {
     my ($this, $user) = @_;
     my $cuid = $this->_userToCUID($user);
-    my %grpCuids = ();
-    my @groups = ();
 
-    my $doCheck;
-    $doCheck = sub {
-        foreach my $grp ( @{$_[0]} ) {
-            next if $grpCuids{$grp->[1]};
-            $grpCuids{$grp->[1]} = 1;
-            push @groups, $grp->[0];
-
-            my $nested = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $grp->[1]);
-SELECT groups.name, groups.cuid FROM nested_groups JOIN groups ON nested_groups.parent=groups.cuid WHERE nested_groups.child=?
+    my $sql = <<'SQL';
+SELECT groups.name FROM
+(
+    WITH RECURSIVE r(parent) AS (
+        SELECT g_cuid as parent
+            FROM group_members
+            WHERE u_cuid=$1
+        UNION
+        SELECT n.parent as parent
+        FROM r
+        INNER JOIN nested_groups n
+        ON r.parent=n.child
+    )
+    SELECT * FROM r
+) asCuids
+JOIN groups ON (groups.cuid=asCuids.parent)
 SQL
 
-            &$doCheck($nested) if $nested;
-        }
-    };
-
-    my $directMemberships = $this->{uac}->db->selectall_arrayref(<<SQL, {}, $cuid);
-SELECT name, cuid FROM groups AS g
-JOIN group_members AS m ON g.cuid=m.g_cuid
-WHERE m.u_cuid=?
-SQL
-
-    &$doCheck($directMemberships);
-
-    return \@groups;
+    return $this->{uac}->db->selectcol_arrayref($sql, {}, $cuid);
 }
 
 =begin TML
@@ -1121,54 +1131,38 @@ sub _clearGroupCache {
     }
 }
 
-sub _expandGroup {
-    my ($this, $cuid, $recursive) = @_;
-    $recursive ||= 0;
+sub _expandGroupRecursive {
+    my ($this, $cuid) = @_;
 
-    my %members;
-    my @groups = ($cuid);
-    $this->_expandGroups(\@groups, \%members, undef, $recursive);
-    return [keys %members];
-}
+    my $sql = <<'SQL';
+SELECT
+    users.wiki_name
+FROM
+    (SELECT u_cuid, g_cuid
+        FROM group_members m
+        INNER JOIN
+            (WITH RECURSIVE r(parent, child) AS (
+                SELECT parent, child
+                    FROM nested_groups
+                    WHERE parent=$1
+                UNION
+                SELECT n.parent as parent, n.child as child
+                FROM r
+                LEFT OUTER JOIN nested_groups n
+                ON r.child=n.parent
+                WHERE r.parent IS NOT NULL)
+            SELECT * FROM r) c
+        ON (c.child = m.g_cuid)
+    UNION
+    SELECT u_cuid, g_cuid
+        FROM group_members
+        WHERE g_cuid=$1) gm
+    JOIN users ON (gm.u_cuid = users.cuid AND users.deactivated=0 AND users.uac_disabled=0)
+    ORDER BY users.wiki_name
+SQL
 
-sub _expandGroups {
-    my ($this, $groups, $members, $expanded, $recursive) = @_;
-    return unless scalar(@$groups);
-    $expanded = {} unless defined $expanded;
     my $db = $this->{uac}->db;
-
-    foreach my $group (@$groups) {
-        my $cuid = $this->{uac}->getCUID($group, 1);
-
-        next if $expanded->{$cuid};
-        $expanded->{$cuid} = 1;
-
-        my $users = $db->selectall_arrayref(<<SQL, {Slice => {}}, $cuid);
-SELECT u.wiki_name FROM users AS u
-JOIN group_members AS g ON u.cuid=g.u_cuid
-WHERE u.deactivated=0 AND u.uac_disabled=0 AND g.g_cuid=?
-SQL
-
-        foreach my $user ( @$users ) {
-            $members->{$user->{wiki_name}} = 1;
-        }
-
-        my @grps = map {
-            $_->{name}
-        } @{$db->selectall_arrayref(<<SQL, {Slice => {}}, $cuid)};
-SELECT g.name FROM groups AS g
-JOIN nested_groups AS n ON g.cuid=n.child
-WHERE n.parent=?
-SQL
-
-        if ($recursive) {
-            $this->_expandGroups(\@grps, $members, $expanded, $recursive);
-        } else {
-            foreach my $grp ( @grps ) {
-                $members->{$grp} = 1;
-            }
-        }
-    }
+    return $db->selectcol_arrayref($sql, {}, $cuid);
 }
 
 # ToDo.

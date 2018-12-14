@@ -19,12 +19,18 @@ our @ISA = qw(Foswiki::UnifiedAuth::Provider);
 Foswiki::Users::BaseUserMapping->new($Foswiki::Plugins::SESSION) if $Foswiki::Plugins::SESSION;
 my $bu = \%Foswiki::Users::BaseUserMapping::BASE_USERS;
 
+my $modacBaseUserWikiNames = {
+    BaseUserMapping_Migration => 'InternalMigrationUser',
+};
+
 our %CUIDs = (
     BaseUserMapping_111 => 'aafd6652-3181-4845-b615-4bb7b970ca69',
     BaseUserMapping_222 => 'dc9f6b91-3762-4343-89e6-5d0795e85805',
     BaseUserMapping_333 => '3abfa98b-f92b-42ab-986e-872abca52a49',
     BaseUserMapping_666 => '09c180b0-fc8b-4f2c-a378-c09ccf6fb9f9',
-    BaseUserMapping_999 => '40dda76a-1207-400f-b234-69da71ac405b'
+    BaseUserMapping_999 => '40dda76a-1207-400f-b234-69da71ac405b',
+
+    BaseUserMapping_Migration => '5c78f29f-7935-495d-ae2e-84b064773844',
 );
 
 # XXX note: %pid% and %id% must be hacked out when applying
@@ -58,7 +64,15 @@ my @schema_updates = (
                 ('$CUIDs{BaseUserMapping_333}', '$CUIDs{BaseUserMapping_333}', '%pid%', '%pid%'),
                 ('$CUIDs{BaseUserMapping_666}', '$CUIDs{BaseUserMapping_666}', '%pid%', '%pid%'),
                 ('$CUIDs{BaseUserMapping_999}', '$CUIDs{BaseUserMapping_999}', '%pid%', '%pid%')"
-    ]
+    ],
+    [
+        "INSERT INTO users (cuid, pid, login_name, wiki_name, display_name, email)
+            VALUES
+                ('$CUIDs{BaseUserMapping_Migration}', '%pid%', 'BaseUserMapping_Migration', '$modacBaseUserWikiNames->{BaseUserMapping_Migration}', 'Automatic System Migration', '')",
+        "INSERT INTO merged_users (primary_cuid, mapped_cuid, primary_provider, mapped_provider)
+            VALUES
+                ('$CUIDs{BaseUserMapping_Migration}', '$CUIDs{BaseUserMapping_Migration}', '%pid%', '%pid%')",
+    ],
 );
 
 sub isAdminUser {
@@ -66,7 +80,12 @@ sub isAdminUser {
 
     return 0 unless defined $user;
 
-    return 1 if $user eq $bu->{BaseUserMapping_333}{login} || $user eq 'BaseUserMapping_333' || $user eq $CUIDs{BaseUserMapping_333};
+    return 1 if $user eq $bu->{BaseUserMapping_333}{login} ||
+        $user eq 'BaseUserMapping_333' ||
+        $user eq $CUIDs{BaseUserMapping_333} ||
+        $user eq 'BaseUserMapping_Migration' ||
+        $user eq $modacBaseUserWikiNames->{'BaseUserMapping_Migration'} ||
+        $user eq $CUIDs{BaseUserMapping_Migration};
     return 0;
 }
 

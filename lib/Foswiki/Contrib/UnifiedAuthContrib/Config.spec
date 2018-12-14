@@ -25,6 +25,11 @@ $Foswiki::cfg{UnifiedAuth}{DefaultAuthProvider} = '';
 
 $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider} = '';
 
+# **STRING**
+# Set to a list of users and groups, if you want to restrict user registration.
+# Administrators can always register new users.
+$Foswiki::cfg{UnifiedAuth}{MayRegisterUsers} = '';
+
 # **BOOLEAN EXPERT**
 # If enabled, the login page includes a link to System/ResetPassword.
 $Foswiki::cfg{UnifiedAuth}{ShowResetPassword} = 0;
