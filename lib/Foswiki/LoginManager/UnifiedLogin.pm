@@ -521,7 +521,7 @@ sub _setRedirect {
 
 sub _isLoginAction {
     my (undef, $request) = @_;
-    return $request->action() eq 'login';
+    return $request->action() =~ m/^log[io]n$/;
 }
 
 sub _redirectFromState {
