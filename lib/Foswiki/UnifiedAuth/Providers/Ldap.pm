@@ -1363,18 +1363,6 @@ sub processLoginData {
     return { cuid => $userinfo->{cuid}, data => {} };
 }
 
-sub identify {
-    my $this = shift;
-    my $login = shift;
-
-    $login = $this->processLoginName($login);
-    my $db = Foswiki::UnifiedAuth->new()->db;
-    my $pid = $this->getPid;
-    my $user = $db->selectrow_hashref("SELECT cuid, wiki_name FROM users WHERE users.login_name=? AND uac_disabled=0 AND deactivated=0 AND users.pid=?", {}, $login, $pid);
-
-    return {cuid => $user->{cuid}, data => {}} if $user;
-    return undef;
-}
 =pod
 
 ---++ getDisplayAttributesOfLogin($login, $data) -> $displayAttributes
