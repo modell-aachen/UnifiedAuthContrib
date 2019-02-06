@@ -12,12 +12,12 @@ use warnings;
 
 use Foswiki::Plugins::UnifiedAuthPlugin;
 use Foswiki::UnifiedAuth;
-use Foswiki::UnifiedAuth::Provider;
+use Foswiki::UnifiedAuth::IdentityProvider;
 use Foswiki::Users::TopicUserMapping;
 use Foswiki::Users::UnifiedAuthUser;
 use Foswiki::Users::HtPasswdUser;
 use Foswiki::OopsException;
-our @ISA = qw(Foswiki::UnifiedAuth::Provider);
+our @ISA = qw(Foswiki::UnifiedAuth::IdentityProvider);
 
 my @schema_updates = (
     [
