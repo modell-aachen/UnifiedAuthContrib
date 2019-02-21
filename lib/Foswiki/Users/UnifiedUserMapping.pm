@@ -237,12 +237,7 @@ Throws an Error::Simple if user adding is not supported (the default).
 sub addUser {
     my ( $this, $login, $wikiname, $password, $emails ) = @_;
 
-    my $provider = $this->_getProviderToAddUser();
-    unless ($this->userMayRegisterUsers()) {
-        throw Error::Simple("User " . Foswiki::Func::getWikiName() . " is not allowed to register new users.");
-    }
-
-    return $provider->addUser($login, $wikiname, $password, $emails);
+    return $this->addUserWithCuid($login, $wikiname, $password, $emails, undef)
 }
 
 sub addUserWithCuid {

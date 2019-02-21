@@ -6,6 +6,7 @@ use Net::CIDR;
 use Crypt::PBKDF2;
 use Error ':try';
 use Error::Simple;
+use Data::GUID;
 
 use strict;
 use warnings;
@@ -326,7 +327,7 @@ sub addUser {
 
 sub _isValidCuid {
     my ( $cuid ) = @_;
-    if($cuid =~ /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/) {
+    if($cuid =~ Data::GUID->string_guid_regex) {
         return 1;
     }
     return 0;
