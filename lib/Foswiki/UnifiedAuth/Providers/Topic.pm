@@ -228,7 +228,7 @@ MSG
 }
 
 sub addUser {
-    my ( $this, $login, $wikiname, $password, $emails, $import ) = @_;
+    my ( $this, $login, $wikiname, $password, $emails, $import, $newCuid ) = @_;
 
     my $sanitizedWikiName = Foswiki::UnifiedAuth::convertToValidWikiName($wikiname);
     if($sanitizedWikiName ne $wikiname) {
@@ -299,14 +299,20 @@ sub addUser {
             $pwHash = _generatePwHash($password);
         }
 
-        $cuid = $auth->add_user(undef, $pid, {
+        my $userOptions = {
             email => $emails,
             login_name => $login,
             wiki_name => $wikiname,
             display_name => $wikiname,
             password => $pwHash,
             password_version => 2,
-        });
+        };
+
+        if( defined($newCuid) && _isValidCuid($newCuid)) {
+            $userOptions->{cuid} = $newCuid;
+        }
+
+        $cuid = $auth->add_user(undef, $pid, $userOptions);
 
         my $addedWikiName = $this->{session}->{users}->getWikiName($cuid);
         unless($addedWikiName eq $wikiname) {
@@ -316,6 +322,14 @@ sub addUser {
     }
 
     return $cuid;
+}
+
+sub _isValidCuid {
+    my ( $cuid ) = @_;
+    if($cuid =~ /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/) {
+        return 1;
+    }
+    return 0;
 }
 
 sub processLoginData {
