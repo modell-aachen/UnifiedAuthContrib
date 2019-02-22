@@ -202,11 +202,11 @@ sub getCUID {
 }
 
 sub isCUID {
-    my $login = shift;
+    my $cuid = shift;
 
-    return 0 unless defined $login;
+    return 0 unless defined $cuid;
 
-    return $login =~ /^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$/;
+    return $cuid =~ Data::GUID->string_guid_regex;
 }
 
 sub convertToValidWikiName {

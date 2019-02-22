@@ -309,7 +309,7 @@ sub addUser {
             password_version => 2,
         };
 
-        if( defined($newCuid) && _isValidCuid($newCuid)) {
+        if( defined($newCuid) && Foswiki::UnifiedAuth::isCUID($newCuid)) {
             $userOptions->{cuid} = $newCuid;
         }
 
@@ -323,14 +323,6 @@ sub addUser {
     }
 
     return $cuid;
-}
-
-sub _isValidCuid {
-    my ( $cuid ) = @_;
-    if($cuid =~ Data::GUID->string_guid_regex) {
-        return 1;
-    }
-    return 0;
 }
 
 sub processLoginData {
