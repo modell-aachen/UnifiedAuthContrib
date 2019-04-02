@@ -6,6 +6,7 @@ use Net::CIDR;
 use Crypt::PBKDF2;
 use Error ':try';
 use Error::Simple;
+use Data::GUID;
 
 use strict;
 use warnings;
@@ -228,7 +229,7 @@ MSG
 }
 
 sub addUser {
-    my ( $this, $login, $wikiname, $password, $emails, $import ) = @_;
+    my ( $this, $login, $wikiname, $password, $emails, $import, $newCuid ) = @_;
 
     my $sanitizedWikiName = Foswiki::UnifiedAuth::convertToValidWikiName($wikiname);
     if($sanitizedWikiName ne $wikiname) {
@@ -299,14 +300,20 @@ sub addUser {
             $pwHash = _generatePwHash($password);
         }
 
-        $cuid = $auth->add_user(undef, $pid, {
+        my $userOptions = {
             email => $emails,
             login_name => $login,
             wiki_name => $wikiname,
             display_name => $wikiname,
             password => $pwHash,
             password_version => 2,
-        });
+        };
+
+        if( defined($newCuid) && Foswiki::UnifiedAuth::isCUID($newCuid)) {
+            $userOptions->{cuid} = $newCuid;
+        }
+
+        $cuid = $auth->add_user(undef, $pid, $userOptions);
 
         my $addedWikiName = $this->{session}->{users}->getWikiName($cuid);
         unless($addedWikiName eq $wikiname) {

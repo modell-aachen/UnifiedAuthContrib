@@ -237,6 +237,22 @@ Throws an Error::Simple if user adding is not supported (the default).
 sub addUser {
     my ( $this, $login, $wikiname, $password, $emails ) = @_;
 
+    return $this->addUserWithCuid($login, $wikiname, $password, $emails, undef)
+}
+
+sub addUserWithCuid {
+    my ( $this, $login, $wikiname, $password, $emails, $cuid ) = @_;
+
+    my $provider = $this->_getProviderToAddUser();
+    unless ($this->userMayRegisterUsers()) {
+        throw Error::Simple("User " . Foswiki::Func::getWikiName() . " is not allowed to register new users.");
+    }
+
+    return $provider->addUser($login, $wikiname, $password, $emails, undef, $cuid);
+}
+
+sub _getProviderToAddUser {
+    my ($this) = @_;
     my $addTo = $Foswiki::cfg{UnifiedAuth}{AddUsersToProvider};
     unless($addTo) {
         throw Error::Simple('Failed to add user: adding users is not supported, please configure {UnifiedAuth}{AddUsersToProvider}');
@@ -246,13 +262,9 @@ sub addUser {
     unless($provider) {
         throw Error::Simple('Failed to add user: could not get provider: '.$provider);
     }
-
-    unless ($this->userMayRegisterUsers()) {
-        throw Error::Simple("User " . Foswiki::Func::getWikiName() . " is not allowed to register new users.");
-    }
-
-    return $provider->addUser($login, $wikiname, $password, $emails);
+    return $provider;
 }
+
 
 =begin TML
 

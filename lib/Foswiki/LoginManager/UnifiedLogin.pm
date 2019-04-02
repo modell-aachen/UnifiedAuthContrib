@@ -246,6 +246,10 @@ sub _initiateLogin {
 
     $query->delete('validation_key');
     if ($forcedProvider) {
+        if($forcedProvider eq '__default') {
+            return $this->_initiateDefaultLogin($state, $providers);
+        }
+
         if (!exists $Foswiki::cfg{UnifiedAuth}{Providers}{$forcedProvider}) {
             die "Invalid authentication source requested";
         }
@@ -521,7 +525,7 @@ sub _setRedirect {
 
 sub _isLoginAction {
     my (undef, $request) = @_;
-    return $request->action() eq 'login';
+    return $request->action() =~ m/^log[io]n$/;
 }
 
 sub _redirectFromState {

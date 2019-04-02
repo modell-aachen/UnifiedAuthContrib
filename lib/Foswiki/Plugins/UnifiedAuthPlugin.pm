@@ -138,7 +138,10 @@ sub _AUTHPROVIDERS {
 
 sub _TOTALUSERS {
     my($session, $params, $topic, $web, $topicObject) = @_;
-    my $db = _getConnection();
+
+    my $auth = Foswiki::UnifiedAuth->new();
+    my $db = $auth->db;
+
     my $exclude = $params->{_DEFAULT} || $params->{exclude_deactivated};
     my $baseQuery = "SELECT COUNT(DISTINCT users.cuid) FROM users INNER JOIN providers ON (users.pid=providers.pid) WHERE NOT providers.name ~ '^__'";
     return $db->selectrow_array($baseQuery, {}) unless Foswiki::isTrue($exclude, 0);
@@ -600,12 +603,6 @@ sub _toggleUserState {
 
 sub finishPlugin {
     Foswiki::UnifiedAuth::finish();
-}
-
-sub _getConnection {
-    return $connection if $connection && !$connection->{finished};
-    $connection = Foswiki::Contrib::PostgreContrib::getConnection('foswiki_users');
-    $connection->{db};
 }
 
 sub _USERREGISTRATION {
