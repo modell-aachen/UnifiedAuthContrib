@@ -29,7 +29,19 @@ sub forceButton {
 
     return undef if defined $this->{config}->{forcable} && !$this->{config}->{forcable};
 
-    return ($this->{config}->{loginIcon} || '<img src="%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/logo_facebook.svg" style="height: 16px; width: 16;" />', $this->{config}->{loginDescription} || '%MAKETEXT{"Login with Facebook"}%');
+    my $icon;
+    if($this->{config}->{loginIcon}){
+        $icon = $this->{config}->{loginIcon};
+    } else {
+        $icon = $Foswiki::cfg{PubUrlPath}.'/'.$Foswiki::cfg{SystemWebName}.'/UnifiedAuthContrib/logo_facebook.svg';
+    }
+    my $description;
+    if($this->{config}->{loginDescription}){
+        $description = $this->{config}->{loginIcon};
+    } else {
+        $description = 'Login with Facebook';
+    }
+    return ($icon, $description);
 }
 
 sub new {

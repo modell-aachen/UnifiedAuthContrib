@@ -96,7 +96,19 @@ sub forceButton {
 
     return undef if defined $this->{config}->{forcable} && !$this->{config}->{forcable};
 
-    return ($this->{config}->{loginIcon} || '<img src="%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/logo_steam.svg" style="height: 20px; width: 16px;" />', $this->{config}->{loginDescription} || '%MAKETEXT{"Login with Steam"}%');
+    my $icon;
+    if($this->{config}->{loginIcon}){
+        $icon = $this->{config}->{loginIcon};
+    } else {
+        $icon = $Foswiki::cfg{PubUrlPath}.'/'.$Foswiki::cfg{SystemWebName}.'/UnifiedAuthContrib/logo_steam.svg';
+    }
+    my $description;
+    if($this->{config}->{loginDescription}){
+        $description = $this->{config}->{loginIcon};
+    } else {
+        $description = 'Login with Steam';
+    }
+    return ($icon, $description);
 }
 
 sub initiateLogin {

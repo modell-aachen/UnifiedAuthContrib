@@ -25,7 +25,19 @@ sub forceButton {
 
     return undef if defined $this->{config}->{forcable} && !$this->{config}->{forcable};
 
-    return ($this->{config}->{loginIcon} || '<img src="%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/terminal.svg" />', $this->{config}->{loginDescription} || '%MAKETEXT{"Terminal login"}%');
+    my $icon;
+    if($this->{config}->{loginIcon}){
+        $icon = $this->{config}->{loginIcon};
+    } else {
+        $icon = $Foswiki::cfg{PubUrlPath}.'/'.$Foswiki::cfg{SystemWebName}.'/UnifiedAuthContrib/terminal.svg';
+    }
+    my $description;
+    if($this->{config}->{loginDescription}){
+        $description = $this->{config}->{loginIcon};
+    } else {
+        $description = 'Terminal login';
+    }
+    return ($icon, $description);
 }
 
 sub isMyLogin {

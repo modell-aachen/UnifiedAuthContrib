@@ -51,7 +51,7 @@
 %TMPL:DEF{"auth_providers"}%%{
 }%%FORMATLIST{"%UAUTH_FORCIBLE_PROVIDERS{default=""}%" header="<div class=\"foswikiFormStep\">
 <h3 class=\"uauth__force__header\">%MAKETEXT{"Or log on with a different method:"}%</h3><div class=\"uauth__force-button-group\">"
-format="<button class=\"uauth__force-button\" type=\"submit\" name=\"uauth_force_provider\" value=\"$1\"><span><span class=\"uauth__force-button__icon\">$percentUAUTH_$1_BUTTON_ICON$percent</span><span class=\"uauth__force-button__text\">$percentUAUTH_$1_BUTTON_TEXT$percent</span></span></button>"
+format="<button class=\"uauth__force-button\" type=\"submit\" name=\"uauth_force_provider\" value=\"$1\"><span><span class=\"uauth__force-button__icon\"><img style=\"height: 16px; width: 16;\" src=\"$percentUAUTH_$1_BUTTON_ICON$percent\"/></span><span class=\"uauth__force-button__text\">$percntMAKETEXT{\"$percentUAUTH_$1_BUTTON_TEXT$percent\"}$percnt</span></span></button>"
 separator="%BR%"
 footer="</div></div>"
 }%%{

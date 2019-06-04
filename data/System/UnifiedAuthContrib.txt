@@ -148,7 +148,7 @@ These options are available to providers that can automatically log in or redire
 
 | *Preference* | *Description* | *Default* |
 | loginDescription | Button text on the login page, to force this provider | _different for each provider_ |
-| loginIcon | Button icon (html) on the login page, to force this provider | _different for each provider_ |
+| loginIcon | Button icon (url) on the login page, to force this provider | _different for each provider_ |
 | autoLogin | Automatically sign in with this provider | _1 for most sso providers_ |
 | forcable | Offer a button on the login page to use this provider | _1 for most sso providers_ |
 
