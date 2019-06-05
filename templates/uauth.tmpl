@@ -3,7 +3,7 @@
 %TMPL:DEF{"LOG_IN_BANNER"}%%TMPL:END%
 %TMPL:DEF{"LOGGED_IN_BANNER"}%%MAKETEXT{"[_1] is currently logged in" args="%USERSWEB%.%WIKINAME%"}%%TMPL:END%
 %TMPL:DEF{"NEW_USER_NOTE"}%%MAKETEXT{"Enter a new username and password to change identity"}%%TMPL:END%
-%TMPL:DEF{"AUTH_FAILURE"}%%MAKETEXT{"We could not authenticate you. The following error occurred: [_1]" args="$percntUAUTH_AUTH_FAILURE_MESSAGE$percnt"}%%TMPL:END%
+%TMPL:DEF{"AUTH_FAILURE"}%%MAKETEXT{"We could not authenticate you. The following error occurred: [_1]" args="%UAUTH_AUTH_FAILURE_MESSAGE%"}%%TMPL:END%
 %TMPL:DEF{"UNRECOGNISED_USER"}%%MAKETEXT{"Oops: we could not recognize you. Try again or [[[_1]][reset your password]]." args="%SCRIPTURLPATH{view}%/%SYSTEMWEB%/ResetPassword?username=%URLPARAM{usernamestep}%"}%%TMPL:END%
 
 %{ TODO custom auth realm info? l10n? }%
