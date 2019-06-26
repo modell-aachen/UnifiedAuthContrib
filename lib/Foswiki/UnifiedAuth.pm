@@ -136,6 +136,7 @@ sub apply_schema {
 
         $db->do("UPDATE meta SET version=? WHERE type=?", {}, ++$v, $type);
         $db->commit;
+        $this->{schema_versions}{$type}{version} = $v;
     }
 }
 
