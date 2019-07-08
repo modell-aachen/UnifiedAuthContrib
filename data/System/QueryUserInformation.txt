@@ -1,0 +1,3 @@
+%META:TOPICINFO{author="aafd6652-3181-4845-b615-4bb7b970ca69" date="1561376082" format="1.1" version="1"}%
+
+%META:PREFERENCE{name="VIEW_TEMPLATE" title="VIEW_TEMPLATE" type="Set" value="QueryUserInformationView"}%

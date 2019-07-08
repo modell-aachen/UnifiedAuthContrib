@@ -39,7 +39,19 @@ sub forceButton {
 
     return undef if defined $this->{config}->{forcable} && !$this->{config}->{forcable};
 
-    return ($this->{config}->{loginIcon} || '<img src="%PUBURLPATH%/%SYSTEMWEB%/UnifiedAuthContrib/logo_google.svg" />', $this->{config}->{loginDescription} || '%MAKETEXT{"Login with Google"}%');
+    my $icon;
+    if($this->{config}->{loginIcon}){
+        $icon = $this->{config}->{loginIcon};
+    } else {
+        $icon = $Foswiki::cfg{PubUrlPath}.'/'.$Foswiki::cfg{SystemWebName}.'/UnifiedAuthContrib/logo_google.svg';
+    }
+    my $description;
+    if($this->{config}->{loginDescription}){
+        $description = $this->{config}->{loginIcon};
+    } else {
+        $description = 'Login with Google';
+    }
+    return ($icon, $description);
 }
 
 sub _makeOAuth {

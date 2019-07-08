@@ -1,0 +1,19 @@
+%TMPL:INCLUDE{"view"}%
+
+%TMPL:DEF{"content"}%
+The following form provides a convenient way to print user information by his
+login name, wikiname or cUID. Just fill the textbox and submit the form.
+
+<h6 id="query"></h6>
+<form type="GET" action="%SCRIPTURL{"view"}%/%WEB%/%TOPIC%#query">
+   <label>User
+      <input type="text" name="cuid">
+   </label>
+   <input type="submit">
+</form>
+
+%IF{"defined cuid" then="
+| *cUID* | *WikiName* | *LoginName* | *DisplayName* | *eMail* |
+$percentRENDERUSER{\"%URLPARAM{"cuid"}%\" convert=\"1\" format=\"| $cUID | $wikiName | $loginName | $displayName | $email |\"}$percent
+"}%
+%TMPL:END%

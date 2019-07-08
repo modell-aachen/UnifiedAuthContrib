@@ -3,7 +3,7 @@
 %TMPL:DEF{"LOG_IN_BANNER"}%%TMPL:END%
 %TMPL:DEF{"LOGGED_IN_BANNER"}%%MAKETEXT{"[_1] is currently logged in" args="%USERSWEB%.%WIKINAME%"}%%TMPL:END%
 %TMPL:DEF{"NEW_USER_NOTE"}%%MAKETEXT{"Enter a new username and password to change identity"}%%TMPL:END%
-%TMPL:DEF{"AUTH_FAILURE"}%%MAKETEXT{"We could not authenticate you. The following error occurred: [_1]" args="$percntUAUTH_AUTH_FAILURE_MESSAGE$percnt"}%%TMPL:END%
+%TMPL:DEF{"AUTH_FAILURE"}%%MAKETEXT{"We could not authenticate you. The following error occurred: [_1]" args="%UAUTH_AUTH_FAILURE_MESSAGE%"}%%TMPL:END%
 %TMPL:DEF{"UNRECOGNISED_USER"}%%MAKETEXT{"Oops: we could not recognize you. Try again or [[[_1]][reset your password]]." args="%SCRIPTURLPATH{view}%/%SYSTEMWEB%/ResetPassword?username=%URLPARAM{usernamestep}%"}%%TMPL:END%
 
 %{ TODO custom auth realm info? l10n? }%
@@ -51,7 +51,7 @@
 %TMPL:DEF{"auth_providers"}%%{
 }%%FORMATLIST{"%UAUTH_FORCIBLE_PROVIDERS{default=""}%" header="<div class=\"foswikiFormStep\">
 <h3 class=\"uauth__force__header\">%MAKETEXT{"Or log on with a different method:"}%</h3><div class=\"uauth__force-button-group\">"
-format="<button class=\"uauth__force-button\" type=\"submit\" name=\"uauth_force_provider\" value=\"$1\"><span><span class=\"uauth__force-button__icon\">$percentUAUTH_$1_BUTTON_ICON$percent</span><span class=\"uauth__force-button__text\">$percentUAUTH_$1_BUTTON_TEXT$percent</span></span></button>"
+format="<button class=\"uauth__force-button\" type=\"submit\" name=\"uauth_force_provider\" value=\"$1\"><span><span class=\"uauth__force-button__icon\"><img style=\"height: 16px; width: 16;\" src=\"$percentUAUTH_$1_BUTTON_ICON$percent\"/></span><span class=\"uauth__force-button__text\">$percntMAKETEXT{\"$percentUAUTH_$1_BUTTON_TEXT$percent\"}$percnt</span></span></button>"
 separator="%BR%"
 footer="</div></div>"
 }%%{

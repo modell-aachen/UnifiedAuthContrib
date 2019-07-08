@@ -60,7 +60,7 @@ convert cUIDs. The latter only applies to VirtualHostingContrib.
 *Note* %BR%
 You may skip this step if you're configuring a freshly installed Foswiki.
 
-%RED% *Note* %ENDCOLOR%%BR%
+%RED{encode="none"}% *Note* %ENDCOLOR{encode="none"}%%BR%
 *Before running =convert_ua_users.pl= you have to*
    1 Provide a valid ={Provider}= configuration (see below)
    1 Refresh the users cache initially
@@ -126,7 +126,7 @@ For now UnifiedAuthContrib ships with the following modules:
 
 *Note*: Module names are *case sensitive*.
 
-%RED% *Note* %ENDCOLOR%%BR%
+%RED{encode="none"}% *Note* %ENDCOLOR{encode="none"}%%BR%
 You *never* should configure an auth provider by using the =BaseUser= module.
 UnifiedAuthContrib enables this module on its own - whether it's provided
 within the configuration hash or not. Using the =BaseUser= module twice may lead
@@ -148,7 +148,7 @@ These options are available to providers that can automatically log in or redire
 
 | *Preference* | *Description* | *Default* |
 | loginDescription | Button text on the login page, to force this provider | _different for each provider_ |
-| loginIcon | Button icon (html) on the login page, to force this provider | _different for each provider_ |
+| loginIcon | Button icon (url) on the login page, to force this provider | _different for each provider_ |
 | autoLogin | Automatically sign in with this provider | _1 for most sso providers_ |
 | forcable | Offer a button on the login page to use this provider | _1 for most sso providers_ |
 
@@ -258,15 +258,15 @@ shown below:
 SetEnvIf Authorization (.+) HTTP_AUTHORIZATION=$1
 </verbatim>
 
-%RED% *Note* %ENDCOLOR%%BR%
+%RED{encode="none"}% *Note* %ENDCOLOR{encode="none"}%%BR%
 Make sure to set proper ACLs in =SitePreferences= and/or =WebPreferences= when
 disabling authentication on web server basis.
 
 *Configuring Realms and Subdomains* %BR%
 As stated below the realm configuration takes a Perl regular expression as input. This configuration defines which users can login via SSO
 based on their assigned Kerberos realm. E.g. if you want to allow all users from all subdomains of =EXAMPLE.COM= to login via SSO you would
-set realm to =qr/.*\.EXAMPLE\.COM/=. %RED%%BR%
-ATTENTION: %ENDCOLOR% Allowing multiple subdomains will lead to problems if there are users with the same username in different subdomains.
+set realm to =qr/.*\.EXAMPLE\.COM/=. %RED{encode="none"}%%BR%
+ATTENTION: %ENDCOLOR{encode="none"}% Allowing multiple subdomains will lead to problems if there are users with the same username in different subdomains.
 This will lead to users being logged in with the wrong user account.
 
 | *Preference* | *Description* |
@@ -672,21 +672,8 @@ When a (template) group has the setting =KEYUSER_ADMINISTRATED= set to perl-true
 ---+++ [[VarUSERINLIST][USERINLIST]]
 
 ---++ Query User Information
-The following form provides a convenient way to print user information by his
-login name, wikiname or cUID. Just fill the textbox and submit the form.
 
-<h6 id="query"></h6>
-<form type="GET" action="%SCRIPTURL{"view"}%/%WEB%/%TOPIC%#query">
-   <label>User
-      <input type="text" name="cuid">
-   </label>
-   <input type="submit">
-</form>
-
-%IF{"defined cuid" then="
-| *cUID* | *WikiName* | *LoginName* | *DisplayName* | *eMail* |
-$percentRENDERUSER{\"%URLPARAM{"cuid"}%\" convert=\"1\" format=\"| $cUID | $wikiName | $loginName | $displayName | $email |\"}$percent
-"}%
+[[QueryUserInformation][See QueryUserInformation]]
 
 ---++ Backups
 
