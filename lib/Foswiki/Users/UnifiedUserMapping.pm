@@ -26,6 +26,7 @@ use Foswiki::ListIterator;
 use Foswiki::Meta;
 use Foswiki::UnifiedAuth;
 use Foswiki::UnifiedAuth::Providers::BaseUser;
+use Foswiki::Plugins::AppManagerPlugin;
 
 
 =begin TML
@@ -1089,8 +1090,22 @@ SQL
 
     my @acl;
     my @canChange = ();
-    if($meta->get('PREFERENCE', 'KEYUSER_ADMINISTRATED')) {
+
+    my $keyUserAdministratedPref = $meta->get('PREFERENCE', 'KEYUSER_ADMINISTRATED');
+    if( !(defined $keyUserAdministratedPref) && $topic ne 'AdminGroup' && $topic ne 'NobodyGroup' ) {
+        $meta->putKeyed('PREFERENCE', {
+            type  => 'Set',
+            name  => 'KEYUSER_ADMINISTRATED',
+            title => 'KEYUSER_ADMINISTRATED',
+            value => '1'
+        });
+    }
+
+    $keyUserAdministratedPref = $meta->get('PREFERENCE', 'KEYUSER_ADMINISTRATED');
+
+    if( $keyUserAdministratedPref && $keyUserAdministratedPref->{'value'}) {
         push @canChange, 'KeyUserGroup';
+        push @canChange, 'GlobalKeyUserGroup' if Foswiki::Plugins::AppManagerPlugin::isMultisiteEnabled();
     } else {
         push @canChange, $topic;
     }
