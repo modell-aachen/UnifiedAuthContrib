@@ -203,7 +203,7 @@ sub processLogin {
         my $domains = $this->{config}->{domains};
         $domains = [$domains] unless ref $domains;
         foreach my $validDomain (@{$domains}) {
-            next unless $domain eq $validDomain;
+            next unless lc( $domain ) eq lc( $validDomain );
 
             Foswiki::Func::writeWarning("User $identity from $domain logged in with $this->{id}") if $this->{config}->{debug};
 
